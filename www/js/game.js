@@ -209,57 +209,33 @@ const GAME_ZONE_D_BOTTOM_RATIO = 0.5;
 // nastrojowym stref - patrz _getZoneBlend.
 const GAME_ZONE_TINT_FADE = 260;
 
-// --- Adaptacyjna jakość (patrz _trackPerformance) ----------------------------
-// Kolejne "kroki jakości" = mnożnik rozdzielczości renderowania (dpr w
-// resize()). Od najniższego do najwyższego - _qualityLevel to indeks w tej
-// tablicy. Startujemy z najwyższego i schodzimy w dół, jeśli urządzenie nie
-// wyrabia.
+// --- Jakość renderowania (dawniej "adaptacyjna", patrz _trackPerformance) ---
+// BUGFIX ("20 FPS i słaba rozdzielczość", "usuń to zmniejszenie rozdzielczości
+// bo to nie działa"): adaptacyjne obniżanie dpr (Faza wydajności, kilka
+// poprzednich BUGFIXów) zakładało, że wąskim gardłem jest liczba pikseli do
+// wypełnienia - to prawda TYLKO gdy fill-rate faktycznie jest wąskim gardłem.
+// Realny test na telefonie pokazał, że NIE jest: FPS nie poprawiał się mimo
+// widocznego spadku ostrości, więc mechanizm płacił kosztem jakości obrazu
+// bez żadnej korzyści. Jedna wartość, nie tablica kroków - dpr jest teraz
+// STAŁY, nigdy się nie obniża w trakcie gry. _trackPerformance() (niżej)
+// zostaje w kodzie, ale jest martwy: _qualityLevel jest zawsze 0, czyli
+// zarazem "już na dole" tablicy jednoelementowej, więc jego pierwszy warunek
+// (`if (this._qualityLevel <= 0) return;`) ucina go na starcie każdego
+// wywołania - zero pomiarów, zero decyzji, zero efektu.
 //
-// BUGFIX ("dalej 16-20 FPS", "niech nie będzie spadku rozdzielczości"): sufit
-// był 2.0 - usunięty. Pełny trace wydajności (nie tylko profil JS) pokazał,
-// że koszt canvasu rośnie z KWADRATEM dpr (2x to 4x pikseli do wypełnienia
-// względem 1x), a różnica ostrości 1.5x->2.0x na ekranie telefonu jest ledwie
-// zauważalna - zła wymiana. Niższy sufit (1.5x teraz) to NIE kolejny krok
-// adaptacyjny (nadal startujemy od najwyższego dostępnego i schodzimy TYLKO
-// gdy pomiar każe), tylko obcięcie najdroższego, najmniej wartego tej ceny
-// wariantu - urządzenie nigdy nie zapłaci za 2x, bo ten poziom po prostu już
-// nie istnieje.
+// 1.5, nie oryginalne 2.0 - to JEDYNA pozostałość po poprzednim mechanizmie:
+// czysty koszt canvasu rośnie z KWADRATEM dpr (2x to 4x pikseli względem 1x),
+// a różnica ostrości 1.5x->2.0x na ekranie telefonu jest ledwie zauważalna -
+// to nie jest "zmniejszenie", tylko rezygnacja z najdroższego wariantu,
+// którego i tak nie widać.
 //
-// BUGFIX ("mocno zacina", 7-22 FPS na telefonie mimo adaptacyjnej jakości):
-// najniższy krok był 1.0 - na ekranie z devicePixelRatio 2-3 (każdy nowszy
-// telefon) to WCIĄŻ 4-9x więcej pikseli niż konieczne minimum, po prostu
-// nie POWYŻEJ rozmiaru CSS. Dla urządzenia, które nie wyrabia nawet tego,
-// system nie miał już gdzie schodzić - _trackPerformance mierzył dalej, ale
-// _qualityLevel <= 0 kończył funkcję bez żadnej reakcji. Dołożone kroki
-// PONIŻEJ 1.0 pozwalają renderować w niższej rozdzielczości i dać
-// przeglądarce rozciągnąć obraz (canvas i tak wypełnia 100% ekranu przez
-// CSS) - obraz mniej ostry, ale DOKŁADNIE ta sama zawartość: żadna
-// dekoracja/cząsteczka/efekt nie znika, zmienia się tylko liczba pikseli,
-// w których je rysujemy.
-const GAME_QUALITY_DPR_STEPS = [0.5, 0.65, 0.8, 1, 1.5];
-// Ile klatek na starcie ignorujemy, zanim zaczniemy oceniać wydajność -
-// dekodowanie tekstur/pieczenie tła/pierwsze kompilacje JIT sprawiają, że
-// pierwsze klatki są zawsze wolne i NIE mówią nic o możliwościach sprzętu.
-//
-// BUGFIX ("mocno zacina" na telefonie): było 90+90 (180 klatek) - na mocnym
-// sprzęcie to niecałe 3s przy 60 FPS, ale na SŁABYM telefonie (właśnie tym,
-// który adaptacyjna jakość ma ratować) 180 klatek przy np. 10 FPS to blisko
-// 20 SEKUND zacinania, zanim padnie choć jedna decyzja o obniżeniu jakości.
-// Krótsze okno reaguje szybciej kosztem odrobiny stabilności klasyfikacji -
-// akceptowalny kompromis, bo mediana i tak filtruje pojedyncze zacięcia.
-//
-// BUGFIX ("spadki FPS na początku"): main.js czeka teraz z odsłonięciem
-// gry na PIERWSZĄ kalibrację (patrz Game.firstQualityCheckReady) - więc te
-// klatki nie są już "zacinaniem, które gracz widzi", tylko czasem POD
-// ekranem ładowania. Ale to wciąż czas oczekiwania, więc im krócej, tym
-// lepiej - dalsze cięcie z 20+30 do 10+20 (30 klatek razem) na słabym
-// sprzęcie skraca kalibrację o kolejne ~40%.
+const GAME_QUALITY_DPR_STEPS = [1.5];
+// Poniższe trzy stałe są teraz MARTWE (_trackPerformance nigdy do nich nie
+// dociera - patrz komentarz przy GAME_QUALITY_DPR_STEPS) - zostawione tylko
+// dlatego, że _trackPerformance() jako metoda wciąż istnieje w kodzie
+// (świadomie nie usunięta - patrz jej nagłówek) i formalnie ich używa.
 const GAME_PERF_WARMUP_FRAMES = 10;
-// Z ilu klatek liczymy medianę przed podjęciem decyzji.
 const GAME_PERF_SAMPLE_SIZE = 20;
-// Próg (ms na klatkę), powyżej którego schodzimy o krok jakości niżej.
-// 22ms (~45 FPS), nie 16.7 (60 FPS) - odrobina zapasu, żeby gra nie obniżała
-// sobie jakości przy sporadycznym drobnym przekroczeniu budżetu.
 const GAME_PERF_BUDGET_MS = 22;
 
 // --- Granice biomów (miękkie przejścia) --------------------------------------
@@ -401,26 +377,25 @@ class Game {
     this.shakeIntensity = 0;
     this.shakeDuration = 0;
 
-    // --- Adaptacyjna jakość (patrz _trackPerformance) --------------------------
-    // Startujemy z NAJWYŻSZEJ jakości i schodzimy niżej dopiero, gdy pomiar u
-    // gracza pokaże, że urządzenie nie wyrabia - zamiast z góry karać wszystkich
-    // niższą rozdzielczością "na wszelki wypadek".
+    // --- Jakość renderowania (patrz komentarz przy GAME_QUALITY_DPR_STEPS) -----
+    // Zawsze najwyższy (jedyny) dostępny poziom - _trackPerformance() już nic
+    // nie obniża, patrz komentarz tam.
     this._qualityLevel = GAME_QUALITY_DPR_STEPS.length - 1;
     this._frameSamples = [];
     this._perfWarmupFrames = 0;
-    // Rozwiązuje się PO pierwszym pełnym cyklu pomiaru (patrz _trackPerformance) -
-    // czyli w momencie, gdy jakość jest już DOBRANA do urządzenia, nie tylko
-    // "zaczęta na najwyższej i czekająca na porażkę". main.js czeka na to
-    // PRZED schowaniem ekranu ładowania (patrz hideLoadingScreenWhenReady) -
-    // dzięki temu ewentualny spadek jakości dzieje się NIEWIDOCZNIE pod
-    // ekranem ładowania, zamiast jako kilka sekund zacinania na oczach
-    // gracza tuż po starcie. Ograniczone tym samym 6s timeoutem co reszta
-    // warunków w main.js, więc na urządzeniu, które nie zdąży nawet SKOŃCZYĆ
-    // pierwszego pomiaru, ekran i tak w końcu zniknie.
     this._firstQualityCheckResolve = null;
     this.firstQualityCheckReady = new Promise((resolve) => {
       this._firstQualityCheckResolve = resolve;
     });
+    // Jeden stały poziom jakości - nie ma czego kalibrować, więc rozwiązujemy
+    // od razu. Gdyby to zostało puste, main.js/hideLoadingScreenWhenReady
+    // czekałoby na coś, co nigdy by nie nadeszło (_trackPerformance() kończy
+    // się na pierwszej linii, gdy _qualityLevel <= 0 - nigdy nie dotarłby do
+    // miejsca, które normalnie by to rozwiązało), aż do jego 9s limitu -
+    // czyli 9 zbędnych sekund na ekranie ładowania przy KAŻDYM uruchomieniu.
+    if (GAME_QUALITY_DPR_STEPS.length <= 1) {
+      this._firstQualityCheckResolve();
+    }
 
     // --- Timing pętli gry -------------------------------------------------------
     this.lastTimestamp = 0;
@@ -503,29 +478,16 @@ class Game {
   }
 
   /**
-   * Automatyczne dostrajanie jakości do RZECZYWISTEJ wydajności urządzenia.
-   *
-   * Po co: rozdzielczość renderowania (dpr, patrz resize()) podnieśliśmy do 2x,
-   * żeby postać nie była rozmyta na telefonie - ale to CZTERY razy więcej
-   * pikseli do wypełnienia. Na mocnym sprzęcie to nic (zmierzone: +0.1ms), na
-   * słabszym telefonie może nie wyrobić się w budżecie 16.7ms. Nie da się tego
-   * zgadnąć z góry ani wykryć po modelu urządzenia - JEDYNY wiarygodny sygnał
-   * to zmierzyć, jak gra faktycznie chodzi U GRACZA, i zareagować.
-   *
-   * Jak: liczymy medianę odstępów między klatkami z próbki. Mediana, nie
-   * średnia - pojedyncze zacięcie (GC, wczytanie tekstury, otwarcie panelu)
-   * wywindowałoby średnią i niepotrzebnie obniżyło jakość na stałe.
-   * Gdy mediana przekracza próg, schodzimy niżej i mierzymy od nowa - liczbą
-   * kroków PROPORCJONALNĄ do tego, o ile mediana przekracza budżet (ratio),
-   * nie zawsze o jeden. BUGFIX ("mocno zacina", 7-22 FPS): przy stałym kroku
-   * "-1" bardzo słaby telefon (np. mediana 90ms przy budżecie 22ms, ratio ~4)
-   * musiałby przejść przez PEŁNY cykl pomiaru na KAŻDYM pośrednim kroku z
-   * osobna, więc dziesiątki sekund zacinania zanim dotrze do jakości, którą
-   * urządzenie faktycznie wyrabia - przy tak dużym rozjeździe i tak nie ma
-   * szans, żeby kroki pośrednie dały grywalny wynik.
-   * Jakości NIE podnosimy z powrotem: bujanie się w tę i we w tę (obniż ->
-   * szybciej -> podnieś -> wolniej -> obniż) byłoby dużo bardziej irytujące
-   * niż stabilnie niższa rozdzielczość.
+   * MARTWY KOD (świadomie, nie zapomniany) - dawniej automatyczne dostrajanie
+   * jakości do wydajności urządzenia, wyłączone na prośbę Toma (patrz
+   * komentarz przy GAME_QUALITY_DPR_STEPS): obniżanie dpr nie poprawiało FPS
+   * na realnym telefonie, więc mechanizm płacił kosztem ostrości obrazu bez
+   * żadnej korzyści. GAME_QUALITY_DPR_STEPS ma teraz jeden element, więc
+   * `this._qualityLevel <= 0` poniżej jest PRAWDZIWE od pierwszej klatki -
+   * metoda zawsze wychodzi na tej linii, reszta ciała nigdy się nie wykonuje.
+   * Zostawiona (nie usunięta) na wypadek, gdyby kiedyś w przyszłości znów
+   * była potrzebna - wtedy wystarczy dopisać więcej wartości z powrotem do
+   * GAME_QUALITY_DPR_STEPS.
    */
   _trackPerformance(rawDelta) {
     if (this._qualityLevel <= 0) return; // już najniżej - nie ma czego mierzyć
@@ -1968,10 +1930,10 @@ class Game {
   resize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    // Sufit rozdzielczości to NIE stałe 2, tylko aktualny krok jakości -
-    // adaptacyjny system (_trackPerformance) obniża go, gdy urządzenie nie
-    // wyrabia. Nadal ograniczone przez PRAWDZIWE devicePixelRatio: na ekranie
-    // 1x renderowanie w 1.5x/2x to czysta strata (i tak nie widać różnicy).
+    // GAME_QUALITY_DPR_STEPS ma jeden element (patrz komentarz tam) - sufit
+    // jest więc w praktyce stały. Nadal ograniczone przez PRAWDZIWE
+    // devicePixelRatio: na ekranie 1x renderowanie w 1.5x to czysta strata
+    // (i tak nie widać różnicy).
     const qualityCap = GAME_QUALITY_DPR_STEPS[this._qualityLevel];
     const dpr = Math.min(window.devicePixelRatio || 1, qualityCap);
     this.dpr = dpr;

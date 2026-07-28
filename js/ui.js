@@ -1512,6 +1512,13 @@ class UIManager {
     this.shipContributeBtn = null;
     this.shipContributeWrap = null;
     this.muteToggleBtn = null;
+    // Cache ostatnio zapisanej widoczności (patrz update() niżej) - BUGFIX
+    // (wydajność, niezależna od dpr): oba przyciski dostawały nowy
+    // style.display co klatkę (60x/s), NAWET gdy wartość się nie zmieniała -
+    // każdy zapis do .style to potencjalne przeliczenie stylu przez
+    // przeglądarkę. Piszemy teraz tylko przy FAKTYCZNEJ zmianie stanu.
+    this._shipToggleVisible = false;
+    this._shipContributeVisible = false;
 
     this._onMoney = () => this._syncMoney(true);
     this._onMachineOutput = () => this._syncMoney(true);
@@ -1929,9 +1936,15 @@ class UIManager {
     // modułów w game.js woła je PRZED update() UIManagera, patrz kolejność
     // registerModule w main.js), więc tu tylko czytamy gotowy wynik, zero
     // duplikowania liczenia odległości.
+    // BUGFIX (wydajność): style.display zapisywany TYLKO gdy nearShip
+    // faktycznie się zmienił (patrz this._shipToggleVisible w konstruktorze) -
+    // dawniej pisany co klatkę (60x/s) niezależnie od tego, czy się zmienił.
     if (this.shipToggleBtn && this.shipToggleBtn.el) {
       const nearShip = !!(window.ship && window.ship.inRange);
-      this.shipToggleBtn.el.style.display = nearShip ? '' : 'none';
+      if (nearShip !== this._shipToggleVisible) {
+        this._shipToggleVisible = nearShip;
+        this.shipToggleBtn.el.style.display = nearShip ? '' : 'none';
+      }
     }
 
     // Przycisk "Wpłać" - widoczny tylko, dopóki gracz stoi w zasięgu I
@@ -1939,7 +1952,9 @@ class UIManager {
     // (Ship.needsContributionConfirm() sam pilnuje obu warunków). Pozycja
     // przeliczana co klatkę ze świata na ekran (world - camera) - ten sam
     // przelicznik co canvas (patrz game.js translate(-cameraX/Y)), więc
-    // przycisk "przykleja się" do statku niezależnie od ruchu kamery.
+    // przycisk "przykleja się" do statku niezależnie od ruchu kamery -
+    // left/top MUSZĄ zostać przeliczane co klatkę (kamera się rusza), ale
+    // display - tak jak przy shipToggleBtn wyżej - tylko przy zmianie stanu.
     if (this.shipContributeWrap) {
       const ship = window.ship;
       const needsConfirm = !!(ship && typeof ship.needsContributionConfirm === 'function'
@@ -1949,8 +1964,12 @@ class UIManager {
         const screenY = ship.y + ship.h / 2 - window.game.cameraY + 90;
         this.shipContributeWrap.style.left = `${screenX}px`;
         this.shipContributeWrap.style.top = `${screenY}px`;
-        this.shipContributeWrap.style.display = '';
-      } else {
+        if (!this._shipContributeVisible) {
+          this._shipContributeVisible = true;
+          this.shipContributeWrap.style.display = '';
+        }
+      } else if (this._shipContributeVisible) {
+        this._shipContributeVisible = false;
         this.shipContributeWrap.style.display = 'none';
       }
     }
