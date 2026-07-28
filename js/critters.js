@@ -30,6 +30,35 @@ const CRITTER_ZONE_B_RIGHT_RATIO = 0.62;
 const CRITTER_COUNTS = { butterfly: 6, firefly: 7, crow: 3 };
 const BUTTERFLY_COLORS = ['#F48FB1', '#FFCC80', '#CE93D8', '#81D4FA', '#FFF176'];
 
+// BUGFIX (przycinanie na telefonie): _drawFirefly tworzyła NOWY
+// createRadialGradient KAŻDĄ klatkę, dla KAŻDEGO świetlika (do 7 naraz) -
+// dokładnie ten sam błąd, który ItemRenderer._getGlowTexture (items.js) już
+// raz naprawił dla przedmiotów. Kolor/kształt poświaty są zawsze te same,
+// jedyne co się zmienia w locie to promień (per świetlik, stały - c.size się
+// nie zmienia) i jasność (blink) - więc pieczemy JEDNĄ teksturę RAZ (rozmiar
+// bazowy, promień świetlika i tak wchodzi tylko jako skala przy drawImage) i
+// modulujemy jasność przez globalAlpha zamiast przeliczać gradient od nowa.
+const CRITTER_FIREFLY_GLOW_TEXTURE_SIZE = 128;
+let _critterFireflyGlowTexture = null;
+function getFireflyGlowTexture() {
+  if (_critterFireflyGlowTexture) return _critterFireflyGlowTexture;
+  const size = CRITTER_FIREFLY_GLOW_TEXTURE_SIZE;
+  const r = size / 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const tctx = canvas.getContext('2d');
+  const grad = tctx.createRadialGradient(r, r, 0, r, r, r);
+  grad.addColorStop(0, 'rgba(223, 255, 138, 0.55)');
+  grad.addColorStop(1, 'rgba(223, 255, 138, 0)');
+  tctx.fillStyle = grad;
+  tctx.beginPath();
+  tctx.arc(r, r, r, 0, Math.PI * 2);
+  tctx.fill();
+  _critterFireflyGlowTexture = canvas;
+  return canvas;
+}
+
 class CrittersManager {
   constructor() {
     this._time = 0;
@@ -173,19 +202,19 @@ class CrittersManager {
     ctx.restore();
   }
 
-  /** Miękka pulsująca poświata - jaśniejsza przy szczycie "mrugnięcia". */
+  /** Miękka pulsująca poświata - jaśniejsza przy szczycie "mrugnięcia".
+   * Poświata to cache'owana tekstura (patrz getFireflyGlowTexture) skalowana
+   * drawImage'em do promienia TEGO świetlika - globalAlpha=blink daje
+   * dokładnie ten sam efekt co dawne `0.55 * blink` w gradiencie (globalAlpha
+   * mnoży istniejącą alfę źródła), bez przeliczania gradientu co klatkę. */
   _drawFirefly(ctx, c) {
     const blink = 0.35 + 0.65 * Math.max(0, Math.sin(this._time * c.blinkSpeed + c.turnSeed));
     const glowR = c.size * 5;
+    const glowTexture = getFireflyGlowTexture();
 
     ctx.save();
-    const grad = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, glowR);
-    grad.addColorStop(0, `rgba(223, 255, 138, ${0.55 * blink})`);
-    grad.addColorStop(1, 'rgba(223, 255, 138, 0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, glowR, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.globalAlpha = blink;
+    ctx.drawImage(glowTexture, c.x - glowR, c.y - glowR, glowR * 2, glowR * 2);
 
     ctx.globalAlpha = 0.7 + blink * 0.3;
     ctx.fillStyle = '#F4FFB0';

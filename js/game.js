@@ -201,7 +201,19 @@ const GAME_ZONE_TINT_FADE = 260;
 // tablicy. Startujemy z najwyższego i schodzimy w dół, jeśli urządzenie nie
 // wyrabia. 2 to sufit świadomie (patrz komentarz przy resize) - powyżej zysk
 // ostrości jest znikomy, a koszt rośnie z kwadratem.
-const GAME_QUALITY_DPR_STEPS = [1, 1.5, 2];
+//
+// BUGFIX ("mocno zacina", 7-22 FPS na telefonie mimo adaptacyjnej jakości):
+// najniższy krok był 1.0 - na ekranie z devicePixelRatio 2-3 (każdy nowszy
+// telefon) to WCIĄŻ 4-9x więcej pikseli niż konieczne minimum, po prostu
+// nie POWYŻEJ rozmiaru CSS. Dla urządzenia, które nie wyrabia nawet tego,
+// system nie miał już gdzie schodzić - _trackPerformance mierzył dalej, ale
+// _qualityLevel <= 0 kończył funkcję bez żadnej reakcji. Dołożone kroki
+// PONIŻEJ 1.0 pozwalają renderować w niższej rozdzielczości i dać
+// przeglądarce rozciągnąć obraz (canvas i tak wypełnia 100% ekranu przez
+// CSS) - obraz mniej ostry, ale DOKŁADNIE ta sama zawartość: żadna
+// dekoracja/cząsteczka/efekt nie znika, zmienia się tylko liczba pikseli,
+// w których je rysujemy.
+const GAME_QUALITY_DPR_STEPS = [0.5, 0.65, 0.8, 1, 1.5, 2];
 // Ile klatek na starcie ignorujemy, zanim zaczniemy oceniać wydajność -
 // dekodowanie tekstur/pieczenie tła/pierwsze kompilacje JIT sprawiają, że
 // pierwsze klatki są zawsze wolne i NIE mówią nic o możliwościach sprzętu.
@@ -452,14 +464,14 @@ class Game {
    * Jak: liczymy medianę odstępów między klatkami z próbki. Mediana, nie
    * średnia - pojedyncze zacięcie (GC, wczytanie tekstury, otwarcie panelu)
    * wywindowałoby średnią i niepotrzebnie obniżyło jakość na stałe.
-   * Gdy mediana przekracza próg, schodzimy niżej i mierzymy od nowa - o JEDEN
-   * krok przy lekkim przekroczeniu, ale OD RAZU na sam dół (pomijając kroki
-   * pośrednie), gdy mediana jest WIĘCEJ NIŻ DWUKROTNIE gorsza niż budżet.
-   * BUGFIX ("mocno zacina"): bez tego bardzo słaby telefon (np. mediana
-   * 60ms+, budżet 22ms) musiałby przejść przez PEŁNY cykl pomiaru na KAŻDYM
-   * pośrednim kroku (2x -> 1.5x -> 1x), więc kilkanaście-kilkadziesiąt sekund
-   * zacinania zanim dotrze do jakości, którą urządzenie faktycznie wyrabia -
-   * przy tak dużym rozjeździe i tak nie ma szans na krok pośredni.
+   * Gdy mediana przekracza próg, schodzimy niżej i mierzymy od nowa - liczbą
+   * kroków PROPORCJONALNĄ do tego, o ile mediana przekracza budżet (ratio),
+   * nie zawsze o jeden. BUGFIX ("mocno zacina", 7-22 FPS): przy stałym kroku
+   * "-1" bardzo słaby telefon (np. mediana 90ms przy budżecie 22ms, ratio ~4)
+   * musiałby przejść przez PEŁNY cykl pomiaru na KAŻDYM pośrednim kroku z
+   * osobna, więc dziesiątki sekund zacinania zanim dotrze do jakości, którą
+   * urządzenie faktycznie wyrabia - przy tak dużym rozjeździe i tak nie ma
+   * szans, żeby kroki pośrednie dały grywalny wynik.
    * Jakości NIE podnosimy z powrotem: bujanie się w tę i we w tę (obniż ->
    * szybciej -> podnieś -> wolniej -> obniż) byłoby dużo bardziej irytujące
    * niż stabilnie niższa rozdzielczość.
@@ -482,9 +494,9 @@ class Game {
     this._frameSamples.length = 0;
 
     if (median > GAME_PERF_BUDGET_MS) {
-      this._qualityLevel = (median > GAME_PERF_BUDGET_MS * 2)
-        ? 0
-        : this._qualityLevel - 1;
+      const ratio = median / GAME_PERF_BUDGET_MS;
+      const dropSteps = Math.max(1, Math.floor(ratio));
+      this._qualityLevel = Math.max(0, this._qualityLevel - dropSteps);
       const newDpr = GAME_QUALITY_DPR_STEPS[this._qualityLevel];
       console.warn(
         `[Game] Klatki po ~${median.toFixed(1)}ms (budżet ${GAME_PERF_BUDGET_MS}ms) - ` +
