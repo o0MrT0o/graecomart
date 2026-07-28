@@ -154,6 +154,11 @@ const DECOR_GROUND_OFFSET = {
 // prawdziwej warstwy chmur/nieba. Patrz _generateCloudShadows/_drawCloudShadows.
 const CLOUD_SHADOW_COUNT = 6;
 const CLOUD_SHADOW_RADIUS = 380;
+// Stały górny limit rozdzielczości ŹRÓDŁOWEJ tekstury chmury (px), niezależny
+// od promienia na ekranie - patrz obszerny komentarz w _bakeCloudTexture.
+// Kształt jest miękki/rozmyty, więc powiększenie przy rysowaniu nie jest
+// widoczne, a próbkowanie mniejszego źródła jest dużo tańsze.
+const CLOUD_SHADOW_BAKE_SIZE = 320;
 // BUGFIX ("nie widzę cieni chmur"): było 0.09 - w połączeniu z bardzo miękkim
 // gradientem (jedna warstwa środek->przezroczysty) i kolorowym, szczegółowym
 // tłem (trawa/popiół/bagno) efekt był praktycznie niewidoczny. Podniesione,
@@ -907,7 +912,12 @@ class Game {
     const y = this.cameraY;
 
     if (!this._worldBackgroundBaked) {
-      if (this._grass.pattern && this._swamp.pattern && this._ash.pattern) {
+      // Czekamy TEŻ na obrazki dekoracji (nie tylko 3 tekstury terenu) -
+      // _bakeStaticDecorations (wołane z _bakeWorldBackground niżej) piecze
+      // cienie/sprite'y dekoracji do tego samego bufora RAZ, więc muszą już
+      // być wczytane, inaczej upieklibyśmy cień ze złym rozmiarem (liczonym
+      // z img.naturalWidth/Height) albo w ogóle pominęli 'rock' na stałe.
+      if (this._grass.pattern && this._swamp.pattern && this._ash.pattern && this._decorImagesReady()) {
         this._bakeWorldBackground();
       } else {
         this._renderZoneFills(ctx, x, y, viewW, viewH);
@@ -942,9 +952,77 @@ class Game {
     const wctx = canvas.getContext('2d');
 
     this._renderZoneFills(wctx, 0, 0, this.worldWidth, this.worldHeight);
+    this._bakeStaticDecorations(wctx);
 
     this._worldBackgroundCanvas = canvas;
     this._worldBackgroundBaked = true;
+  }
+
+  /** true, gdy WSZYSTKIE obrazki dekoracji sprite'owych (patrz DECOR_TYPES)
+   * skończyły próbę wczytania (sukces LUB porażka - `complete` jest true w
+   * obu przypadkach, tak samo jak przy _loadTexture) - warunek gotowości do
+   * _bakeWorldBackground/_bakeStaticDecorations. */
+  _decorImagesReady() {
+    return DECOR_TYPES.every((type) => {
+      const img = this._decorImages[type];
+      return img && img.complete;
+    });
+  }
+
+  /**
+   * Domalowuje do TEGO SAMEGO upieczonego tła świata (wołane z
+   * _bakeWorldBackground) elementy dekoracji, które są W PEŁNI statyczne -
+   * nigdy się nie poruszają/nie animują, więc nie ma powodu płacić za ich
+   * rysowanie co klatkę:
+   *   - cień KAŻDEJ dekoracji sprite'owej (tree/bush/rock/shrub) - cień
+   *     nigdy nie kołysze się razem ze sprite'em nad nim (patrz
+   *     DECOR_SWAY_TYPES), więc wygląda identycznie na każdej klatce
+   *     niezależnie od typu/tego czy sprite nad nim się porusza.
+   *   - sam sprite 'rock' (JEDYNY typ sprite'owy spoza DECOR_SWAY_TYPES) i
+   *     cała dekoracja 'barrel' (już wcześniej upieczona do WŁASNEJ, osobnej
+   *     tekstury w _bakeBarrelTexture - tu tylko przenosimy gotowy wynik na
+   *     wspólne tło, więc _drawDecorations() nie musi jej już wcale dotykać).
+   *
+   * BUGFIX (przycinanie/lag, "za mała gra żeby tak zacinało"): profil CPU
+   * (Chrome DevTools Profiler, symulacja słabego telefonu przez CPU
+   * throttling) pokazał ~35% czasu KAŻDEJ klatki w _drawBackground - w
+   * większości właśnie tutaj: fillStyle+beginPath+ellipse+fill dla KAŻDEGO
+   * cienia + osobny drawImage dla KAŻDEJ w pełni statycznej dekoracji, 60x/s,
+   * dla wszystkiego widocznego naraz (kilkadziesiąt obiektów na raz przy
+   * typowym kadrze). To dokładnie ten koszt, którego obniżenie rozdzielczości
+   * renderowania (dpr) NIE dotyka - liczba wywołań Canvas API zostaje ta sama
+   * niezależnie od dpr, a to WYWOŁANIA (nie piksele) tu kosztowały najwięcej.
+   * Wołane RAZ, tylko gdy sprite'y dekoracji są już wczytane (patrz warunek
+   * w _drawBackground) - inaczej cień/sprite policzyłby się ze złym
+   * (domyślnym) rozmiarem obrazka.
+   */
+  _bakeStaticDecorations(wctx) {
+    this._decorations.forEach((d) => {
+      if (d.type === 'barrel') {
+        if (d.texture) wctx.drawImage(d.texture, d.x - d.textureAnchorX, d.y - d.textureAnchorY);
+        return;
+      }
+      if (!DECOR_TYPES.includes(d.type)) return; // tylko sprite'owe (tree/bush/rock/shrub) mają tu osobny cień
+
+      const img = this._decorImages[d.type];
+      if (!img || !img.complete || !img.naturalWidth) return;
+
+      const h = DECOR_BASE_HEIGHT * d.scale * (DECOR_TYPE_SCALE[d.type] || 1);
+      const w = h * (img.naturalWidth / img.naturalHeight);
+
+      // Ten sam kształt/pozycja cienia co dawniej w _drawDecorations (patrz
+      // komentarz "kamienie latają" tam) - tylko przeniesiony tutaj, do
+      // jednorazowego pieczenia zamiast rysowania co klatkę.
+      wctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      wctx.beginPath();
+      wctx.ellipse(d.x, d.y, w * 0.42, Math.max(3, h * 0.14), 0, 0, Math.PI * 2);
+      wctx.fill();
+
+      if (d.type === 'rock') {
+        const groundOffset = h * (DECOR_GROUND_OFFSET[d.type] || 0);
+        wctx.drawImage(img, d.x - w / 2, d.y - h + groundOffset, w, h);
+      }
+    });
   }
 
   /**
@@ -1306,46 +1384,78 @@ class Game {
    * całości - patrz komentarz w _generateCloudShadows) RAZ do własnego,
    * dopasowanego do promienia tej chmury canvasu (cloud.texture). Wywołane
    * tylko przy starcie gry (garstka chmur), nigdy w pętli rysowania.
+   *
+   * BUGFIX (przycinanie/lag): źródłowa tekstura była pieczona w NATURALNYM
+   * rozmiarze chmury (do ~1280px przy większych promieniach) - profil CPU
+   * pokazał, że sam _drawCloudShadows (drawImage tej tekstury, co klatkę,
+   * dla każdej widocznej chmury) to ~17% czasu klatki, mimo że kształt jest
+   * już upieczony RAZ. Powód: to WCIĄŻ drawImage kopiujący/próbkujący do
+   * MILIONA źródłowych pikseli za każdym wywołaniem. Kształt jest miękki i
+   * rozmyty (suma kół + gradientowa maska, zero ostrych krawędzi) - w takiej
+   * treści powiększenie przy rysowaniu jest wizualnie niewidoczne (w
+   * przeciwieństwie do ostrych sprite'ów), więc pieczemy źródło w STAŁYM,
+   * dużo mniejszym rozmiarze (CLOUD_SHADOW_BAKE_SIZE) niezależnie od
+   * promienia, a _drawCloudShadows i tak rysuje go w docelowym rozmiarze
+   * NA EKRANIE (cloud.textureSize) - ten sam efekt wizualny, dużo mniej
+   * pikseli źródłowych do spróbkowania/przeskalowania KAŻDĄ klatkę.
    */
   _bakeCloudTexture(cloud) {
-    const size = Math.ceil(cloud.radius * 2.6);
-    const half = size / 2;
+    const targetSize = Math.ceil(cloud.radius * 2.6); // rozmiar NA EKRANIE - bez zmian
+    const bakeSize = Math.min(targetSize, CLOUD_SHADOW_BAKE_SIZE); // rozmiar ŹRÓDŁA - nowe
+    const bakeScale = bakeSize / targetSize;
+    const half = bakeSize / 2;
     const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = bakeSize;
+    canvas.height = bakeSize;
     const tctx = canvas.getContext('2d');
 
     tctx.fillStyle = '#000000';
     cloud.lobes.forEach((lobe) => {
       tctx.beginPath();
-      tctx.arc(half + lobe.dx, half + lobe.dy, lobe.r, 0, Math.PI * 2);
+      tctx.arc(half + lobe.dx * bakeScale, half + lobe.dy * bakeScale, lobe.r * bakeScale, 0, Math.PI * 2);
       tctx.fill();
     });
 
     tctx.globalCompositeOperation = 'destination-in';
-    const maskGrad = tctx.createRadialGradient(half, half, 0, half, half, cloud.radius * 1.15);
+    const maskGrad = tctx.createRadialGradient(half, half, 0, half, half, cloud.radius * 1.15 * bakeScale);
     maskGrad.addColorStop(0, 'rgba(0, 0, 0, 1)');
     maskGrad.addColorStop(0.75, 'rgba(0, 0, 0, 1)');
     maskGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     tctx.fillStyle = maskGrad;
-    tctx.fillRect(0, 0, size, size);
+    tctx.fillRect(0, 0, bakeSize, bakeSize);
 
     cloud.texture = canvas;
-    cloud.textureSize = size;
+    // NA EKRANIE dalej ma być targetSize (docelowy wizualny rozmiar) -
+    // _drawCloudShadows rysuje c.texture SKALOWANE do tego rozmiaru, nie w
+    // jego rzeczywistym (mniejszym) rozmiarze źródłowym bakeSize.
+    cloud.textureSize = targetSize;
   }
 
   /**
    * Rysuje dekoracje widoczne w aktualnym oknie kamery (z marginesem, żeby
    * obiekty tuż za krawędzią - a mają realną wysokość - też się pojawiły).
    * Czysto wizualne - żadnej logiki kolizji, gracz może przez nie przechodzić.
+   *
+   * Gdy tło świata jest już upieczone (this._worldBackgroundBaked - patrz
+   * _bakeWorldBackground/_bakeStaticDecorations), CAŁA statyczna część
+   * (cienie sprite'ów, 'rock', 'barrel') już tam siedzi na stałe - tutaj
+   * zostaje tylko to, co FAKTYCZNIE się porusza (kołysanie tree/bush/shrub,
+   * puls kałuży/kryształu, kwiat). Dopóki bake nie zdążył się wykonać
+   * (krótkie okno na starcie, i tak schowane pod ekranem ładowania - patrz
+   * main.js), rysujemy WSZYSTKO jak dawniej, żeby ekran nigdy nie został bez
+   * cieni/kamieni/beczek.
    */
   _drawDecorations(ctx, camX, camY, viewW, viewH) {
     const margin = 120;
     const nowSec = performance.now() / 1000;
+    const staticBaked = this._worldBackgroundBaked;
 
     this._decorations.forEach((d) => {
       if (d.x < camX - margin || d.x > camX + viewW + margin) return;
       if (d.y < camY - margin || d.y > camY + viewH + margin) return;
+
+      // W pełni statyczne - już wypalone w tle, patrz komentarz wyżej.
+      if (staticBaked && (d.type === 'rock' || d.type === 'barrel')) return;
 
       if (DECOR_PROCEDURAL_TYPES.includes(d.type)) {
         this._drawProceduralDecor(ctx, d, nowSec);
@@ -1367,10 +1477,14 @@ class Game {
       // 0.2->0.3 alpha) - lepiej "kotwiczy" obiekt do podłoża, z minimalną
       // wysokością (Math.max), żeby przy małych dekoracjach nie ścieńczał
       // się do niewidocznej kreski.
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-      ctx.beginPath();
-      ctx.ellipse(d.x, d.y, w * 0.42, Math.max(3, h * 0.14), 0, 0, Math.PI * 2);
-      ctx.fill();
+      // Po bake'u cień jest już w tle (patrz _bakeStaticDecorations) - tu
+      // rysujemy go tylko w krótkim oknie PRZED bakiem.
+      if (!staticBaked) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(d.x, d.y, w * 0.42, Math.max(3, h * 0.14), 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // Patrz DECOR_GROUND_OFFSET - dosuwa sprite w dół o zmierzony
       // przezroczysty margines pod grafiką (bush/shrub), 0 dla reszty typów.
@@ -1777,7 +1891,11 @@ class Game {
       if (!c.texture) return;
 
       const half = c.textureSize / 2;
-      ctx.drawImage(c.texture, x - half, y - half);
+      // Jawny docelowy rozmiar (c.textureSize) - c.texture.width jest teraz
+      // MNIEJSZA (patrz CLOUD_SHADOW_BAKE_SIZE w _bakeCloudTexture), więc bez
+      // tego drawImage narysowałby chmurę w jej (mniejszym) rozmiarze
+      // źródłowym zamiast docelowego rozmiaru na ekranie.
+      ctx.drawImage(c.texture, x - half, y - half, c.textureSize, c.textureSize);
     });
     ctx.restore();
   }
