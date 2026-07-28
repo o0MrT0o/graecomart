@@ -902,6 +902,39 @@ canvas {
     line-height: 1.4;
 }
 
+/* Strzałki nawigacji - ten sam wizualny język co .tutorial-window__close
+   (okrągły przycisk, subtelne tło), tylko odrobinę większe (łatwiejszy cel
+   dotyku niż mały "x" w nagłówku - te dwa siedzą wewnątrz treści, nie w
+   ciasnym pasku nagłówka). */
+.tutorial-window__nav {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--ui-text);
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.15s, opacity 0.2s;
+}
+
+.tutorial-window__nav:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.tutorial-window__nav:active {
+    transform: scale(0.92);
+}
+
+.tutorial-window__nav:disabled {
+    opacity: 0.28;
+    cursor: default;
+    pointer-events: none;
+}
+
 /* ==========================================================================
    Ekran wygranej (Faza 3) - wyśrodkowana karta, ten sam język co sklep
    ========================================================================== */

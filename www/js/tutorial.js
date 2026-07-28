@@ -85,6 +85,8 @@ class TutorialManager {
     this.iconEl = null;
     this.textEl = null;
     this.stepEl = null;
+    this.prevBtn = null;
+    this.nextBtn = null;
     this._subscribedEvent = null;
     this._currentHandler = null;
 
@@ -124,6 +126,18 @@ class TutorialManager {
     this.bodyEl = document.createElement('div');
     this.bodyEl.className = 'tutorial-window__body';
 
+    // Strzałki - przewijają kroki RĘCZNIE, niezależnie od tego, czy gracz
+    // faktycznie wykonał akcję danego kroku (wołają wprost _goToStep(), tę
+    // samą metodę co auto-postęp z eventów Bus - patrz tam). "◀" na kroku 0
+    // jest wyłączona (nie ma dokąd cofnąć), "▶" na ostatnim kroku kończy
+    // samouczek od razu zamiast czekać na 6s auto-timeout (patrz _goToStep).
+    this.prevBtn = document.createElement('button');
+    this.prevBtn.type = 'button';
+    this.prevBtn.className = 'tutorial-window__nav tutorial-window__nav--prev';
+    this.prevBtn.setAttribute('aria-label', 'Poprzedni krok');
+    this.prevBtn.textContent = '◀';
+    this.prevBtn.addEventListener('click', () => this._goToStep(this.economyManager.tutorialStep - 1));
+
     this.iconEl = document.createElement('span');
     this.iconEl.className = 'tutorial-window__icon';
     this.iconEl.setAttribute('aria-hidden', 'true');
@@ -131,8 +145,17 @@ class TutorialManager {
     this.textEl = document.createElement('span');
     this.textEl.className = 'tutorial-window__text';
 
+    this.nextBtn = document.createElement('button');
+    this.nextBtn.type = 'button';
+    this.nextBtn.className = 'tutorial-window__nav tutorial-window__nav--next';
+    this.nextBtn.setAttribute('aria-label', 'Następny krok');
+    this.nextBtn.textContent = '▶';
+    this.nextBtn.addEventListener('click', () => this._goToStep(this.economyManager.tutorialStep + 1));
+
+    this.bodyEl.appendChild(this.prevBtn);
     this.bodyEl.appendChild(this.iconEl);
     this.bodyEl.appendChild(this.textEl);
+    this.bodyEl.appendChild(this.nextBtn);
 
     this.el.appendChild(header);
     this.el.appendChild(this.bodyEl);
@@ -141,6 +164,11 @@ class TutorialManager {
 
   _goToStep(index) {
     this._unsubscribeCurrent();
+
+    // Strzałka "◀" na kroku 0 (patrz _buildDOM) jest wyłączona i więc nie
+    // powinna w ogóle kliknąć się do -1 - to tylko dodatkowe zabezpieczenie,
+    // gdyby np. zdarzenie dotarło mimo disabled.
+    if (index < 0) index = 0;
 
     if (index >= TUTORIAL_STEPS.length) {
       this._complete();
@@ -152,6 +180,7 @@ class TutorialManager {
     if (this.iconEl) this.iconEl.textContent = step.icon;
     if (this.textEl) this.textEl.textContent = step.text;
     if (this.stepEl) this.stepEl.textContent = `${index + 1}/${TUTORIAL_STEPS.length}`;
+    if (this.prevBtn) this.prevBtn.disabled = index === 0;
 
     if (step.event && Events[step.event]) {
       this._currentHandler = (d) => {
@@ -219,6 +248,8 @@ class TutorialManager {
     this.iconEl = null;
     this.textEl = null;
     this.stepEl = null;
+    this.prevBtn = null;
+    this.nextBtn = null;
   }
 
   destroy() {

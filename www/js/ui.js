@@ -1048,9 +1048,11 @@ class PrestigePanel {
 const SETTINGS_APP_VERSION = '1.0.0';
 
 class SettingsPanel {
-  /** onChange - wołane po KAŻDEJ akcji w panelu (na razie tylko dźwięk), żeby
-   * UIManager mógł zsynchronizować ikonę osobnego przycisku Wycisz w fabRow
-   * bez tego, żeby SettingsPanel musiał znać UIManager wprost. */
+  /** onChange - wołane po KAŻDEJ akcji w panelu (na razie tylko dźwięk) -
+   * zostaje jako ogólny hak na przyszłość, choć obecnie żaden wywołujący go
+   * nie potrzebuje (dawniej synchronizował ikonę osobnego przycisku Wycisz
+   * w fabRow - ten przycisk usunięty, patrz komentarz w UIManager._render:
+   * dźwięk włącza/wyłącza się TYLKO stąd, z Menu, nie z ekranu gry). */
   constructor(onChange, onOpenAchievements) {
     this.onChange = onChange;
     this.onOpenAchievements = onOpenAchievements;
@@ -1511,7 +1513,6 @@ class UIManager {
     this.settingsToggleBtn = null;
     this.shipContributeBtn = null;
     this.shipContributeWrap = null;
-    this.muteToggleBtn = null;
     // Cache ostatnio zapisanej widoczności (patrz update() niżej) - BUGFIX
     // (wydajność, niezależna od dpr): oba przyciski dostawały nowy
     // style.display co klatkę (60x/s), NAWET gdy wartość się nie zmieniała -
@@ -1711,8 +1712,12 @@ class UIManager {
       this._refreshPrestige();
     });
     this.achievementsPanel = new AchievementsPanel(economy);
+    // Dźwięk włącza/wyłącza się TYLKO z Menu (SettingsPanel._buildSoundRow) -
+    // brak osobnego przycisku Wycisz na ekranie gry (patrz usunięty
+    // muteToggleBtn niżej), więc nie ma już nic do zsynchronizowania po
+    // przełączeniu - pierwszy argument (onChange) zostaje pusty.
     this.settingsPanel = new SettingsPanel(
-      () => this._updateMuteButtonIcon(),
+      null,
       () => this.achievementsPanel.open()
     );
 
@@ -1798,18 +1803,11 @@ class UIManager {
     this.shipContributeWrap.style.display = 'none';
     this.shipContributeWrap.appendChild(this.shipContributeBtn.mount());
 
-    this.muteToggleBtn = new UIButton({
-      icon: (window.audioManager && window.audioManager.muted) ? '🔇' : '🔊',
-      label: '',
-      variant: 'fab',
-      title: 'Wycisz / włącz dźwięk',
-      onClick: () => {
-        if (!window.audioManager) return;
-        window.audioManager.toggleMute();
-        this._updateMuteButtonIcon();
-      }
-    });
-    fabRow.appendChild(this.muteToggleBtn.mount());
+    // BRAK przycisku Wycisz tutaj (dawniej muteToggleBtn w fabRow, obok
+    // Sklep/Statek/Menu) - dźwięk włącza/wyłącza się TERAZ wyłącznie z Menu
+    // (SettingsPanel._buildSoundRow), żeby ekran gry nie zaśmiecał się
+    // czwartą stałą ikoną, której gracz dotyka raz na sesję, nie co chwilę
+    // jak Sklepu/Statku.
 
     this.root.appendChild(topBar);
     this.root.appendChild(toastContainer);
@@ -1879,15 +1877,6 @@ class UIManager {
    * osobnych paneli, tylko wołał "odśwież to, co dotyczy tego zdarzenia". */
   _refreshPrestige() {
     if (this.prestigePanel) this.prestigePanel.refresh();
-  }
-
-  /** Aktualizuje ikonę przycisku mute (🔊/🔇) po przełączeniu. */
-  _updateMuteButtonIcon() {
-    if (!this.muteToggleBtn || !this.muteToggleBtn.el) return;
-    const iconEl = this.muteToggleBtn.el.querySelector('.ui-btn__icon');
-    if (iconEl) {
-      iconEl.textContent = (window.audioManager && window.audioManager.muted) ? '🔇' : '🔊';
-    }
   }
 
   syncFromGameState() {
