@@ -119,9 +119,11 @@ const PLAYER_WALK_CYCLE_MIN_MULT = 0.45;
 const PLAYER_WALK_CYCLE_MAX_MULT = 2.2;
 
 // --- Świat (Faza 2b: mapa większa niż ekran) --------------------------------
-// Te same wartości co w game.js (kamera) / items.js / machines.js / market.js -
-// świat NIE zależy od rozmiaru okna, w przeciwieństwie do canvas.width/height.
-const PLAYER_WORLD_WIDTH = 1400;
+// Te same wartości co w game.js (kamera) / items.js / ambient.js - świat NIE
+// zależy od rozmiaru okna, w przeciwieństwie do canvas.width/height. 1750,
+// było 1400 - patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w game.js
+// (poszerzenie mapy pod NIEZALEŻNY pas Strefy D).
+const PLAYER_WORLD_WIDTH = 1750;
 const PLAYER_WORLD_HEIGHT = 2000;
 
 // --- Strefy mapy (Faza 2) ---------------------------------------------------
@@ -130,10 +132,12 @@ const PLAYER_WORLD_HEIGHT = 2000;
 // utili, tylko komunikacja przez Bus). Liczone teraz względem ŚWIATA.
 const PLAYER_ZONE_C_TOP_RATIO = 0.32; // Strefa C (Atomowa) - górny pas całej szerokości
 const PLAYER_ZONE_B_RIGHT_RATIO = 0.62; // Strefa B (Toksyczna) - prawy pas, poniżej pasa C
-// Strefa D (Kryształowa Grań) - SAMODZIELNY róg prawy-górny (patrz identyczne
-// stałe i obszerny komentarz przy GAME_ZONE_D_LEFT_RATIO w game.js).
-const PLAYER_ZONE_D_LEFT_RATIO = 0.78;
-const PLAYER_ZONE_D_BOTTOM_RATIO = 0.5;
+// Strefa D (Kryształowa Grań) - NIEZALEŻNY pas na pełnej wysokości, na prawo
+// od "rdzenia" (patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w
+// game.js). PLAYER_ZONE_CORE_WIDTH to STARA szerokość świata (1400, sprzed
+// poszerzenia pod Grań) - A/B/C nadal liczą się względem NIEJ, nie
+// PLAYER_WORLD_WIDTH, więc szerszy świat ich nie rusza.
+const PLAYER_ZONE_CORE_WIDTH = 1400;
 // Bez odpowiedniego sprzętu: połowa prędkości + okresowe potrząsanie ekranem
 // (symulacja duszenia się) - liczone jako MNOŻNIK stosowany przy każdym
 // ruchu, NIGDY jako trwała zmiana this.speed (to samo pole podbija
@@ -173,10 +177,13 @@ const PLAYER_BIOME_EDGE_AMPLITUDE = 20;
 class PlayerController {
   constructor(canvas) {
     this.canvas = canvas;
-    // Start na środku ŚWIATA (nie ekranu - świat jest teraz większy).
-    // Wypada w Strefie A (bezpiecznej), bo obie granice stref zajmują pasy
-    // od góry/prawej, a środek świata jest zawsze w pozostałej części.
-    this.x = PLAYER_WORLD_WIDTH / 2;
+    // Start na środku RDZENIA mapy (PLAYER_ZONE_CORE_WIDTH, NIE
+    // PLAYER_WORLD_WIDTH) - Wypada w Strefie A (bezpiecznej), bo obie
+    // granice stref zajmują pasy od góry/prawej, a środek rdzenia jest
+    // zawsze w pozostałej części. BUGFIX: środek PEŁNEGO (poszerzonego o
+    // pas D) świata leżałby tuż za granicą Strefy B (868px) - gracz
+    // startowałby w hazardzie.
+    this.x = PLAYER_ZONE_CORE_WIDTH / 2;
     this.y = PLAYER_WORLD_HEIGHT / 2;
     this.radius = 22;
     this.speed = PLAYER_BASE_SPEED; // px/sek, modyfikowalny przez ulepszenia
@@ -1301,17 +1308,16 @@ class PlayerController {
    * a nie na starej prostej linii.
    */
   _getZoneAt(x, y) {
-    // Strefa D (Kryształowa Grań) to SAMODZIELNY róg prawy-górny z DWIEMA
-    // własnymi pofalowanymi krawędziami - nie wycinek pasa C jak wcześniej
-    // (patrz obszerny komentarz przy GAME_ZONE_D_LEFT_RATIO w game.js).
-    // Sprawdzana JAKO PIERWSZA, bo nachodzi i na popiół (C), i na bagno (B).
-    const dLeftX = PLAYER_WORLD_WIDTH * PLAYER_ZONE_D_LEFT_RATIO;
-    const dBottomY = PLAYER_WORLD_HEIGHT * PLAYER_ZONE_D_BOTTOM_RATIO;
-    if (x > dLeftX + this._edgeWaveD(y) && y < dBottomY + this._edgeWaveD(x + 900)) return 'D';
+    // Strefa D (Kryształowa Grań) to teraz NIEZALEŻNY pas na pełnej
+    // wysokości, z JEDNĄ pofalowaną krawędzią (lewą) - nie róg z dwiema jak
+    // wcześniej (patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w
+    // game.js). Sprawdzana JAKO PIERWSZA, bo leży na prawo od C i B obu.
+    const dLeftX = PLAYER_ZONE_CORE_WIDTH;
+    if (x > dLeftX + this._edgeWaveD(y)) return 'D';
 
     const topH = PLAYER_WORLD_HEIGHT * PLAYER_ZONE_C_TOP_RATIO;
     if (y < topH + this._edgeWaveC(x)) return 'C';
-    const rightX = PLAYER_WORLD_WIDTH * PLAYER_ZONE_B_RIGHT_RATIO;
+    const rightX = PLAYER_ZONE_CORE_WIDTH * PLAYER_ZONE_B_RIGHT_RATIO;
     if (x > rightX + this._edgeWaveB(y)) return 'B';
     return 'A';
   }
@@ -1337,9 +1343,10 @@ class PlayerController {
     );
   }
 
-  /** Fala OBU krawędzi Strefy D - MUSI być identyczna z Game._edgeWaveD
-   * (game.js), inaczej hazard Grani włączałby się w innym miejscu niż widać
-   * kryształowe podłoże (ten sam wymóg co przy _edgeWaveC/_edgeWaveB). */
+  /** Fala LEWEJ (jedynej) krawędzi Strefy D - MUSI być identyczna z
+   * Game._edgeWaveD (game.js), inaczej hazard Grani włączałby się w innym
+   * miejscu niż widać kryształowe podłoże (ten sam wymóg co przy
+   * _edgeWaveC/_edgeWaveB). */
   _edgeWaveD(v) {
     return (
       (Math.sin(v * 0.0135 + 1.7) * 0.6 + Math.sin(v * 0.031 + 4.2) * 0.4) *

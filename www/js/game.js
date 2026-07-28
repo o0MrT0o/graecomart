@@ -64,8 +64,14 @@ const CANVAS_ID = 'layer-gameplay';
 // --- Świat (Faza 2b: mapa większa niż ekran) --------------------------------
 // Stałe, NIEZALEŻNE od rozmiaru okna/ekranu - w przeciwieństwie do
 // canvas.width/height (viewport), te wymiary się nie zmieniają przy resize.
-// Te same wartości żyją też w player.js/items.js/machines.js/market.js.
-const GAME_WORLD_WIDTH = 1400;
+// Te same wartości żyją też w player.js/items.js/ambient.js (świat + Strefa
+// D); machines.js/market.js/ship.js/minimap.js/critters.js CELOWO NIE mają
+// swojej kopii zaktualizowanej - patrz GAME_ZONE_CORE_WIDTH niżej.
+//
+// 1750, było 1400 - dołożone 350px z PRAWEJ strony WYŁĄCZNIE pod Strefę D
+// (Kryształową Grań), żeby przestała dzielić kąt mapy z C/B (patrz historia
+// przy GAME_ZONE_CORE_WIDTH) i stała się osobnym pasem po prawej stronie.
+const GAME_WORLD_WIDTH = 1750;
 const GAME_WORLD_HEIGHT = 2000;
 // Jak szybko kamera "dogania" gracza (0..1, wyższe = mniej bezwładności).
 const CAMERA_SMOOTHING = 0.15;
@@ -101,10 +107,13 @@ const DECOR_SRC = {
 const DECOR_PROCEDURAL_TYPES = ['flower', 'puddle', 'barrel'];
 // Ile dekoracji rozrzucamy łącznie po całej mapie. Podniesione z 55 - przy
 // świecie 1400x2000 to zostawiało spore puste połacie ("nudna, pusta mapa").
+// 175, było 140 - poszerzenie mapy pod Strefę D (GAME_WORLD_WIDTH) podniosło
+// całkowitą powierzchnię o ~25%, ta sama proporcja utrzymuje poprzednią
+// gęstość zamiast rozrzedzać dekoracje na nowym pasie.
 // Nadal tanie: _drawDecorations przycina do widoku (+margines), więc koszt
 // per klatka zależy od tego, ile się faktycznie mieści na ekranie, nie od
 // tej liczby.
-const DECOR_COUNT = 140;
+const DECOR_COUNT = 175;
 // Docelowa wysokość rysowanej dekoracji (px) - szerokość liczona proporcjonalnie.
 const DECOR_BASE_HEIGHT = 58;
 // Mnożnik zależny od typu - w rzeczywistości drzewo jest wyraźnie większe od
@@ -186,25 +195,26 @@ const CLOUD_SHADOW_SPEED = 18;
 // Liczone teraz względem GAME_WORLD_WIDTH/HEIGHT, nie względem ekranu.
 const GAME_ZONE_C_TOP_RATIO = 0.32;
 const GAME_ZONE_B_RIGHT_RATIO = 0.62;
-// Strefa D (Kryształowa Grań) - NIE czwarty niezależny pas, tylko wycinek
-// SAMODZIELNY róg mapy (prawy-górny), NIE wycinek innej strefy.
+
+// Strefa D (Kryształowa Grań) - NIEZALEŻNY pas na CAŁEJ wysokości mapy, na
+// prawo od "rdzenia" (Stref A/B/C), zamiast dawnego wcinającego się rogu.
 //
-// BYŁO: D rysowało się WEWNĄTRZ ścieżki Strefy C (podwójny clip: fala C +
-// prosta pionowa krawędź), czyli dosłownie "prawe 20% pasa popiołu" - i tak
-// właśnie wyglądało: jak popiół, który przy krawędzi zrobił się fioletowy,
-// a nie jak osobne miejsce. Do tego jego jedyna własna granica była PROSTĄ
-// linią, podczas gdy każda inna granica biomu w grze jest pofalowana.
+// BYŁO (dwie wersje wstecz): D dzieliło kąt mapy z C i B (własny lewy+dolny
+// próg WEWNĄTRZ starej szerokości 1400) - graniczyło z obiema naraz, więc
+// każda zmiana C/B musiała pamiętać o omijaniu jego rogu (patrz historia w
+// _getZoneBounds w items.js). Czytało się jako "kawałek odgryziony od
+// sąsiadów", nie jako osobne miejsce.
 //
-// TERAZ: własny prostokątny róg z DWIEMA własnymi, pofalowanymi krawędziami
-// (lewa pionowa + dolna pozioma, patrz _edgeWaveD/_zoneDPaths), sięgający
-// PONIŻEJ granicy C/B - dzięki temu graniczy z popiołem (C) od dołu-lewej i
-// z bagnem (B) od dołu, zamiast siedzieć w środku jednego pasa. Czyta się
-// jako osobna kraina w rogu mapy.
-//
-// 0.5 wysokości mieści się nad Oczyszczalnią (yRatio 0.62 w machines.js),
-// więc maszyna zostaje w Strefie Bagiennej i nie wpada do Grani.
-const GAME_ZONE_D_LEFT_RATIO = 0.78;
-const GAME_ZONE_D_BOTTOM_RATIO = 0.5;
+// TERAZ: mapa jest PoszerzONA o GAME_ZONE_CORE_WIDTH...GAME_WORLD_WIDTH -
+// ten cały nowy pas z prawej strony należy WYŁĄCZNIE do D, na pełnej
+// wysokości. GAME_ZONE_CORE_WIDTH to STARA szerokość świata (sprzed
+// poszerzenia) - A/B/C oraz WSZYSTKIE pozycje maszyn/statku/targu nadal
+// liczą się względem NIEJ (nie GAME_WORLD_WIDTH), więc poszerzenie mapy pod
+// Grań w ogóle ich nie rusza - C i B odzyskują swoje pełne, nieokrojone
+// prostokąty sprzed istnienia D. Brak już osobnego progu dolnego (jak dawne
+// GAME_ZONE_D_BOTTOM_RATIO) - Grań nie dzieli miejsca z nikim, więc nie
+// trzeba jej niczego zostawiać/omijać w pionie.
+const GAME_ZONE_CORE_WIDTH = 1400;
 // Dystans (px), na jakim _drawZoneTint płynnie przechodzi między kolorem
 // nastrojowym stref - patrz _getZoneBlend.
 const GAME_ZONE_TINT_FADE = 260;
@@ -699,23 +709,17 @@ class Game {
    */
   _getZoneBlend(px, py) {
     const topH = this.worldHeight * GAME_ZONE_C_TOP_RATIO;
-    const rightX = this.worldWidth * GAME_ZONE_B_RIGHT_RATIO;
-    const dLeftX = this.worldWidth * GAME_ZONE_D_LEFT_RATIO;
+    const rightX = GAME_ZONE_CORE_WIDTH * GAME_ZONE_B_RIGHT_RATIO;
+    const dLeftX = GAME_ZONE_CORE_WIDTH;
     const fade = GAME_ZONE_TINT_FADE;
 
     const depthC = Math.max(0, Math.min(1, (topH - py) / fade));
     const depthB = py > topH ? Math.max(0, Math.min(1, (px - rightX) / fade)) : 0;
-    // Strefa D jest teraz SAMODZIELNYM rogiem (nie podzbiorem C - patrz
-    // GAME_ZONE_D_LEFT_RATIO), więc liczy się z DWÓCH własnych krawędzi:
-    // lewej pionowej i dolnej poziomej. Bierzemy min() z obu "zanurzeń" -
-    // pełny tint Grani dopiero gdy gracz jest w głębi rogu względem OBU
-    // granic, nie tylko jednej.
-    const dBottomY = this.worldHeight * GAME_ZONE_D_BOTTOM_RATIO;
-    const depthD = Math.min(
-      Math.max(0, Math.min(1, (px - dLeftX) / fade)),
-      Math.max(0, Math.min(1, (dBottomY - py) / fade))
-    );
-    // D "wygrywa" nad C i B w swoim rogu - odejmujemy je, żeby suma
+    // Strefa D jest teraz NIEZALEŻNYM pasem na pełnej wysokości (patrz
+    // GAME_ZONE_CORE_WIDTH) - jedna krawędź (lewa pionowa) wystarcza, bez
+    // dawnego min() z drugiej (dolnej), której już nie ma.
+    const depthD = Math.max(0, Math.min(1, (px - dLeftX) / fade));
+    // D "wygrywa" nad C i B w swoim pasie - odejmujemy je, żeby suma
     // A+B+C+D nadal wynosiła 1 i tinty się nie sumowały podwójnie.
     const depthA = Math.max(0, 1 - depthC - depthB);
     return {
@@ -1026,7 +1030,7 @@ class Game {
    */
   _renderZoneFills(ctx, x, y, viewW, viewH) {
     const topH = this.worldHeight * GAME_ZONE_C_TOP_RATIO;
-    const rightX = this.worldWidth * GAME_ZONE_B_RIGHT_RATIO;
+    const rightX = GAME_ZONE_CORE_WIDTH * GAME_ZONE_B_RIGHT_RATIO;
     // Najdalej, jak fala + najszerszy pas wtapiania sięgają w głąb sąsiada.
     const maxReach = GAME_BIOME_EDGE_AMPLITUDE + GAME_BIOME_BLEND_STEPS[0].offset;
 
@@ -1067,13 +1071,12 @@ class Game {
       }
     }
 
-    // Strefa D (Kryształowa Grań) - SAMODZIELNY róg z własnymi pofalowanymi
-    // granicami (_zoneDPaths), rysowany NA SAMYM KOŃCU, więc nachodzi zarówno
-    // na popiół (C) jak i na bagno (B) w swoim rogu. Jeden clip, nie dwa
-    // zagnieżdżone - D nie jest już podzbiorem C.
-    const dLeftX = this.worldWidth * GAME_ZONE_D_LEFT_RATIO;
-    const dBottomY = this.worldHeight * GAME_ZONE_D_BOTTOM_RATIO;
-    if (y < dBottomY + maxReach && x + viewW > dLeftX - maxReach) {
+    // Strefa D (Kryształowa Grań) - NIEZALEŻNY pas z własną pofalowaną lewą
+    // krawędzią (_zoneDPaths), rysowany NA SAMYM KOŃCU. Pełna wysokość mapy,
+    // więc widoczność zależy tylko od tego, czy widok w ogóle sięga na
+    // prawo od GAME_ZONE_CORE_WIDTH - bez dawnego warunku na y.
+    const dLeftX = GAME_ZONE_CORE_WIDTH;
+    if (x + viewW > dLeftX - maxReach) {
       for (let i = 0; i < GAME_BIOME_BLEND_STEPS.length; i++) {
         ctx.save();
         ctx.globalAlpha = GAME_BIOME_BLEND_STEPS[i].alpha;
@@ -1127,8 +1130,9 @@ class Game {
   }
 
   /**
-   * Fala OBU granic Strefy D (lewa pionowa i dolna pozioma) - znowu inne
-   * fazy/częstotliwości niż C i B, żeby róg Grani nie wyglądał na
+   * Fala LEWEJ granicy Strefy D (jedyna krawędź, odkąd D jest niezależnym
+   * pasem na pełnej wysokości, nie rogiem z dwiema granicami) - inne
+   * fazy/częstotliwości niż C i B, żeby pas Grani nie wyglądał na
    * "równoległy" do sąsiednich granic. Ta sama matematyka co wyżej, więc
    * granica jest deterministyczna (identyczna co klatkę i co wczytanie) i
    * musi być IDENTYCZNIE skopiowana w player.js (hazard) - patrz komentarz
@@ -1149,7 +1153,7 @@ class Game {
    */
   _buildBiomeEdgePaths() {
     const topH = this.worldHeight * GAME_ZONE_C_TOP_RATIO;
-    const rightX = this.worldWidth * GAME_ZONE_B_RIGHT_RATIO;
+    const rightX = GAME_ZONE_CORE_WIDTH * GAME_ZONE_B_RIGHT_RATIO;
     // Zapas poza granice świata - kamera i tak jest przycięta do świata,
     // ale dzięki temu clip nigdy nie utnie wypełnienia przy samej krawędzi.
     const bleed = 80;
@@ -1185,28 +1189,24 @@ class Game {
       return p;
     });
 
-    // Strefa D (Kryształowa Grań): SAMODZIELNY róg prawy-górny, z DWIEMA
-    // własnymi pofalowanymi krawędziami - lewą pionową (x = dLeftX + fala(y))
-    // i dolną poziomą (y = dBottomY + fala(x)). W przeciwieństwie do
-    // poprzedniej wersji NIE jest zagnieżdżona w ścieżce C - to niezależny
-    // obszar, który sam z siebie graniczy z popiołem i bagnem (patrz obszerny
-    // komentarz przy GAME_ZONE_D_LEFT_RATIO).
-    const dLeftX = this.worldWidth * GAME_ZONE_D_LEFT_RATIO;
-    const dBottomY = this.worldHeight * GAME_ZONE_D_BOTTOM_RATIO;
+    // Strefa D (Kryształowa Grań): NIEZALEŻNY pas na PEŁNEJ wysokości mapy,
+    // z JEDNĄ pofalowaną krawędzią - lewą pionową (x = dLeftX + fala(y)).
+    // Prawa/górna/dolna krawędź to po prostu granice świata (bleed poza nie,
+    // tak jak przy C/B) - w przeciwieństwie do dawnej wersji (róg z DWIEMA
+    // własnymi granicami) nie ma już dolnej fali do zbudowania (patrz obszerny
+    // komentarz przy GAME_ZONE_CORE_WIDTH).
+    const dLeftX = GAME_ZONE_CORE_WIDTH;
     this._zoneDPaths = GAME_BIOME_BLEND_STEPS.map((step) => {
       const p = new Path2D();
       // Górny-prawy narożnik świata -> w lewo po górnej krawędzi.
       p.moveTo(this.worldWidth + bleed, -bleed);
       p.lineTo(dLeftX + this._edgeWaveD(-bleed) - step.offset, -bleed);
-      // W dół po lewej, pofalowanej krawędzi.
-      for (let py = -bleed; py <= dBottomY; py += GAME_BIOME_EDGE_STEP) {
+      // W dół po lewej, pofalowanej krawędzi, aż pod dolną krawędź świata.
+      for (let py = -bleed; py <= this.worldHeight + bleed; py += GAME_BIOME_EDGE_STEP) {
         p.lineTo(dLeftX + this._edgeWaveD(py) - step.offset, py);
       }
-      // W prawo po dolnej, pofalowanej krawędzi (inna faza - podajemy x).
-      for (let px = dLeftX; px <= this.worldWidth + bleed; px += GAME_BIOME_EDGE_STEP) {
-        p.lineTo(px, dBottomY + this._edgeWaveD(px + 900) + step.offset);
-      }
-      p.lineTo(this.worldWidth + bleed, dBottomY + this._edgeWaveD(this.worldWidth + 900) + step.offset);
+      // Zamknięcie: w prawo do prawej krawędzi świata, potem do startu.
+      p.lineTo(this.worldWidth + bleed, this.worldHeight + bleed);
       p.closePath();
       return p;
     });
@@ -1245,12 +1245,16 @@ class Game {
       // niego.
       { xr: 0.18, yr: 0.55 }, // statek
       { xr: 0.5, yr: 0.5 } // start gracza
-    ].map((p) => ({ x: this.worldWidth * p.xr, y: this.worldHeight * p.yr, r: 170 }));
+      // BUGFIX (poszerzenie mapy pod Strefę D): xr/yr wyżej to ratio
+      // WZGLĘDEM GAME_ZONE_CORE_WIDTH (gdzie maszyny/statek faktycznie stoją -
+      // patrz machines.js/ship.js/market.js), NIE względem this.worldWidth
+      // (teraz szerszego o pas D) - inaczej te kręgi "trzymaj się z dala"
+      // przesunęłyby się w prawo, przestając pokrywać realne pozycje maszyn.
+    ].map((p) => ({ x: GAME_ZONE_CORE_WIDTH * p.xr, y: this.worldHeight * p.yr, r: 170 }));
 
     const topH = this.worldHeight * GAME_ZONE_C_TOP_RATIO;
-    const rightX = this.worldWidth * GAME_ZONE_B_RIGHT_RATIO;
-    const dLeftX = this.worldWidth * GAME_ZONE_D_LEFT_RATIO;
-    const dBottomY = this.worldHeight * GAME_ZONE_D_BOTTOM_RATIO;
+    const rightX = GAME_ZONE_CORE_WIDTH * GAME_ZONE_B_RIGHT_RATIO;
+    const dLeftX = GAME_ZONE_CORE_WIDTH;
     // 'flower'/'puddle'/'barrel'/'crystal' powtórzone w listach - najprostszy
     // sposób na podbicie ich szansy wylosowania bez pełnego systemu wag: te
     // drobne akcenty koloru/detalu powinny być częstsze niż rzadkie drzewo,
@@ -1276,10 +1280,10 @@ class Game {
       });
       if (tooClose) continue;
 
-      // Strefa D to SAMODZIELNY róg (prawy-górny), nachodzący i na C, i na B -
-      // stąd sprawdzana jako PIERWSZA, własnym testem na obie krawędzie, tak
-      // samo jak w _getZoneAt (player.js) i _getZoneBounds (items.js).
-      const zone = (px > dLeftX && py < dBottomY)
+      // Strefa D to teraz NIEZALEŻNY pas na pełnej wysokości (na prawo od
+      // dLeftX) - stąd sprawdzana jako PIERWSZA, tak samo jak w _getZoneAt
+      // (player.js) i _getZoneBounds (items.js).
+      const zone = px > dLeftX
         ? 'D'
         : py < topH ? 'C' : px > rightX ? 'B' : 'A';
       const options = zoneTypes[zone];

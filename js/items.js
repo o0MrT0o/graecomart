@@ -24,8 +24,10 @@ const ITEM_TYPES = [
 ];
 
 // --- Świat (Faza 2b: mapa większa niż ekran) --------------------------------
-// Te same wartości co w game.js/player.js/machines.js/market.js.
-const ITEM_WORLD_WIDTH = 1400;
+// Te same wartości co w game.js/player.js/ambient.js. 1750, było 1400 -
+// patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w game.js (poszerzenie
+// mapy pod NIEZALEŻNY pas Strefy D).
+const ITEM_WORLD_WIDTH = 1750;
 const ITEM_WORLD_HEIGHT = 2000;
 
 // --- Strefy mapy (Faza 2) ---------------------------------------------------
@@ -37,10 +39,12 @@ const ITEM_WORLD_HEIGHT = 2000;
 // Liczone teraz względem ŚWIATA (ITEM_WORLD_*), nie widoku (canvas.width/height).
 const ITEM_ZONE_C_TOP_RATIO = 0.32;
 const ITEM_ZONE_B_RIGHT_RATIO = 0.62;
-// Strefa D (Kryształowa Grań) - SAMODZIELNY róg prawy-górny (patrz identyczne
-// stałe i obszerny komentarz przy GAME_ZONE_D_LEFT_RATIO w game.js).
-const ITEM_ZONE_D_LEFT_RATIO = 0.78;
-const ITEM_ZONE_D_BOTTOM_RATIO = 0.5;
+// Strefa D (Kryształowa Grań) - NIEZALEŻNY pas na pełnej wysokości, na prawo
+// od "rdzenia" (patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w
+// game.js). ITEM_ZONE_CORE_WIDTH to STARA szerokość świata (1400, sprzed
+// poszerzenia pod Grań) - A/B/C nadal spawnują surowce względem NIEJ, nie
+// ITEM_WORLD_WIDTH, więc szerszy świat ich rozkładu nie rusza.
+const ITEM_ZONE_CORE_WIDTH = 1400;
 
 // Który surowiec spawnuje się w której strefie. Typy nieujęte tutaj (plastic,
 // product) trafiają domyślnie do Strefy A - i tak spawnują się głównie jako
@@ -496,33 +500,32 @@ class ItemManager {
    * Strefa A to cała reszta - patrz stałe ITEM_ZONE_*_RATIO na górze pliku.
    */
   _getZoneBounds(zone) {
-    const w = ITEM_WORLD_WIDTH;
+    const w = ITEM_WORLD_WIDTH; // pełna szerokość świata (rdzeń + pas D)
     const h = ITEM_WORLD_HEIGHT;
+    const coreW = ITEM_ZONE_CORE_WIDTH; // rdzeń (A/B/C) - NIE zmienia się z poszerzeniem mapy
     const m = ITEM_SPAWN_MARGIN;
     const topH = h * ITEM_ZONE_C_TOP_RATIO;
-    const rightX = w * ITEM_ZONE_B_RIGHT_RATIO;
-    const dLeftX = w * ITEM_ZONE_D_LEFT_RATIO;
-    const dBottomY = h * ITEM_ZONE_D_BOTTOM_RATIO;
+    const rightX = coreW * ITEM_ZONE_B_RIGHT_RATIO;
+    const dLeftX = coreW;
 
     if (zone === 'D') {
-      // SAMODZIELNY róg prawy-górny (nie wycinek pasa C) - patrz
-      // ITEM_ZONE_D_LEFT_RATIO/BOTTOM_RATIO. Margines od DOLNEJ krawędzi
-      // Grani też, żeby odłamki nie spawnowały się dokładnie na pofalowanej
-      // granicy z bagnem (tam wizualnie już nie widać kryształowego podłoża).
-      return { minX: Math.min(dLeftX + m, w - m - 1), maxX: Math.max(dLeftX + m + 1, w - m), minY: m, maxY: Math.max(m + 1, dBottomY - m) };
+      // NIEZALEŻNY pas na pełnej wysokości (nie róg jak dawniej) - sięga od
+      // dLeftX (koniec rdzenia) do prawej krawędzi ŚWIATA (w, poszerzonej).
+      return { minX: Math.min(dLeftX + m, w - m - 1), maxX: Math.max(dLeftX + m + 1, w - m), minY: m, maxY: Math.max(m + 1, h - m) };
     }
     if (zone === 'C') {
       // Reszta pasa C, NA LEWO od Strefy D - metal zostaje wyraźnie oddzielony
-      // od kryształów (patrz komentarz przy zone==='D' wyżej), zamiast dwóch
-      // surowców losowo mieszających się w tym samym rogu mapy.
+      // od kryształów (patrz komentarz przy zone==='D' wyżej). C sięga teraz
+      // do PEŁNEJ szerokości rdzenia (dLeftX = coreW) - odkąd D jest osobnym
+      // pasem, C nie musi już zostawiać miejsca w swoim rogu.
       return { minX: m, maxX: Math.max(m + 1, dLeftX - m), minY: m, maxY: Math.max(m + 1, topH - m) };
     }
     if (zone === 'B') {
-      // Bagno zaczyna się PONIŻEJ pasa C, ale w prawym-górnym rogu siedzi
-      // teraz Grań (sięga do dBottomY) - szkło spawnujemy więc dopiero pod
-      // nią, inaczej trafiałoby na kryształowe podłoże.
+      // Bagno zaczyna się PONIŻEJ pasa C - D nie dzieli już z nim rogu (jest
+      // osobnym pasem za coreW), więc B sięga do pełnej wysokości rdzenia bez
+      // dawnego dolnego marginesu pod Granią.
       const bMinY = Math.max(topH + m, m);
-      return { minX: Math.min(rightX + m, w - m - 1), maxX: Math.max(rightX + m + 1, w - m), minY: Math.max(bMinY, dBottomY + m), maxY: Math.max(dBottomY + m + 1, h - m) };
+      return { minX: Math.min(rightX + m, coreW - m - 1), maxX: Math.max(rightX + m + 1, coreW - m), minY: bMinY, maxY: Math.max(bMinY + 1, h - m) };
     }
     // Strefa A: reszta (lewa/środkowa część, poniżej pasa C, na lewo od pasa B).
     return { minX: m, maxX: Math.max(m + 1, rightX - m), minY: Math.max(topH + m, m), maxY: Math.max(topH + m + 1, h - m) };
