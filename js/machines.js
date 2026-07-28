@@ -46,7 +46,9 @@ const MACHINE_DEFINITIONS = [
     color: '#66BB6A',
     acceptsType: ['trash', 'paper'],
     outputType: 'plastic',
-    outputLabel: '♻️',
+    // outputLabel: BYŁO emoji (patrz komentarz przy ITEM_TYPES.label w
+    // items.js - ten sam powód, ta sama inertność fallbacku).
+    outputLabel: '',
     outputColor: '#42A5F5',
     processingDuration: 2000,
     // BALANS: był na domyślnych MACHINE_MAX_INVENTORY=5 (nikt tego świadomie
@@ -67,7 +69,7 @@ const MACHINE_DEFINITIONS = [
     color: '#FFA726',
     acceptsType: 'plastic',
     outputType: 'product',
-    outputLabel: '🎁',
+    outputLabel: '',
     outputColor: '#AB47BC',
     processingDuration: 3000,
     // BALANS: ten sam powód co przy recyklerze wyżej - drugi stopień
@@ -83,7 +85,7 @@ const MACHINE_DEFINITIONS = [
     color: '#EF5350',
     acceptsType: ['metal', 'glass'],
     outputType: 'alloy',
-    outputLabel: '🧱',
+    outputLabel: '',
     outputColor: '#D4A574',
     processingDuration: 2500,
     maxInventory: 3
@@ -92,8 +94,8 @@ const MACHINE_DEFINITIONS = [
     // Oczyszczalnia (Faza progresji): rafinuje SZKŁO w KRYSZTAŁY - drugie,
     // droższe zastosowanie szkła obok Pieca (metal+szkło->stop). Szkło ma
     // więc teraz realny wybór: tańszy stop szybciej vs droższy kryształ.
-    // Brak własnego PNG - rysuje się procedualnym fallbackiem (gradient +
-    // emoji outputu, patrz draw()), tak jak każda maszyna bez sprite'a.
+    // Brak własnego PNG - ma jednak WŁASNĄ bespoke bryłę (_drawRefineryMachine
+    // w draw()), nie generyczny fallback jak recycle_a/press_b.
     // Umieszczona w Strefie Bagiennej (x>0.62, y>0.32 - tam spawnuje szkło),
     // po przeciwnej stronie niż Piec, żeby nie zlewały się wizualnie.
     // Bramkowana progiem zarobku (PROGRESSION_UNLOCKS 'refinery_b' w
@@ -106,7 +108,7 @@ const MACHINE_DEFINITIONS = [
     color: '#7E57C2',
     acceptsType: 'glass',
     outputType: 'crystal',
-    outputLabel: '🔮',
+    outputLabel: '',
     outputColor: '#B388FF',
     processingDuration: 3200,
     maxInventory: 3
@@ -128,7 +130,7 @@ const MACHINE_DEFINITIONS = [
     color: '#4DD0C8',
     acceptsType: 'crystal_shard',
     outputType: 'crystal_gem',
-    outputLabel: '✨',
+    outputLabel: '',
     outputColor: '#E1F5FE',
     // Najdłuższy cykl w grze (rzadszy niż nawet Oczyszczalnia) - wsad to
     // odłamek epickiej rzadkości, więc wynik ma być odpowiednio powolny/cenny.
@@ -525,17 +527,26 @@ class MachineManager {
         ctx.fill();
         ctx.stroke();
 
-        // Cienkie "zeberka" wentylacyjne pod emoji - drobny przemyslowy detal,
-        // odrozniajacy korpus maszyny od zwyklego kolorowego prostokata.
+        // Cienkie "zeberka" wentylacyjne pod plakietka wyjscia - drobny
+        // przemyslowy detal, odrozniajacy korpus maszyny od zwyklego
+        // kolorowego prostokata.
         ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
         for (let i = -2; i <= 2; i++) {
           ctx.fillRect(m.x + i * (hw * 0.22) - 2, m.y + hh * 0.32, 3, hh * 0.32);
         }
 
-        ctx.font = '28px Arial';
-        ctx.textBaseline = 'middle';
-        ctx.textAlign = 'center';
-        ctx.fillText(m.outputLabel, m.x, m.y - hh * 0.12);
+        // Plakietka wyjscia - BYLO ctx.fillText(m.outputLabel) z emoji per
+        // maszyne (♻️/🎁/🧱/🔮/✨) - w praktyce nieosiagalne dla recycle_a/
+        // press_b (maja prawdziwe sprite'y w assets/machines/), wiec to
+        // czysto awaryjna sciezka. Neutralny, kolorowy kwadracik (kolor
+        // wyjscia maszyny) zamiast tekstu/emoji.
+        const badgeR = hh * 0.16;
+        ctx.fillStyle = m.outputColor;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.lineWidth = 1.5;
+        this._traceRoundedRect(ctx, m.x - badgeR, m.y - hh * 0.12 - badgeR, badgeR * 2, badgeR * 2, badgeR * 0.4);
+        ctx.fill();
+        ctx.stroke();
       }
       ctx.restore();
 
@@ -997,7 +1008,9 @@ class MachineManager {
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
-        this._drawOutlinedText(ctx, `🔒 za ${Math.ceil(next.remaining)}$`, m.x, m.y - hh - 8, '#FFD54F');
+        // Bez prefiksu 🔒 - kłódka jest już narysowana proceduralnie tuż nad
+        // tym tekstem (patrz wyżej), więc emoji byłoby zbędnym powtórzeniem.
+        this._drawOutlinedText(ctx, `za ${Math.ceil(next.remaining)}$`, m.x, m.y - hh - 8, '#FFD54F');
       }
     }
   }

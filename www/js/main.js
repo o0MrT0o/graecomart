@@ -200,7 +200,7 @@ function startGame() {
             // 'alloy' celowo NIE jest w ITEM_TYPES (items.js) - nie spawnuje
             // się nigdy losowo w świecie, tylko jako output Pieca Hutniczego
             // (patrz machines.js), stąd fallback na jego kolory tutaj.
-            const label = meta ? meta.label : (typeId === 'alloy' ? '🧱' : '❓');
+            const label = meta ? meta.label : '';
             const color = meta ? meta.color : (typeId === 'alloy' ? '#D4A574' : '#FFFFFF');
             const px = window.playerController ? window.playerController.x : 0;
             const py = window.playerController ? window.playerController.y : 0;

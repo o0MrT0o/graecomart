@@ -449,23 +449,24 @@ const DAILY_CHALLENGE_TEMPLATES = [
 // "ograna". Każde jest czysto danymi: `stat` wskazuje licznik w this.stats,
 // `target` to próg - system nie ma logiki per-osiągnięcie, tylko sprawdza
 // stat >= target (patrz _checkAchievements). Dzięki temu dodanie nowego to
-// jedna linijka tutaj, zero nowego kodu. Ikony emoji (nie SVG jak sklep) -
-// osiągnięcia to "trofea", cieplejszy, bardziej nagradzający rejestr niż
-// funkcjonalne ikony narzędzi w sklepie.
+// jedna linijka tutaj, zero nowego kodu. Ikony SVG (ten sam styl co
+// SHOP_UPGRADES/PRESTIGE_UPGRADES niżej) - BYŁY emoji ("trofea, cieplejszy
+// rejestr"), ale gra już nigdzie indziej ich nie używa, więc osiągnięcia
+// zostawały jedynym niespójnym miejscem.
 const ACHIEVEMENTS = [
-  { id: 'first_pickup', icon: '🌱', name: 'Pierwszy krok', desc: 'Zbierz pierwszy surowiec', stat: 'itemsCollected', target: 1 },
-  { id: 'collector_100', icon: '♻️', name: 'Recyklingowicz', desc: 'Zbierz łącznie 100 surowców', stat: 'itemsCollected', target: 100 },
-  { id: 'collector_1000', icon: '🌍', name: 'Strażnik planety', desc: 'Zbierz łącznie 1000 surowców', stat: 'itemsCollected', target: 1000 },
-  { id: 'feeder_50', icon: '🏭', name: 'Taśmowa produkcja', desc: 'Nakarm maszyny 50 razy', stat: 'machinesFed', target: 50 },
-  { id: 'feeder_500', icon: '⚙️', name: 'Król fabryki', desc: 'Nakarm maszyny 500 razy', stat: 'machinesFed', target: 500 },
-  { id: 'earn_500', icon: '💵', name: 'Pierwsze zarobki', desc: 'Zarób łącznie 500$', stat: 'lifetimeEarned', target: 500 },
-  { id: 'earn_10000', icon: '🤑', name: 'Magnat odpadów', desc: 'Zarób łącznie 10 000$', stat: 'lifetimeEarned', target: 10000 },
-  { id: 'shopper_10', icon: '🛒', name: 'Zakupoholik', desc: 'Kup 10 ulepszeń', stat: 'upgradesBought', target: 10 },
-  { id: 'first_planet', icon: '🚀', name: 'Odlot', desc: 'Ukończ pierwszą planetę', stat: 'planetsCompleted', target: 1 },
-  { id: 'planets_3', icon: '🌌', name: 'Podróżnik', desc: 'Ukończ 3 planety', stat: 'planetsCompleted', target: 3 },
-  { id: 'modules_5', icon: '🔧', name: 'Mechanik', desc: 'Ukończ 5 modułów statku', stat: 'shipModulesCompleted', target: 5 },
-  { id: 'streak_3', icon: '🔥', name: 'Codzienny gracz', desc: 'Zaloguj się 3 dni z rzędu', stat: 'maxLoginStreak', target: 3 },
-  { id: 'challenges_5', icon: '📅', name: 'Wyzwaniowiec', desc: 'Odbierz 5 wyzwań dnia', stat: 'challengesClaimed', target: 5 }
+  { id: 'first_pickup', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81C784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V11"/><path d="M12 11C12 6 8 5 5 5c0 4 2 6.5 7 6Z" fill="#81C784" fill-opacity="0.3"/><path d="M12 14C12 10 15 8.5 18 8c0 3.5-1.5 6-6 6Z" fill="#81C784" fill-opacity="0.3"/></svg>', name: 'Pierwszy krok', desc: 'Zbierz pierwszy surowiec', stat: 'itemsCollected', target: 1 },
+  { id: 'collector_100', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#66BB6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.9-5.4"/><path d="M20 3v5h-5"/><path d="M20 12a8 8 0 0 1-13.9 5.4"/><path d="M4 21v-5h5"/></svg>', name: 'Recyklingowicz', desc: 'Zbierz łącznie 100 surowców', stat: 'itemsCollected', target: 100 },
+  { id: 'collector_1000', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#4FC3F7" stroke-width="1.8"><circle cx="12" cy="12" r="9" fill="#4FC3F7" fill-opacity="0.2"/><path d="M3.5 9.5h17M3.5 14.5h17"/><path d="M9.5 3c-2.5 4-2.5 14 0 18M14.5 3c2.5 4 2.5 14 0 18"/></svg>', name: 'Strażnik planety', desc: 'Zbierz łącznie 1000 surowców', stat: 'itemsCollected', target: 1000 },
+  { id: 'feeder_50', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFB74D" stroke-width="2" stroke-linejoin="round"><path d="M3 20V11l5 3v-3l5 3v-3l5 3v6Z" fill="#FFB74D" fill-opacity="0.25"/><path d="M6 11V8M11 11V8M16 11V7 a1 1 0 0 1 2 0v1h1V7"/></svg>', name: 'Taśmowa produkcja', desc: 'Nakarm maszyny 50 razy', stat: 'machinesFed', target: 50 },
+  { id: 'feeder_500', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="1.8" stroke-linejoin="round"><path d="M4 9 7 4l5 3 5-3 3 5-2 3v6H6v-6Z" fill="#FFD54F" fill-opacity="0.25"/><circle cx="12" cy="15" r="2.4"/></svg>', name: 'Król fabryki', desc: 'Nakarm maszyny 500 razy', stat: 'machinesFed', target: 500 },
+  { id: 'earn_500', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#A5D6A7" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="1.5" fill="#A5D6A7" fill-opacity="0.2"/><circle cx="12" cy="12" r="3"/></svg>', name: 'Pierwsze zarobki', desc: 'Zarób łącznie 500$', stat: 'lifetimeEarned', target: 500 },
+  { id: 'earn_10000', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.5 2 6 6 5 10-.7 3-3 6-5 6s-4.3-3-5-6c-1-4 .5-8 5-10Z" fill="#FFD54F" fill-opacity="0.3"/><path d="M10.3 11.5Q10.3 10 12 10Q13.8 10 13.8 11.3Q13.8 12.5 12 13Q10.3 13.5 10.3 14.8Q10.3 16 12 16Q13.8 16 13.8 14.6"/></svg>', name: 'Magnat odpadów', desc: 'Zarób łącznie 10 000$', stat: 'lifetimeEarned', target: 10000 },
+  { id: 'shopper_10', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFE082" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2A2 2 0 0 0 9.35 17H18a2 2 0 0 0 1.95-1.57L21.5 8H6"/><circle cx="10" cy="20.5" r="1.3" fill="#FFE082" stroke="none"/><circle cx="18" cy="20.5" r="1.3" fill="#FFE082" stroke="none"/></svg>', name: 'Zakupoholik', desc: 'Kup 10 ulepszeń', stat: 'upgradesBought', target: 10 },
+  { id: 'first_planet', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81D4FA" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5c4 3 5 8 3 13H9c-2-5-1-10 3-13Z" fill="#81D4FA" fill-opacity="0.3"/><path d="M9 15.5 6.5 19M15 15.5l2.5 3.5M10 15.5V20M14 15.5V20"/><circle cx="12" cy="9.5" r="1.6" fill="#81D4FA" stroke="none"/></svg>', name: 'Odlot', desc: 'Ukończ pierwszą planetę', stat: 'planetsCompleted', target: 1 },
+  { id: 'planets_3', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#B39DDB" stroke-width="1.8"><circle cx="9" cy="12" r="4.5" fill="#B39DDB" fill-opacity="0.25"/><ellipse cx="9" cy="12" rx="7.5" ry="2.4" transform="rotate(-18 9 12)"/><path d="M18 5 18.6 6.6 20.2 7.2 18.6 7.8 18 9.4 17.4 7.8 15.8 7.2 17.4 6.6Z" fill="#B39DDB" stroke="none"/><path d="M20 15 20.4 16 21.4 16.4 20.4 16.8 20 17.8 19.6 16.8 18.6 16.4 19.6 16Z" fill="#B39DDB" stroke="none"/></svg>', name: 'Podróżnik', desc: 'Ukończ 3 planety', stat: 'planetsCompleted', target: 3 },
+  { id: 'modules_5', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#B0BEC5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 4.5a4.5 4.5 0 0 0-5.9 5L4 15l2 2 5.5-5.6a4.5 4.5 0 0 0 5-5.9l-2.9 2.9-2-2Z" fill="#B0BEC5" fill-opacity="0.2"/></svg>', name: 'Mechanik', desc: 'Ukończ 5 modułów statku', stat: 'shipModulesCompleted', target: 5 },
+  { id: 'streak_3', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="#FF7043" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c1 1 1.5 2.3 1.5 3.5A4.5 4.5 0 0 1 12 18a5.5 5.5 0 0 1-5.5-5.5C6.5 8 9 6 12 2Z"/></svg>', name: 'Codzienny gracz', desc: 'Zaloguj się 3 dni z rzędu', stat: 'maxLoginStreak', target: 3 },
+  { id: 'challenges_5', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#CE93D8" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2" fill="#CE93D8" fill-opacity="0.15"/><path d="M4 9.5h16"/><path d="M8 3v6.5M16 3v6.5" stroke-linecap="round"/><path d="M8.5 15 10.5 17 15.5 12" stroke-linecap="round" stroke-linejoin="round"/></svg>', name: 'Wyzwaniowiec', desc: 'Odbierz 5 wyzwań dnia', stat: 'challengesClaimed', target: 5 }
 ];
 
 // --- Progresywne odblokowania (walka z "martwo - wszystko dostępne od razu") --
@@ -582,7 +583,7 @@ const SHOP_UPGRADES_SUPERSEDED_BY_PERK = {
 const PLANET_MODIFIERS = [
   {
     id: 'bountiful',
-    icon: '🌾',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#C5E1A5" stroke-width="1.8" stroke-linecap="round"><path d="M12 21V9"/><path d="M12 9C12 4 8 3 5 3c0 4 2 6.5 7 6Z" fill="#C5E1A5" fill-opacity="0.3"/><path d="M12 12C12 8 15 6.5 18 6c0 3.5-1.5 6-6 6Z" fill="#C5E1A5" fill-opacity="0.3"/><path d="M12 16C12 12.5 15 11 18 10.5c0 3.2-1.5 5.5-6 5.5Z" fill="#C5E1A5" fill-opacity="0.3"/></svg>',
     name: 'Obfite Złoża',
     desc: 'Surowce pojawiają się o 40% częściej, ale targ płaci o 15% mniej',
     spawnMult: 1.4,
@@ -590,7 +591,7 @@ const PLANET_MODIFIERS = [
   },
   {
     id: 'scarce',
-    icon: '🏜️',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#D7B98E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3-1 6 1 9 0s6-1 9 0" fill="none"/><path d="M3 17 9 17 12 6l3 11 6 0" fill="#D7B98E" fill-opacity="0.25"/><path d="M12 6v5"/></svg>',
     name: 'Jałowa Gleba',
     desc: 'Surowce pojawiają się o 30% rzadziej, za to targ płaci o 25% więcej',
     spawnMult: 0.7,
@@ -598,14 +599,14 @@ const PLANET_MODIFIERS = [
   },
   {
     id: 'efficient_factory',
-    icon: '⚙️',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#66BB6A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10l5 3v-3l5 3v-3l5 3v6Z" fill="#66BB6A" fill-opacity="0.2"/><path d="M9 8V6M14 8V6" /><path d="M17 4 18 5.5 19.5 6 18 6.5 17 8 16 6.5 14.5 6 16 5.5Z" fill="#66BB6A" stroke="none"/></svg>',
     name: 'Sprawna Fabryka',
     desc: 'Wszystkie maszyny przetwarzają o 20% szybciej',
     machineSpeedMult: 0.8
   },
   {
     id: 'rusty_gear',
-    icon: '🔩',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#D08A5C" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5 13.4 5.7 16 5 16.7 7.6 19.3 8.3 18.6 10.9 20.8 12.3 19.1 14.4 20 17 17.4 17.6 16.9 20.3 14.2 19.7 12.6 21.8 10.5 20.2 8 21 7.1 18.5 4.5 18.7 4 16 5.6 14 3.9 12 5.7 9.5 3.6 8.6 4.4 6 2.1 5.6 2.6 3 5.2 2.6 5.9"/><circle cx="12" cy="12" r="3"/><path d="M4 20 20 4" stroke="#B71C1C" stroke-width="1.4"/></svg>',
     name: 'Zardzewiały Sprzęt',
     desc: 'Maszyny przetwarzają o 15% wolniej, ale surowce pojawiają się o 25% częściej',
     machineSpeedMult: 1.15,
@@ -613,14 +614,14 @@ const PLANET_MODIFIERS = [
   },
   {
     id: 'gold_rush',
-    icon: '💰',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="1.8" stroke-linejoin="round"><path d="M8 4h5l4 5v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" fill="#FFD54F" fill-opacity="0.25"/><path d="M13 4v5h4"/><circle cx="10.5" cy="14" r="2.3"/></svg>',
     name: 'Gorączka Złota',
     desc: 'Targ płaci o 20% więcej za wszystko',
     priceMult: 1.2
   },
   {
     id: 'soft_landing',
-    icon: '🛬',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#90CAF9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9a7 7 0 0 1 14 0" fill="#90CAF9" fill-opacity="0.2"/><path d="M5 9 3 12M19 9l2 3M9 9l1 6M15 9l-1 6"/><path d="M8 15h8l-1.5 5h-5Z" fill="#90CAF9" fill-opacity="0.25"/></svg>',
     name: 'Miękkie Lądowanie',
     desc: '+150$ gotówki na start tej planety',
     cashBonus: 150
@@ -877,9 +878,13 @@ class EconomyManager {
       }
     }
 
-    const comboSuffix = this.comboStacks > 0 ? ` 🔥x${this.comboStacks + 1}` : '';
+    const comboSuffix = this.comboStacks > 0 ? ` x${this.comboStacks + 1}` : '';
     Bus.publish(Events.FX_POPUP, {
       text: `+$${paidOut}${comboSuffix}`,
+      // Płomień rysowany PROCEDURALNIE nad popupem (patrz _drawPopupIcon w
+      // gamefeel.js) zamiast dawnego 🔥 wtopionego w text - tylko gdy combo
+      // faktycznie trwa (poziom 0 = zwykła sprzedaż, bez ikony).
+      icon: this.comboStacks > 0 ? 'flame' : null,
       x,
       y,
       duration: 900,

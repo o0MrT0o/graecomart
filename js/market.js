@@ -80,13 +80,17 @@ const MARKET_BASE_PRICES = {
 // Emoji do wyświetlenia na terminalu (czysto kosmetyczne, niezależne od
 // ITEM_TYPES w items.js - TradingPost tylko WYŚWIETLA te ikony, nie
 // spawnuje niczego).
+// Wartości puste - BYŁY emoji (patrz komentarz przy ITEM_TYPES.label w
+// items.js). ItemRenderer._drawSpriteOrLabel (jedyny faktyczny konsument
+// tego pola) rysuje sprite/proceduralną bryłę/neutralną plakietkę, nigdy
+// tekstu, więc te wartości i tak nigdy się nie renderują.
 const MARKET_ICONS = {
-  plastic: '♻️',
-  product: '🎁',
-  alloy: '🧱',
-  crystal: '🔮',
-  crystal_shard: '💠',
-  crystal_gem: '✨'
+  plastic: '',
+  product: '',
+  alloy: '',
+  crystal: '',
+  crystal_shard: '',
+  crystal_gem: ''
 };
 
 class MarketManager {
@@ -166,7 +170,7 @@ class MarketManager {
   getAllPrices() {
     return Object.keys(MARKET_BASE_PRICES).map((typeId) => ({
       typeId,
-      icon: MARKET_ICONS[typeId] || '❓',
+      icon: MARKET_ICONS[typeId] || '',
       price: this.getPrice(typeId),
       trend: this.getTrend(typeId)
     }));

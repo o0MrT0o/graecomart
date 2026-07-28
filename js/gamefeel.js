@@ -71,6 +71,11 @@ class GameFeel {
     if (!data || !data.text) return;
     this.popups.push({
       text: data.text,
+      // Ikona rysowana PROCEDURALNIE nad tekstem (patrz _drawPopupIcon) -
+      // zamiast dawnego emoji wtopionego w text (⚠️/💢/✅/🔥) - fillText()
+      // z emoji polegał na podstawianiu systemowej czcionki emoji, co dawało
+      // inny styl niż reszta gry. null = brak ikony (większość popupów).
+      icon: data.icon || null,
       x: typeof data.x === 'number' ? data.x : null,
       y: typeof data.y === 'number' ? data.y : null,
       color: data.color || '#FFD700',
@@ -160,6 +165,7 @@ class GameFeel {
       target.translate(cx, cy);
       target.scale(p.scale, p.scale);
       target.globalAlpha = alpha;
+      if (p.icon) this._drawPopupIcon(target, p.icon, p.color);
       target.font = 'bold 22px "Segoe UI", Arial, sans-serif';
       target.textAlign = 'center';
       target.textBaseline = 'middle';
@@ -169,6 +175,68 @@ class GameFeel {
       target.fillText(p.text, 0, 0);
       target.restore();
     });
+  }
+
+  /**
+   * Mała ikona rysowana proceduralnie NAD tekstem popupu (przesunięcie w
+   * górę o 18px, ten sam punkt (0,0) już przesunięty/przeskalowany przez
+   * wywołującego) - zastępuje dawne emoji wtopione wprost w string tekstu
+   * (⚠️ ostrzeżenie, 💢 utracono, ✅ gotowe, 🔥 combo). Woła się TYLKO gdy
+   * popup faktycznie ma icon (patrz _spawnPopup) - reszta (większość
+   * popupów w grze, np. zwykłe "+50$") nadal nie rysuje nic ponad tekstem.
+   */
+  _drawPopupIcon(ctx, iconKey, color) {
+    const s = 8;
+    ctx.save();
+    ctx.translate(0, -18);
+    if (iconKey === 'warning') {
+      // Trójkąt ostrzegawczy z wykrzyknikiem - hazard w player.js.
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, -s);
+      ctx.lineTo(s, s);
+      ctx.lineTo(-s, s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(-1.3, -s * 0.3, 2.6, s * 0.7);
+      ctx.beginPath();
+      ctx.arc(0, s * 0.62, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (iconKey === 'lost') {
+      // X - utrata przedmiotu w hazardzie (player.js).
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.7, -s * 0.7);
+      ctx.lineTo(s * 0.7, s * 0.7);
+      ctx.moveTo(s * 0.7, -s * 0.7);
+      ctx.lineTo(-s * 0.7, s * 0.7);
+      ctx.stroke();
+    } else if (iconKey === 'done') {
+      // Checkmark w kółku - moduł statku ukończony (ship.js).
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(0, 0, s, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.45, 0);
+      ctx.lineTo(-s * 0.1, s * 0.4);
+      ctx.lineTo(s * 0.5, -s * 0.4);
+      ctx.stroke();
+    } else if (iconKey === 'flame') {
+      // Płomień - combo sprzedaży (economy.js).
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, -s);
+      ctx.bezierCurveTo(s * 0.8, -s * 0.2, s * 0.5, s * 0.6, 0, s);
+      ctx.bezierCurveTo(-s * 0.5, s * 0.6, -s * 0.8, -s * 0.2, 0, -s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   destroy() {

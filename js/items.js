@@ -9,18 +9,23 @@
  * ItemRenderer — współdzielony renderer kart przedmiotów (świat, stos, UI).
  */
 
+// label: BYŁO emoji per typ (🗑️/♻️/📄/⚙️/💎/🎁/💠) - teraz puste, bo
+// _drawSpriteOrLabel (niżej) już go nie czyta w swoim fallbacku (prawdziwy
+// sprite -> proceduralna bryła -> neutralna plakietka koloru, ZERO tekstu/
+// emoji na żadnym etapie). Pole zostaje w kształcie danych (inne miejsca w
+// grze wciąż je odczytują/przekazują dalej), ale bez wartości do wyświetlenia.
 const ITEM_TYPES = [
-  { id: 'trash', label: '🗑️', color: '#78909C', name: 'Śmieci', rarity: 'common' },
-  { id: 'plastic', label: '♻️', color: '#42A5F5', name: 'Plastik', rarity: 'common' },
-  { id: 'paper', label: '📄', color: '#FFF176', name: 'Papier', rarity: 'common' },
-  { id: 'metal', label: '⚙️', color: '#B0BEC5', name: 'Metal', rarity: 'uncommon' },
-  { id: 'glass', label: '💎', color: '#80DEEA', name: 'Szkło', rarity: 'uncommon' },
-  { id: 'product', label: '🎁', color: '#AB47BC', name: 'Produkt', rarity: 'rare' },
+  { id: 'trash', label: '', color: '#78909C', name: 'Śmieci', rarity: 'common' },
+  { id: 'plastic', label: '', color: '#42A5F5', name: 'Plastik', rarity: 'common' },
+  { id: 'paper', label: '', color: '#FFF176', name: 'Papier', rarity: 'common' },
+  { id: 'metal', label: '', color: '#B0BEC5', name: 'Metal', rarity: 'uncommon' },
+  { id: 'glass', label: '', color: '#80DEEA', name: 'Szkło', rarity: 'uncommon' },
+  { id: 'product', label: '', color: '#AB47BC', name: 'Produkt', rarity: 'rare' },
   // Jedyny surowiec Strefy D (Kryształowa Grań) - patrz ITEM_TYPE_ZONE niżej.
   // Pierwszy przedmiot z rzadkością 'epic' (dotąd zdefiniowaną w ITEM_RARITY,
   // ale niewykorzystaną) - najrzadszy, najcenniejszy surowiec ze świata,
   // zgodnie z tym, że D to najtrudniej dostępna strefa (wymaga OBU strojów).
-  { id: 'crystal_shard', label: '💠', color: '#9575CD', name: 'Odłamek Kryształu', rarity: 'epic' }
+  { id: 'crystal_shard', label: '', color: '#9575CD', name: 'Odłamek Kryształu', rarity: 'epic' }
 ];
 
 // --- Świat (Faza 2b: mapa większa niż ekran) --------------------------------
@@ -212,10 +217,22 @@ class ItemRenderer {
       ItemRenderer._drawPolishedGem(ctx, x, y, size);
       return;
     }
-    ctx.font = `${size * 0.52}px "Segoe UI Emoji", Arial, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label || '?', x, y);
+    // Fallback OSTATECZNY - brak sprite'a I brak dedykowanej proceduralnej
+    // bryły (typy wyżej). W praktyce nieosiągalne dla podstawowych surowców
+    // (trash/plastic/paper/metal/glass/product) - te MAJĄ prawdziwe sprite'y
+    // (assets/items/*.png), więc trafiają tu tylko, gdyby plik się nie
+    // wczytał. BYŁO: fillText(label) z emoji per typ (🗑️/♻️/📄/⚙️/💎/🎁) -
+    // zastąpione neutralną, kolorową plakietką (kolor z ITEM_TYPES, jeśli
+    // typeId jest rozpoznany), żeby NIGDY nie pokazać emoji, nawet w tym
+    // skrajnym przypadku.
+    const meta = ITEM_TYPES.find((t) => t.id === typeId);
+    const fallbackColor = (meta && meta.color) || '#B0BEC5';
+    ctx.fillStyle = fallbackColor;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.lineWidth = Math.max(1, size * 0.04);
+    ItemRenderer._traceRoundedRect(ctx, x - size * 0.3, y - size * 0.3, size * 0.6, size * 0.6, size * 0.12);
+    ctx.fill();
+    ctx.stroke();
   }
 
   /**
@@ -614,7 +631,12 @@ class ItemManager {
   _spawnSpecificAt(typeId, x, y, label, color) {
     const item = this._makeItem({
       typeId,
-      label: label || '❓',
+      // BUGFIX: było `label || '❓'` - '' (pusty label, teraz normalna
+      // wartość dla większości typów, patrz komentarz przy ITEM_TYPES) jest
+      // FALSY w JS, więc ten fallback po cichu podmieniał go z powrotem na
+      // emoji przy KAŻDYM spawnie z maszyny. label ?? zamiast || - pusty
+      // string zostaje pustym stringiem, fallback trafia tylko w undefined/null.
+      label: label ?? '',
       color: color || '#8BC34A',
       x,
       y

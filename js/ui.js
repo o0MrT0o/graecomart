@@ -18,6 +18,37 @@ const UI_BREAKPOINT_NARROW = 640;
 const MONEY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="9.5" fill="#FFCA28"/><circle cx="12" cy="12" r="9.5" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="1.2"/><circle cx="12" cy="12" r="6.8" fill="none" stroke="rgba(0,0,0,0.18)" stroke-width="1"/><path d="M12 6.6v10.8" stroke="#6D4C0F" stroke-width="1.5" stroke-linecap="round"/><path d="M14.6 9.2Q14.6 7.6 12 7.6Q9.4 7.6 9.4 9.5Q9.4 11 12 11.6Q14.6 12.2 14.6 13.9Q14.6 16 12 16Q9.4 16 9.4 14.4" fill="none" stroke="#6D4C0F" stroke-width="1.6" stroke-linecap="round"/></svg>';
 const STACK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#A5D6A7" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3 21 7.5 12 12 3 7.5Z" fill="rgba(165,214,167,0.25)"/><path d="M3 12 12 16.5 21 12"/><path d="M3 16.5 12 21 21 16.5"/></svg>';
 
+// --- Biblioteka ikon UI (SVG, nie emoji) -------------------------------------
+// Reszta emoji w UI (nawigacja/panele/toasty/ustawienia) - ten sam powód i ten
+// sam styl co MONEY_ICON_SVG/STACK_ICON_SVG wyżej (viewBox 24x24, proste
+// kreski). Grupowane tutaj zamiast rozrzucone przy każdym miejscu użycia -
+// część z nich (np. CORE_ICON_SVG, CLOSE_ICON_SVG) pojawia się dziesiątki
+// razy w tym pliku, więc jedna stała + wstawienie w template stringu jest
+// jedynym sensownym podejściem.
+const CART_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#FFE082" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2A2 2 0 0 0 9.35 17H18a2 2 0 0 0 1.95-1.57L21.5 8H6"/><circle cx="10" cy="20.5" r="1.3" fill="#FFE082" stroke="none"/><circle cx="18" cy="20.5" r="1.3" fill="#FFE082" stroke="none"/></svg>';
+const ROCKET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#81D4FA" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5c4 3 5 8 3 13H9c-2-5-1-10 3-13Z" fill="#81D4FA" fill-opacity="0.3"/><path d="M9 15.5 6.5 19M15 15.5l2.5 3.5M10 15.5V20M14 15.5V20" /><circle cx="12" cy="9.5" r="1.6" fill="#81D4FA" stroke="none"/></svg>';
+const GEAR_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#E0E0E0" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5 13.4 5.7 16 5 16.7 7.6 19.3 8.3 18.6 10.9 20.8 12.3 19.1 14.4 20 17 17.4 17.6 16.9 20.3 14.2 19.7 12.6 21.8 10.5 20.2 8 21 7.1 18.5 4.5 18.7 4 16 5.6 14 3.9 12 5.7 9.5 3.6 8.6 4.4 6 2.1 5.6 2.6 3 5.2 2.6 5.9 0 8 1.4 6 -0.7 8.1 1.4 10.7 0 13"/><circle cx="12" cy="12" r="3.2"/></svg>';
+const TROPHY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#FFD54F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0Z" fill="#FFD54F" fill-opacity="0.25"/><path d="M7 5H4a3 3 0 0 0 3 5M17 5h3a3 3 0 0 1-3 5"/><path d="M12 14v3M9 20.5h6M9.5 20.5c0-2 .8-2.6 2.5-3.5 1.7.9 2.5 1.5 2.5 3.5"/></svg>';
+const CLOSE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5 19 19M19 5 5 19"/></svg>';
+const CHECK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9.5 18 20 6"/></svg>';
+// Symbol waluty Rdzeni (Rdzenie/Cores) - zastępuje ⚡ używane dotąd JAKO
+// TEKST wewnątrz wielu stringów ("⚡${cost}") - wstawiany bezpośrednio w
+// template literały (wszystkie miejsca użycia i tak trafiają do innerHTML,
+// nie textContent).
+const CORE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" fill="#81D4FA" stroke="none"><path d="M13 2 4 14h6l-1 8 9-12h-6Z"/></svg>';
+const LOCK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
+const UNLOCK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#81D4FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 7.4-2.1"/></svg>';
+const SPEAKER_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#B0BEC5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4Z" fill="#B0BEC5" fill-opacity="0.3"/><path d="M15.5 9a3.5 3.5 0 0 1 0 6M18 6.5a7 7 0 0 1 0 11"/></svg>';
+const CHART_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#90CAF9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M9.5 20V4M15 20v-7M20 20V8"/></svg>';
+const BOOK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#CE93D8" stroke-width="1.8" stroke-linejoin="round"><path d="M12 6c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-13c-3-.5-6 0-8 1.5Z" fill="#CE93D8" fill-opacity="0.2"/><path d="M12 6v13"/></svg>';
+const RECYCLE_RESET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#EF9A9A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.9-5.4"/><path d="M20 3v5h-5"/><path d="M20 12a8 8 0 0 1-13.9 5.4"/><path d="M4 21v-5h5"/></svg>';
+const INFO_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#90A4AE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle cx="12" cy="8" r="0.2" fill="#90A4AE"/></svg>';
+const SPARKLE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#CE93D8" stroke="none"><path d="M12 2 13.8 9.2 21 11 13.8 12.8 12 20 10.2 12.8 3 11 10.2 9.2Z"/></svg>';
+const PARTY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round"><path d="M4 20 9 9l6 6Z" fill="#FFD54F" fill-opacity="0.3"/><path d="M15 4v2M19 6l-1.4 1.4M21 10h-2M18 15l-2-2"/></svg>';
+const WRENCH_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B0BEC5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 4.5a4.5 4.5 0 0 0-5.9 5L4 15l2 2 5.5-5.6a4.5 4.5 0 0 0 5-5.9l-2.9 2.9-2-2Z"/></svg>';
+const PLANET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B39DDB" stroke-width="1.8"><circle cx="11" cy="12" r="6" fill="#B39DDB" fill-opacity="0.25"/><ellipse cx="11" cy="12" rx="10" ry="3.2" transform="rotate(-18 11 12)"/></svg>';
+const FLAME_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF7043" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c1 1 1.5 2.3 1.5 3.5A4.5 4.5 0 0 1 12 18a5.5 5.5 0 0 1-5.5-5.5C6.5 8 9 6 12 2Z"/></svg>';
+
 // --- Bazowy komponent -------------------------------------------------------
 
 class UIComponent {
@@ -312,8 +343,11 @@ class ChallengeDisplay extends UIComponent {
     // Krótszy tekst niż w starej, grubej pigułce - slim pasek ma jedną linię
     // z ellipsis, więc "Zbierz 20x Śmieci (3/20)" musi się zmieścić bez
     // osobnej etykiety "Wyzwanie dnia" (ikonka schowka ją zastępuje).
-    this.textEl.textContent = challenge.claimed
-      ? 'Wyzwanie odebrane ✓'
+    // innerHTML (nie textContent) - CHECK_ICON_SVG w gałęzi "odebrane"
+    // wymaga renderowania jako znaczniki, nie surowy tekst. Pozostałe dwie
+    // gałęzie to i tak zwykły, bezpieczny (deweloperski) tekst.
+    this.textEl.innerHTML = challenge.claimed
+      ? `Wyzwanie odebrane ${CHECK_ICON_SVG}`
       : claimable
         ? `Odbierz +${challenge.reward}$!`
         : `${challenge.label} (${challenge.progress}/${challenge.target})`;
@@ -412,8 +446,8 @@ class ShopPanel {
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">🛒</span> Sklep</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij sklep">✕</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${CART_ICON_SVG}</span> Sklep</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij sklep">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -533,7 +567,9 @@ class ShopPanel {
     if (item.maxed) {
       const badge = document.createElement('span');
       badge.className = 'ui-shop-item__maxed';
-      badge.textContent = item.fromShip ? '🚀 ZE STATKU' : 'MAX';
+      // innerHTML (nie textContent) - jedyny sposób, żeby ROCKET_ICON_SVG
+      // wyrenderował się jako ikona, a nie jako surowy tekst znaczników.
+      badge.innerHTML = item.fromShip ? `${ROCKET_ICON_SVG} ZE STATKU` : 'MAX';
       actionEl.appendChild(badge);
     } else {
       const btn = new UIButton({
@@ -641,7 +677,7 @@ class OfflineRewardModal {
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
         <span class="ui-shop-sheet__title"><span aria-hidden="true">${OFFLINE_MOON_ICON_SVG}</span> Witaj z powrotem</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij">✕</button>
+        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -690,7 +726,7 @@ class OfflineRewardModal {
     if (this._claimed) {
       card.innerHTML = `
         <div class="ui-shop-item__info">
-          <span class="ui-shop-item__name">Odebrano ✓</span>
+          <span class="ui-shop-item__name">Odebrano ${CHECK_ICON_SVG}</span>
           <span class="ui-shop-item__desc">Miłej gry!</span>
         </div>
       `;
@@ -814,8 +850,8 @@ class PrestigePanel {
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">🚀</span> Statek</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij">✕</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${ROCKET_ICON_SVG}</span> Statek</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -859,7 +895,7 @@ class PrestigePanel {
 
     const catalog = this.economyManager.getCoreShopCatalog();
     if (catalog.length > 0) {
-      const title = `⚡ Trwałe ulepszenia — masz ${this.economyManager.cores}`;
+      const title = `${CORE_ICON_SVG} Trwałe ulepszenia — masz ${this.economyManager.cores}`;
       this.bodyEl.appendChild(this._buildSection(title, catalog));
     }
   }
@@ -887,21 +923,25 @@ class PrestigePanel {
       const preview = eco.previewPrestigeCores();
       card.innerHTML = `
         <div class="ui-shop-item__info">
-          <span class="ui-shop-item__name">🌌 Gotowy do odlotu!</span>
-          <span class="ui-shop-item__desc">Odlot resetuje bieżący przebieg (pieniądze, ulepszenia, plecak, postęp statku) w zamian za ⚡ ${preview} Rdzeni na zawsze.</span>
+          <span class="ui-shop-item__name">${PLANET_ICON_SVG} Gotowy do odlotu!</span>
+          <span class="ui-shop-item__desc">Odlot resetuje bieżący przebieg (pieniądze, ulepszenia, plecak, postęp statku) w zamian za ${CORE_ICON_SVG} ${preview} Rdzeni na zawsze.</span>
         </div>
       `;
       const actionWrap = document.createElement('div');
       actionWrap.style.marginTop = '10px';
       const btn = new UIButton({
-        label: `🚀 Leć dalej (+⚡${preview})`,
+        icon: ROCKET_ICON_SVG,
+        label: `Leć dalej (+${preview} Rdzeni)`,
         variant: 'accent',
         onClick: () => {
           // Nieodwracalne i niszczy bieżący postęp - potwierdzenie zamiast
           // pozwalać jednemu przypadkowemu tapnięciu skasować cały przebieg
           // (to samo ryzyko, o które Tom pytał przy pozycji statku).
+          // window.confirm() to NATYWNY dialog przeglądarki - renderuje
+          // WYŁĄCZNIE zwykły tekst (nie HTML/SVG), stąd zwykłe słowo "Rdzeni"
+          // bez ikony, w przeciwieństwie do reszty tego panelu.
           const ok = window.confirm(
-            `Na pewno lecisz dalej? Stracisz bieżący przebieg (pieniądze, ulepszenia, plecak) w zamian za ⚡ ${eco.previewPrestigeCores()} Rdzeni.`
+            `Na pewno lecisz dalej? Stracisz bieżący przebieg (pieniądze, ulepszenia, plecak) w zamian za ${eco.previewPrestigeCores()} Rdzeni.`
           );
           if (!ok) return;
           const result = eco.prestige();
@@ -913,7 +953,7 @@ class PrestigePanel {
     } else {
       card.innerHTML = `
         <div class="ui-shop-item__info">
-          <span class="ui-shop-item__name">🛠️ Statek w naprawie</span>
+          <span class="ui-shop-item__name">${WRENCH_ICON_SVG} Statek w naprawie</span>
           <span class="ui-shop-item__desc">Ukończ wszystkie moduły, żeby odlecieć na nową planetę. Postęp: ${completed}/${total}.</span>
         </div>
       `;
@@ -958,7 +998,11 @@ class PrestigePanel {
 
     const heading = document.createElement('h3');
     heading.className = 'ui-shop-section__title';
-    heading.textContent = title;
+    // innerHTML (nie textContent, w przeciwieństwie do ShopPanel/SettingsPanel
+    // ._buildSection) - jedyny wołający (refresh() wyżej) osadza tu
+    // CORE_ICON_SVG w środku stringu, więc surowy tekst pokazałby znaczniki
+    // zamiast ikony. Bezpieczne - jedyny caller to stały, deweloperski string.
+    heading.innerHTML = title;
     section.appendChild(heading);
 
     const list = document.createElement('div');
@@ -1005,7 +1049,7 @@ class PrestigePanel {
       actionEl.appendChild(badge);
     } else {
       const btn = new UIButton({
-        label: `⚡${item.cost}`,
+        label: `${CORE_ICON_SVG}${item.cost}`,
         variant: canBuy ? 'accent' : 'ghost',
         disabled: !canBuy,
         title: canBuy ? 'Kup trwałe ulepszenie' : 'Za mało Rdzeni',
@@ -1087,8 +1131,8 @@ class SettingsPanel {
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">⚙️</span> Menu</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij menu">✕</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${GEAR_ICON_SVG}</span> Menu</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij menu">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -1146,7 +1190,7 @@ class SettingsPanel {
         if (typeof this.onOpenAchievements === 'function') this.onOpenAchievements();
       }
     });
-    return this._buildRow('🏆', 'Osiągnięcia', `Zdobyte: ${unlocked}/${catalog.length}`, btn.mount());
+    return this._buildRow(TROPHY_ICON_SVG, 'Osiągnięcia', `Zdobyte: ${unlocked}/${catalog.length}`, btn.mount());
   }
 
   /** Ten sam trzykolumnowy układ (ikona/opis/akcja) co ShopPanel._buildRow,
@@ -1195,7 +1239,7 @@ class SettingsPanel {
         if (typeof this.onChange === 'function') this.onChange();
       }
     });
-    return this._buildRow('🔊', 'Dźwięk', 'Włącz lub wycisz efekty dźwiękowe gry', btn.mount());
+    return this._buildRow(SPEAKER_ICON_SVG, 'Dźwięk', 'Włącz lub wycisz efekty dźwiękowe gry', btn.mount());
   }
 
   /** Nakładka FPS/jakości (DEBUG.fps() w main.js) - dotąd dostępna tylko z
@@ -1212,7 +1256,7 @@ class SettingsPanel {
         this.close();
       }
     });
-    return this._buildRow('📊', 'Licznik FPS', 'Nakładka z liczbą klatek/s i jakością renderowania', btn.mount());
+    return this._buildRow(CHART_ICON_SVG, 'Licznik FPS', 'Nakładka z liczbą klatek/s i jakością renderowania', btn.mount());
   }
 
   /** Uruchamia samouczek od pierwszego kroku - jeśli poprzednia instancja
@@ -1236,7 +1280,7 @@ class SettingsPanel {
         this.close();
       }
     });
-    return this._buildRow('📘', 'Samouczek', 'Pokaż od nowa krótkie wprowadzenie do gry', btn.mount());
+    return this._buildRow(BOOK_ICON_SVG, 'Samouczek', 'Pokaż od nowa krótkie wprowadzenie do gry', btn.mount());
   }
 
   /** Ten sam wzorzec potwierdzenia (window.confirm) co nieodwracalny "Leć
@@ -1260,11 +1304,11 @@ class SettingsPanel {
         location.reload();
       }
     });
-    return this._buildRow('♻️', 'Reset postępu', 'Kasuje cały zapis i zaczyna grę od nowa - nieodwracalne', btn.mount());
+    return this._buildRow(RECYCLE_RESET_ICON_SVG, 'Reset postępu', 'Kasuje cały zapis i zaczyna grę od nowa - nieodwracalne', btn.mount());
   }
 
   _buildAboutRow() {
-    return this._buildRow('ℹ️', 'Eco Mart', `Wersja ${SETTINGS_APP_VERSION}`, null);
+    return this._buildRow(INFO_ICON_SVG, 'Eco Mart', `Wersja ${SETTINGS_APP_VERSION}`, null);
   }
 
   destroy() {
@@ -1314,8 +1358,8 @@ class AchievementsPanel {
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">🏆</span> Osiągnięcia</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij osiągnięcia">✕</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${TROPHY_ICON_SVG}</span> Osiągnięcia</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij osiągnięcia">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -1395,7 +1439,7 @@ class AchievementsPanel {
         <span class="ui-shop-item__desc">${a.desc}</span>
         ${progressHtml}
       </div>
-      <div class="ui-shop-item__action">${a.unlocked ? '<span class="ui-shop-item__done" aria-label="Zdobyte">✓</span>' : ''}</div>
+      <div class="ui-shop-item__action">${a.unlocked ? `<span class="ui-shop-item__done" aria-label="Zdobyte">${CHECK_ICON_SVG}</span>` : ''}</div>
     `;
     return row;
   }
@@ -1540,18 +1584,21 @@ class UIManager {
       // pokazywał tylko ogólne "Kupiono ulepszenie" zamiast kontekstowej
       // wiadomości o odblokowanej strefie.
       const unlockMessages = {
-        stage_paper: '📜 Papier odblokowany! Szukaj go w świecie i wrzuć do Recyklera.',
-        minimap: '🗺️ Minimapa kupiona! Radar w rogu ekranu pokazuje, co jest w pobliżu.',
-        headlamp: '🪖 Kask z Latarką kupiony! Mniejsza kara prędkości w strefach skażenia.',
-        boots: '🥾 Robocze Buty kupione! Więcej czasu, zanim stracisz przedmiot w hazardzie.',
-        toxic_filter: '😷 Filtr Toksyn kupiony! Bagno jest już dla Ciebie bezpieczne.',
-        radiation_suit: '☢️ Kombinezon Radiacyjny kupiony! Strefa Atomowa jest już dla Ciebie bezpieczna.'
+        stage_paper: 'Papier odblokowany! Szukaj go w świecie i wrzuć do Recyklera.',
+        minimap: 'Minimapa kupiona! Radar w rogu ekranu pokazuje, co jest w pobliżu.',
+        headlamp: 'Kask z Latarką kupiony! Mniejsza kara prędkości w strefach skażenia.',
+        boots: 'Robocze Buty kupione! Więcej czasu, zanim stracisz przedmiot w hazardzie.',
+        toxic_filter: 'Filtr Toksyn kupiony! Bagno jest już dla Ciebie bezpieczne.',
+        radiation_suit: 'Kombinezon Radiacyjny kupiony! Strefa Atomowa jest już dla Ciebie bezpieczna.'
       };
       const message = unlockMessages[d.upgradeId];
       if (message) {
-        this.notifications.show(message, { type: 'success', icon: '🎉', duration: 3600 });
+        // Ikona TEGO SAMEGO ulepszenia, zdefiniowana raz w SHOP_UPGRADES
+        // (economy.js) - żadnego osobnego zestawu ikon do zsynchronizowania.
+        const shopDef = window.SHOP_UPGRADES && window.SHOP_UPGRADES.find((u) => u.id === d.upgradeId);
+        this.notifications.show(message, { type: 'success', icon: (shopDef && shopDef.icon) || PARTY_ICON_SVG, duration: 3600 });
       } else {
-        this.notifications.show(`Kupiono ulepszenie`, { type: 'success', icon: '✅' });
+        this.notifications.show(`Kupiono ulepszenie`, { type: 'success', icon: CHECK_ICON_SVG });
       }
     };
 
@@ -1565,9 +1612,9 @@ class UIManager {
     // zwykły toast, bo to rzadki, ważny moment odkrycia.
     this._onUnlockGranted = (d) => {
       const kindLabel = d.kind === 'zone' ? 'Nowa strefa' : 'Nowa maszyna';
-      this.notifications.show(`🔓 ${kindLabel}: ${d.name}! ${d.desc || ''}`, {
+      this.notifications.show(`${UNLOCK_ICON_SVG} ${kindLabel}: ${d.name}! ${d.desc || ''}`, {
         type: 'success',
-        icon: '✨',
+        icon: SPARKLE_ICON_SVG,
         duration: 5000
       });
     };
@@ -1578,7 +1625,7 @@ class UIManager {
     this._onAchievementUnlocked = (d) => {
       this.notifications.show(`Osiągnięcie: ${d.name}!`, {
         type: 'success',
-        icon: d.icon || '🏆',
+        icon: d.icon || TROPHY_ICON_SVG,
         duration: 4200
       });
       if (this.achievementsPanel) this.achievementsPanel.refresh();
@@ -1597,7 +1644,7 @@ class UIManager {
       const suffix = perkLabel ? ` ${perkLabel}` : '';
       this.notifications.show(`Moduł ukończony (${doneCount}/${total})!${suffix}`, {
         type: 'success',
-        icon: '🛠️',
+        icon: WRENCH_ICON_SVG,
         duration: 4600
       });
     };
@@ -1608,9 +1655,9 @@ class UIManager {
     // wcześniej (patrz ship.js _initialSyncDone) - stąd shipToggleBtn w
     // update() jako TRWAŁA droga powrotu do tego samego panelu.
     this._onGameWon = () => {
-      this.notifications.show('🚀 Wszystkie moduły gotowe! Możesz lecieć dalej.', {
+      this.notifications.show(`${ROCKET_ICON_SVG} Wszystkie moduły gotowe! Możesz lecieć dalej.`, {
         type: 'success',
-        icon: '🎉',
+        icon: PARTY_ICON_SVG,
         duration: 4000
       });
       if (this.shopPanel) this.shopPanel.close();
@@ -1633,9 +1680,9 @@ class UIManager {
       const cores = (d && d.coresEarned) || 0;
       const mod = d && d.modifier;
       const modSuffix = mod ? ` — ${mod.icon} ${mod.name}` : '';
-      this.notifications.show(`🌌 Nowa planeta #${planet}${modSuffix}! +⚡${cores} Rdzeni`, {
+      this.notifications.show(`${PLANET_ICON_SVG} Nowa planeta #${planet}${modSuffix}! +${CORE_ICON_SVG}${cores} Rdzeni`, {
         type: 'success',
-        icon: '✨',
+        icon: SPARKLE_ICON_SVG,
         duration: 4200
       });
       // Drugi poziom trwałych ulepszeń (economy.js) jest CELOWO ukryty z
@@ -1643,9 +1690,9 @@ class UIManager {
       // toastu gracz mógłby nigdy nie zauważyć, że w Statku pojawiły się
       // nowe pozycje, skoro sam katalog wcześniej wyglądał "ukończony".
       if (window.CORE_TIER2_UNLOCK_PLANET && planet === window.CORE_TIER2_UNLOCK_PLANET) {
-        this.notifications.show('🔓 Nowe trwałe ulepszenia dostępne w Statku!', {
+        this.notifications.show(`${UNLOCK_ICON_SVG} Nowe trwałe ulepszenia dostępne w Statku!`, {
           type: 'success',
-          icon: '⚡',
+          icon: CORE_ICON_SVG,
           duration: 4600
         });
       }
@@ -1658,10 +1705,10 @@ class UIManager {
     // i zdążył się zasubskrybować - więc te dwa eventy na pewno zostaną złapane,
     // nawet jeśli strzelą w tej samej klatce co konstrukcja.
     this._onDailyLogin = (d) => {
-      const coreText = d.coreBonus > 0 ? ` + ⚡${d.coreBonus} Rdzeni!` : '';
+      const coreText = d.coreBonus > 0 ? ` + ${CORE_ICON_SVG}${d.coreBonus} Rdzeni!` : '';
       this.notifications.show(`Dzień ${d.streak} z rzędu! +${d.moneyReward}$${coreText}`, {
         type: 'success',
-        icon: '🔥',
+        icon: FLAME_ICON_SVG,
         duration: 4200
       });
     };
@@ -1670,7 +1717,7 @@ class UIManager {
     };
     this._onDailyChallengeClaimed = (d) => {
       this._syncMoney(true);
-      this.notifications.show(`Wyzwanie odebrane! +${d.reward}$`, { type: 'success', icon: '✅', duration: 2600 });
+      this.notifications.show(`Wyzwanie odebrane! +${d.reward}$`, { type: 'success', icon: CHECK_ICON_SVG, duration: 2600 });
     };
 
     this._buildDOM();
@@ -1743,7 +1790,7 @@ class UIManager {
     fabRow.className = 'game-ui__fab-row';
 
     this.shopToggleBtn = new UIButton({
-      icon: '🛒',
+      icon: CART_ICON_SVG,
       label: 'Sklep',
       variant: 'fab',
       onClick: () => {
@@ -1762,7 +1809,7 @@ class UIManager {
     // update() - czyta window.ship.inRange co klatkę). Domyślnie ukryty, bo
     // przy starcie gry (spawn daleko od statku) i tak nie ma sensu.
     this.shipToggleBtn = new UIButton({
-      icon: '🚀',
+      icon: ROCKET_ICON_SVG,
       label: 'Statek',
       variant: 'fab',
       onClick: () => {
@@ -1779,7 +1826,7 @@ class UIManager {
     // samouczek/reset postępu/wersja (patrz SettingsPanel). Zawsze widoczny,
     // w przeciwieństwie do przycisku Statku.
     this.settingsToggleBtn = new UIButton({
-      icon: '⚙️',
+      icon: GEAR_ICON_SVG,
       label: 'Menu',
       variant: 'fab',
       onClick: () => {
@@ -1799,7 +1846,7 @@ class UIManager {
     // niżej, przelicza world->screen przez window.game.cameraX/Y), żeby
     // przycisk pojawiał się tam, gdzie faktycznie dzieje się akcja.
     this.shipContributeBtn = new UIButton({
-      icon: '💰',
+      icon: MONEY_ICON_SVG,
       label: 'Wpłać',
       variant: 'accent',
       title: 'Przekaż pieniądze i surowce na bieżący moduł statku',

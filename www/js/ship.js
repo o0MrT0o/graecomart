@@ -51,7 +51,10 @@ const SHIP_MODULE_DEFINITIONS = [
   { id: 'hyperdrive', name: 'Hipernapęd', money: 2000, materials: { plastic: 5, product: 10, alloy: 12 } }
 ];
 
-const SHIP_MATERIAL_ICONS = { plastic: '♻️', product: '🎁', alloy: '🧱' };
+// Wartości puste - BYŁY emoji (ten sam powód co ITEM_TYPES.label w items.js).
+// ItemRenderer._drawSpriteOrLabel (jedyny konsument, patrz draw() niżej)
+// rysuje sprite/proceduralną bryłę/neutralną plakietkę, nigdy tekstu.
+const SHIP_MATERIAL_ICONS = { plastic: '', product: '', alloy: '' };
 
 const SHIP_SIZE = 220;
 const SHIP_DROP_RADIUS = 90;
@@ -284,7 +287,10 @@ class Ship {
       this._moduleCompleteFlashUntil = performance.now() + 1100;
 
       Bus.publish(Events.FX_POPUP, {
-        text: `✅ ${def.name} gotowy!`,
+        text: `${def.name} gotowy!`,
+        // Checkmark rysowany PROCEDURALNIE nad popupem (patrz _drawPopupIcon
+        // w gamefeel.js) zamiast dawnego ✅ wtopionego w text.
+        icon: 'done',
         x: this.x,
         y: this.y - this.h / 2,
         duration: 2400,

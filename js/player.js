@@ -511,9 +511,9 @@ class PlayerController {
       if (this._hazardWarnedZone !== this.currentZone) {
         this._hazardWarnedZone = this.currentZone;
         const zoneWarnings = {
-          B: '⚠️ Strefa Skażenia - bez Filtra Toksyn stracisz przedmiot!',
-          C: '⚠️ Strefa Atomowa - bez Kombinezonu Radiacyjnego stracisz przedmiot!',
-          D: '⚠️ Kryształowa Grań - potrzebujesz Filtra I Kombinezonu naraz!'
+          B: 'Strefa Skażenia - bez Filtra Toksyn stracisz przedmiot!',
+          C: 'Strefa Atomowa - bez Kombinezonu Radiacyjnego stracisz przedmiot!',
+          D: 'Kryształowa Grań - potrzebujesz Filtra I Kombinezonu naraz!'
         };
         // BUGFIX: brak jawnego x/y powodował, że popup renderował się w
         // stałym punkcie ŚWIATA (fallback w gamefeel.js), a nie nad graczem
@@ -523,7 +523,10 @@ class PlayerController {
         // wyświetla się nad ash" - tekst i tak nie miał związku z pozycją
         // gracza. y - 70, żeby popup wystartował nad głową, nie na twarzy.
         Bus.publish(Events.FX_POPUP, {
-          text: zoneWarnings[this.currentZone] || '⚠️ Strefa niebezpieczna',
+          text: zoneWarnings[this.currentZone] || 'Strefa niebezpieczna',
+          // Trójkąt ostrzegawczy rysowany PROCEDURALNIE nad popupem (patrz
+          // _drawPopupIcon w gamefeel.js) zamiast dawnego ⚠️ wtopionego w text.
+          icon: 'warning',
           x: this.x,
           y: this.y - 70,
           duration: 2200,
@@ -696,7 +699,12 @@ class PlayerController {
       count: 10
     });
     Bus.publish(Events.FX_POPUP, {
-      text: `💢 Zgubiono: ${item.label || ''} ${niceName}`.trim(),
+      text: `Zgubiono: ${niceName}`,
+      // X rysowany PROCEDURALNIE nad popupem (patrz _drawPopupIcon w
+      // gamefeel.js) zamiast dawnego 💢 wtopionego w text. item.label (emoji
+      // per typ z ITEM_TYPES) też usunięty z treści - nazwa (niceName) już
+      // mówi co to za surowiec, bez potrzeby glifu w środku zdania.
+      icon: 'lost',
       x: this.x,
       y: this.y - 50,
       duration: 1800,
