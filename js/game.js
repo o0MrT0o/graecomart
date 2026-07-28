@@ -9,11 +9,30 @@
  * MachineManager, StackController, PlayerController, UIManager,
  * SaveManager, GameFeel) - robi to main.js. Game odpowiada wyłącznie za:
  *   - pętlę gry (requestAnimationFrame + update/draw),
- *   - trzy warstwy canvas: background / gameplay / ui,
+ *   - JEDEN canvas, rysowany w trzech logicznych fazach (background / gameplay / ui),
  *   - KAMERĘ: świat (GAME_WORLD_WIDTH x GAME_WORLD_HEIGHT) jest większy niż widoczny
  *     ekran, kamera śledzi gracza i pokazuje tylko fragment świata,
  *   - wspólny stan gry (pieniądze, wielkość stosu) na podstawie zdarzeń z Bus,
  *   - efekt screen shake.
+ *
+ * BUGFIX (przycinanie/lag, "za mała gra żeby tak zacinało"): było TRZY osobne
+ * elementy <canvas> (background/gameplay/ui), każdy czyszczony i W CAŁOŚCI
+ * przerysowywany co klatkę - a XADEN z nich nigdy nie korzystał z tego, że
+ * mógłby zostać nietknięty (zero logiki "przerysuj tylko UI, zostaw tło").
+ * Pełny trace wydajności Chrome (Tracing.start z kategorią devtools.timeline,
+ * nie tylko profil JS) pokazał, że ~57% czasu KAŻDEJ klatki szło w
+ * CanvasResourceProviderSharedImage::ProduceCanvasResource - wewnętrzny koszt
+ * Chromium "sfinalizowania" zawartości canvasu do kompozycji na ekranie,
+ * płacony OSOBNO za KAŻDY canvas. Przy trzech canvasach płaciliśmy go
+ * trzykrotnie za KAŻDĄ klatkę, bez żadnej korzyści w zamian (skoro i tak
+ * wszystkie trzy są czyszczone/przerysowywane razem). Teraz JEDEN element
+ * <canvas>, a "warstwy" to już tylko KOLEJNOŚĆ rysowania na tym samym
+ * kontekście (tło -> gameplay -> UI, dokładnie ta sama kolejność co
+ * dawniej - z-order canvasu i tak już był ustalany przez kolejność
+ * rysowania, nie przez osobne elementy). this.canvasBackground/canvasGameplay/
+ * canvasUI i this.ctxBackground/ctxGameplay/ctxUI ZOSTAJĄ jako osobne pola
+ * (żeby nie dotykać dziesiątek miejsc w tym pliku, które się do nich
+ * odwołują) - wszystkie trzy wskazują teraz na TEN SAM element/kontekst.
  *
  * WAŻNE (świat > ekran): canvas.width/height to rozmiar EKRANU (viewportu),
  * NIE świata. Inne moduły (player.js, items.js, machines.js, market.js)
@@ -35,22 +54,12 @@
  *   - window.playerController (odczyt .x/.y do sterowania kamerą - opcjonalne,
  *      dopóki nie istnieje, kamera stoi na środku świata)
  *
- * Przykładowy HTML (dopasuj ID w CANVAS_IDS poniżej, jeśli Twoje są inne):
- *   <canvas id="layer-background"></canvas>
+ * Przykładowy HTML (dopasuj ID w CANVAS_ID poniżej, jeśli Twój jest inny):
  *   <canvas id="layer-gameplay"></canvas>
- *   <canvas id="layer-ui"></canvas>
- * Wszystkie trzy powinny być ułożone jeden na drugim przez CSS
- * (position: absolute, rosnący z-index: background < gameplay < ui).
- *
- * ID gameplay potwierdzone w specyfikacji player.js jako 'layer-gameplay' -
- * background/ui przyjąłem po tej samej konwencji, popraw jeśli Twój HTML
- * nazywa je inaczej.
+ * ID celowo 'layer-gameplay' (nie coś neutralnego) - player.js wiesza na
+ * tym elemencie nasłuchy dotyku/myszy (patrz komentarz w player.js).
  */
-const CANVAS_IDS = {
-  background: 'layer-background',
-  gameplay: 'layer-gameplay',
-  ui: 'layer-ui'
-};
+const CANVAS_ID = 'layer-gameplay';
 
 // --- Świat (Faza 2b: mapa większa niż ekran) --------------------------------
 // Stałe, NIEZALEŻNE od rozmiaru okna/ekranu - w przeciwieństwie do
@@ -204,8 +213,17 @@ const GAME_ZONE_TINT_FADE = 260;
 // Kolejne "kroki jakości" = mnożnik rozdzielczości renderowania (dpr w
 // resize()). Od najniższego do najwyższego - _qualityLevel to indeks w tej
 // tablicy. Startujemy z najwyższego i schodzimy w dół, jeśli urządzenie nie
-// wyrabia. 2 to sufit świadomie (patrz komentarz przy resize) - powyżej zysk
-// ostrości jest znikomy, a koszt rośnie z kwadratem.
+// wyrabia.
+//
+// BUGFIX ("dalej 16-20 FPS", "niech nie będzie spadku rozdzielczości"): sufit
+// był 2.0 - usunięty. Pełny trace wydajności (nie tylko profil JS) pokazał,
+// że koszt canvasu rośnie z KWADRATEM dpr (2x to 4x pikseli do wypełnienia
+// względem 1x), a różnica ostrości 1.5x->2.0x na ekranie telefonu jest ledwie
+// zauważalna - zła wymiana. Niższy sufit (1.5x teraz) to NIE kolejny krok
+// adaptacyjny (nadal startujemy od najwyższego dostępnego i schodzimy TYLKO
+// gdy pomiar każe), tylko obcięcie najdroższego, najmniej wartego tej ceny
+// wariantu - urządzenie nigdy nie zapłaci za 2x, bo ten poziom po prostu już
+// nie istnieje.
 //
 // BUGFIX ("mocno zacina", 7-22 FPS na telefonie mimo adaptacyjnej jakości):
 // najniższy krok był 1.0 - na ekranie z devicePixelRatio 2-3 (każdy nowszy
@@ -218,7 +236,7 @@ const GAME_ZONE_TINT_FADE = 260;
 // CSS) - obraz mniej ostry, ale DOKŁADNIE ta sama zawartość: żadna
 // dekoracja/cząsteczka/efekt nie znika, zmienia się tylko liczba pikseli,
 // w których je rysujemy.
-const GAME_QUALITY_DPR_STEPS = [0.5, 0.65, 0.8, 1, 1.5, 2];
+const GAME_QUALITY_DPR_STEPS = [0.5, 0.65, 0.8, 1, 1.5];
 // Ile klatek na starcie ignorujemy, zanim zaczniemy oceniać wydajność -
 // dekodowanie tekstur/pieczenie tła/pierwsze kompilacje JIT sprawiają, że
 // pierwsze klatki są zawsze wolne i NIE mówią nic o możliwościach sprzętu.
@@ -273,20 +291,28 @@ const GAME_BIOME_BLEND_STEPS = [
 
 class Game {
   constructor() {
-    // --- Canvasy i konteksty 2D ------------------------------------------
-    this.canvasBackground = document.getElementById(CANVAS_IDS.background);
-    this.canvasGameplay = document.getElementById(CANVAS_IDS.gameplay);
-    this.canvasUI = document.getElementById(CANVAS_IDS.ui);
+    // --- Canvas i kontekst 2D ------------------------------------------
+    // JEDEN element/kontekst pod trzema nazwami - patrz obszerny komentarz w
+    // nagłówku pliku (BUGFIX przycinania/laga). Nic poniżej w tym pliku nie
+    // musiało się zmienić poza TYM przypisaniem: this.ctxBackground.save()
+    // i this.ctxUI.fillRect(...) nadal działają identycznie, bo to
+    // dosłownie ten sam obiekt CanvasRenderingContext2D pod trzema polami.
+    const canvas = document.getElementById(CANVAS_ID);
 
-    if (!this.canvasBackground || !this.canvasGameplay || !this.canvasUI) {
+    if (!canvas) {
       console.error(
-        '[Game] Brakuje jednego z elementów <canvas>. Sprawdź stałe CANVAS_IDS na górze game.js oraz ID w HTML.'
+        `[Game] Brakuje elementu <canvas id="${CANVAS_ID}">. Sprawdź stałą CANVAS_ID na górze game.js oraz ID w HTML.`
       );
     }
 
-    this.ctxBackground = this.canvasBackground.getContext('2d', { alpha: true });
-    this.ctxGameplay = this.canvasGameplay.getContext('2d', { alpha: true });
-    this.ctxUI = this.canvasUI.getContext('2d', { alpha: true });
+    const ctx = canvas.getContext('2d', { alpha: true });
+
+    this.canvasBackground = canvas;
+    this.canvasGameplay = canvas;
+    this.canvasUI = canvas;
+    this.ctxBackground = ctx;
+    this.ctxGameplay = ctx;
+    this.ctxUI = ctx;
 
     // --- Tekstury terenu (jedna na strefę) + dekoracje --------------------------
     // _loadTexture() to mały, lokalny helper (nie eksportowany) - wspólny kod
@@ -594,15 +620,17 @@ class Game {
   }
 
   /**
-   * Rysuje wszystkie 3 warstwy: tło -> gameplay (z screen shake) -> UI.
+   * Rysuje wszystkie 3 fazy na WSPÓLNYM canvasie: tło -> gameplay (z screen
+   * shake) -> UI (patrz komentarz w nagłówku pliku - dawniej trzy osobne
+   * canvasy, teraz jeden, kolejność rysowania = z-order, bez zmian).
    */
   draw() {
-    // BUGFIX ("czarny ekran"/"rozmazana postać" przy niskiej jakości): te trzy
-    // clearRect wołały canvas.width/height - FIZYCZNE piksele bufora
+    // BUGFIX ("czarny ekran"/"rozmazana postać" przy niskiej jakości): to
+    // clearRect wołało canvas.width/height - FIZYCZNE piksele bufora
     // (innerWidth*dpr, patrz resize()) - na kontekście, który ma już
     // ustawiony setTransform(dpr,...). Argumenty clearRect() są interpretowane
     // W BIEŻĄCEJ przestrzeni transformacji, więc dostawały PRZESKALOWANE
-    // DRUGI RAZ przez dpr - realnie czyściły obszar o boku dpr-krotnie
+    // DRUGI RAZ przez dpr - realnie czyściło obszar o boku dpr-krotnie
     // mniejszym niż cały bufor, nie cały bufor.
     // Przy dpr >= 1 (jedyne wartości sprzed rozszerzenia GAME_QUALITY_DPR_STEPS
     // poniżej 1.0) to nadmiarowe czyszczenie - niegroźne, bo obetnie się do
@@ -615,9 +643,11 @@ class Game {
     // Naprawa: te same window.innerWidth/innerHeight (logiczne piksele CSS),
     // których cała reszta pliku już używa (patrz komentarz w resize()) -
     // transform przeskaluje je DOKŁADNIE RAZ, tak jak powinien.
+    //
+    // JEDNO wywołanie, nie trzy - this.ctxBackground/ctxGameplay/ctxUI to
+    // teraz ten sam kontekst (patrz konstruktor), więc czyszczenie go trzy
+    // razy pod rząd na dokładnie tym samym obszarze było czystą stratą.
     this.ctxBackground.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    this.ctxGameplay.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    this.ctxUI.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
     this._updateCamera();
 
@@ -1909,7 +1939,7 @@ class Game {
   }
 
   /**
-   * Dopasowuje rozmiar wszystkich 3 canvasów do okna.
+   * Dopasowuje rozmiar canvasu do okna.
    *
    * BUGFIX ("postać w słabej jakości" na telefonie): bufor canvasu miał
    * dotąd DOKŁADNIE w/h pikseli CSS - na ekranie z devicePixelRatio 2-3
@@ -1930,10 +1960,10 @@ class Game {
    * wymagał zmiany - z fizycznymi wymiarami i tak czyści cały bufor (co
    * najwyżej "nadmiarowo", nigdy za mało).
    *
-   * dpr ograniczone do 2x (nie surowe devicePixelRatio, które na części
-   * telefonów sięga 3-4) - zysk ostrości powyżej 2x jest ledwie zauważalny,
-   * a koszt (pikseli do wypełnienia KAŻDĄ klatkę) rośnie z KWADRATEM
-   * mnożnika - 3x zamiast 2x to nie +50% pracy GPU, tylko +125%.
+   * dpr ograniczone do sufitu GAME_QUALITY_DPR_STEPS (1.5x, nie surowe
+   * devicePixelRatio, które na części telefonów sięga 3-4) - koszt (pikseli
+   * do wypełnienia KAŻDĄ klatkę) rośnie z KWADRATEM mnożnika, więc zysk
+   * ostrości powyżej tego progu nie jest wart ceny.
    */
   resize() {
     const w = window.innerWidth;
@@ -1946,12 +1976,10 @@ class Game {
     const dpr = Math.min(window.devicePixelRatio || 1, qualityCap);
     this.dpr = dpr;
 
+    // Jeden canvas (patrz konstruktor) - canvasBackground/canvasGameplay/
+    // canvasUI to ten sam element, więc jedno przypisanie wystarczy.
     this.canvasBackground.width = Math.round(w * dpr);
     this.canvasBackground.height = Math.round(h * dpr);
-    this.canvasGameplay.width = Math.round(w * dpr);
-    this.canvasGameplay.height = Math.round(h * dpr);
-    this.canvasUI.width = Math.round(w * dpr);
-    this.canvasUI.height = Math.round(h * dpr);
 
     // Ustawienie .width/.height zeruje macierz transformacji kontekstu (spec
     // canvas) - trzeba ją odtworzyć PO KAŻDYM resize (nie tylko raz przy
@@ -1960,8 +1988,6 @@ class Game {
     // ustawia macierz wprost zamiast ją mnożyć, więc wielokrotne wywołania
     // resize() nigdy się nie skumulują w błędną skalę.
     this.ctxBackground.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.ctxGameplay.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.ctxUI.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     Bus.publish(Events.RESIZE, { width: w, height: h });
   }

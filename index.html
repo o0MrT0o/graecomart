@@ -9,10 +9,14 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- JEDEN canvas, nie trzy - patrz obszerny komentarz przy CANVAS_IDS w
+         game.js. Wszystkie warstwy (tło/gameplay/UI) rysują się na tym samym
+         elemencie, w kolejności = z-order (kolejne rysowanie nadpisuje
+         poprzednie), tak jak dawniej robiła to kolejność trzech osobnych
+         canvasów - id zostaje 'layer-gameplay', bo player.js wiesza na nim
+         nasłuchy dotyku/myszy. -->
     <div id="game-container">
-        <canvas id="layer-background"></canvas>
         <canvas id="layer-gameplay"></canvas>
-        <canvas id="layer-ui"></canvas>
     </div>
 
     <!-- Ekran ładowania - w HTML/CSS od razu, WIDOCZNY zanim jakikolwiek JS

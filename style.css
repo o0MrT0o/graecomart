@@ -165,24 +165,11 @@ canvas {
     text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
-#layer-background {
-    z-index: 1;
-    pointer-events: none;
-}
-
+/* JEDEN canvas teraz (patrz index.html/game.js) - z-index niepotrzebny
+   (nic obok niego się nie stackuje), pointer-events: auto zostaje, bo
+   player.js wiesza na tym elemencie nasłuchy dotyku/myszy. */
 #layer-gameplay {
-    z-index: 2;
     pointer-events: auto;
-}
-
-/* BUGFIX: było "visibility: hidden" - ta warstwa NIE jest martwa/nieużywana:
-   compass.js (płatne ulepszenie "Kompas Surowców") rysuje swoją strzałkę
-   WYŁĄCZNIE tutaj, więc gracz, który je kupił, nigdy nie widział żadnego
-   efektu. Canvas jest czyszczony (clearRect) co klatkę w game.js draw(),
-   więc odkrycie tej warstwy nie odsłania żadnej "starej" zawartości. */
-#layer-ui {
-    z-index: 3;
-    pointer-events: none;
 }
 
 /* Joystick */
