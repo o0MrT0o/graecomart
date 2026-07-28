@@ -1124,7 +1124,7 @@ class SettingsPanel {
     if (!this.bodyEl) return;
     this.bodyEl.innerHTML = '';
     this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow()]));
-    this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildTutorialRow()]));
+    this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildTutorialRow(), this._buildFpsRow()]));
     this.bodyEl.appendChild(this._buildSection('Dane', [this._buildResetRow()]));
     this.bodyEl.appendChild(this._buildSection('O grze', [this._buildAboutRow()]));
   }
@@ -1194,6 +1194,23 @@ class SettingsPanel {
       }
     });
     return this._buildRow('🔊', 'Dźwięk', 'Włącz lub wycisz efekty dźwiękowe gry', btn.mount());
+  }
+
+  /** Nakładka FPS/jakości (DEBUG.fps() w main.js) - dotąd dostępna tylko z
+   * konsoli JS, więc bezużyteczna na telefonie bez podłączenia do komputera.
+   * Ten przycisk daje ten sam efekt jednym dotknięciem: liczba FPS, czas
+   * klatki i aktualny krok adaptacyjnej jakości wprost na ekranie - dokładnie
+   * to, czego trzeba, żeby zdiagnozować zacinanie na urządzeniu gracza. */
+  _buildFpsRow() {
+    const btn = new UIButton({
+      label: 'Pokaż',
+      variant: 'ghost',
+      onClick: () => {
+        if (window.DEBUG && typeof window.DEBUG.fps === 'function') window.DEBUG.fps();
+        this.close();
+      }
+    });
+    return this._buildRow('📊', 'Licznik FPS', 'Nakładka z liczbą klatek/s i jakością renderowania', btn.mount());
   }
 
   /** Uruchamia samouczek od pierwszego kroku - jeśli poprzednia instancja

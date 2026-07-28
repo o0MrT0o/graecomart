@@ -205,9 +205,16 @@ const GAME_QUALITY_DPR_STEPS = [1, 1.5, 2];
 // Ile klatek na starcie ignorujemy, zanim zaczniemy oceniać wydajność -
 // dekodowanie tekstur/pieczenie tła/pierwsze kompilacje JIT sprawiają, że
 // pierwsze klatki są zawsze wolne i NIE mówią nic o możliwościach sprzętu.
-const GAME_PERF_WARMUP_FRAMES = 90;
+//
+// BUGFIX ("mocno zacina" na telefonie): było 90+90 (180 klatek) - na mocnym
+// sprzęcie to niecałe 3s przy 60 FPS, ale na SŁABYM telefonie (właśnie tym,
+// który adaptacyjna jakość ma ratować) 180 klatek przy np. 10 FPS to blisko
+// 20 SEKUND zacinania, zanim padnie choć jedna decyzja o obniżeniu jakości.
+// Krótsze okno reaguje szybciej kosztem odrobiny stabilności klasyfikacji -
+// akceptowalny kompromis, bo mediana i tak filtruje pojedyncze zacięcia.
+const GAME_PERF_WARMUP_FRAMES = 20;
 // Z ilu klatek liczymy medianę przed podjęciem decyzji.
-const GAME_PERF_SAMPLE_SIZE = 90;
+const GAME_PERF_SAMPLE_SIZE = 30;
 // Próg (ms na klatkę), powyżej którego schodzimy o krok jakości niżej.
 // 22ms (~45 FPS), nie 16.7 (60 FPS) - odrobina zapasu, żeby gra nie obniżała
 // sobie jakości przy sporadycznym drobnym przekroczeniu budżetu.
@@ -445,10 +452,17 @@ class Game {
    * Jak: liczymy medianę odstępów między klatkami z próbki. Mediana, nie
    * średnia - pojedyncze zacięcie (GC, wczytanie tekstury, otwarcie panelu)
    * wywindowałoby średnią i niepotrzebnie obniżyło jakość na stałe.
-   * Gdy mediana przekracza próg, schodzimy o jeden krok jakości niżej i
-   * mierzymy od nowa. Jakości NIE podnosimy z powrotem: bujanie się w tę i we
-   * w tę (obniż -> szybciej -> podnieś -> wolniej -> obniż) byłoby dużo
-   * bardziej irytujące niż stabilnie niższa rozdzielczość.
+   * Gdy mediana przekracza próg, schodzimy niżej i mierzymy od nowa - o JEDEN
+   * krok przy lekkim przekroczeniu, ale OD RAZU na sam dół (pomijając kroki
+   * pośrednie), gdy mediana jest WIĘCEJ NIŻ DWUKROTNIE gorsza niż budżet.
+   * BUGFIX ("mocno zacina"): bez tego bardzo słaby telefon (np. mediana
+   * 60ms+, budżet 22ms) musiałby przejść przez PEŁNY cykl pomiaru na KAŻDYM
+   * pośrednim kroku (2x -> 1.5x -> 1x), więc kilkanaście-kilkadziesiąt sekund
+   * zacinania zanim dotrze do jakości, którą urządzenie faktycznie wyrabia -
+   * przy tak dużym rozjeździe i tak nie ma szans na krok pośredni.
+   * Jakości NIE podnosimy z powrotem: bujanie się w tę i we w tę (obniż ->
+   * szybciej -> podnieś -> wolniej -> obniż) byłoby dużo bardziej irytujące
+   * niż stabilnie niższa rozdzielczość.
    */
   _trackPerformance(rawDelta) {
     if (this._qualityLevel <= 0) return; // już najniżej - nie ma czego mierzyć
@@ -468,7 +482,9 @@ class Game {
     this._frameSamples.length = 0;
 
     if (median > GAME_PERF_BUDGET_MS) {
-      this._qualityLevel--;
+      this._qualityLevel = (median > GAME_PERF_BUDGET_MS * 2)
+        ? 0
+        : this._qualityLevel - 1;
       const newDpr = GAME_QUALITY_DPR_STEPS[this._qualityLevel];
       console.warn(
         `[Game] Klatki po ~${median.toFixed(1)}ms (budżet ${GAME_PERF_BUDGET_MS}ms) - ` +
