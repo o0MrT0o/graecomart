@@ -1,0 +1,52 @@
+name: Build Android APK
+
+# Buduje NIEPODPISANY (debug) APK do testowania na telefonie - NIE jest to
+# build gotowy pod Google Play (ten wymaga podpisu kluczem deweloperskim,
+# patrz Krok 8 w README-ADS.md). Debug APK Androida podpisuje się sam
+# automatycznie kluczem testowym, więc nie trzeba tu żadnych sekretów.
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      # native-ads.bundle.js (jedyny plik z importem npm) + kopia gry do www/
+      # - dokładnie to, co lokalnie robi `npm run sync` przed `npx cap sync`.
+      - run: npm run build-ads
+      - run: npm run prepare-www
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      # Kopiuje www/ do android/app/src/main/assets/public i synchronizuje
+      # pluginy natywne (AdMob) - android/ jest już w repo (`cap add android`
+      # zrobione raz, na stałe), więc tu tylko sync, nie add.
+      - run: npx cap sync android
+
+      - name: Zbuduj debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eco-mart-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
