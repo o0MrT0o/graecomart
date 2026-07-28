@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check js/ship.js)",
+      "Bash(node --check js/ui.js)",
+      "Bash(npm run *)",
+      "Bash(node --check js/game.js)",
+      "Bash(node --check js/critters.js)",
+      "Bash(node --check js/main.js)",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

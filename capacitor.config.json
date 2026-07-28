@@ -1,0 +1,8 @@
+{
+  "appId": "com.ecomart.game",
+  "appName": "Eco Mart",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,
+          maximum-scale=1.0, user-scalable=no">
+    <title>Eco Mart - Arcade Idle</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="layer-background"></canvas>
+        <canvas id="layer-gameplay"></canvas>
+        <canvas id="layer-ui"></canvas>
+    </div>
+
+    <!-- Ekran ładowania - w HTML/CSS od razu, WIDOCZNY zanim jakikolwiek JS
+         zdąży się wykonać (żadnego migotania pustego/niedoładowanego
+         tła+dekoracji na starcie). main.js chowa go dopiero, gdy wszystkie
+         tekstury/sprite'y są gotowe (patrz Game.assetsReady/
+         PlayerController.spritesReady). -->
+    <div id="loading-screen">
+        <div class="loading-screen__content">
+            <div class="loading-screen__spinner"></div>
+            <div class="loading-screen__text">Ładowanie…</div>
+        </div>
+    </div>
+
+    <!-- KOLEJNOŚĆ WAŻNA — nie zmieniaj -->
+    <script src="js/eventbus.js"></script>
+    <script src="js/audio.js"></script>
+    <!-- Bundlowany osobno (esbuild) - JEDYNY plik w projekcie z importem
+         npm (@capacitor-community/admob). Nieobecny/nieszkodliwy podczas
+         zwykłego testowania w przeglądarce (Live Server) - patrz README-ADS.md.
+         Musi ładować się PRZED ads.js, który sprawdza czy window.NativeAds istnieje. -->
+    <script src="js/native-ads.bundle.js"></script>
+    <script src="js/ads.js"></script>
+    <script src="js/save.js"></script>
+    <script src="js/economy.js"></script>
+    <script src="js/sprites.js"></script>
+    <!-- Ambient particles per biom (czysto dekoracyjne, zero assetów) -
+         przed game.js, bo main.js rejestruje AmbientManager jako moduł. -->
+    <script src="js/ambient.js"></script>
+    <!-- Drobne stworzenia (motyle/świetliki/wrony) - ten sam wzorzec co
+         ambient.js, przed game.js bo main.js rejestruje CrittersManager. -->
+    <script src="js/critters.js"></script>
+    <script src="js/items.js"></script>
+    <!-- Minimapa (ulepszenie, dawniej Kompas Surowców) - po items.js, bo
+         czyta window.itemManager.items i ItemRenderer.getTypeMeta(). -->
+    <script src="js/minimap.js"></script>
+    <script src="js/gamefeel.js"></script>
+    <script src="js/machines.js"></script>
+    <script src="js/market.js"></script>
+    <script src="js/ship.js"></script>
+    <script src="js/stacking.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/tutorial.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

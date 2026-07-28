@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Eco Mart</string>
+    <string name="title_activity_main">Eco Mart</string>
+    <string name="package_name">com.ecomart.game</string>
+    <string name="custom_url_scheme">com.ecomart.game</string>
+    <string name="admob_app_id">ca-app-pub-7509994383850710~7159757522</string>
+</resources>

@@ -1,0 +1,181 @@
+'use strict';
+
+/**
+ * gamefeel.js
+ * ------------------------------------------------------------------------
+ * Efekty wizualne na warstwie UI canvas: cząsteczki, unoszące się teksty.
+ */
+
+const FEEL_PARTICLE_GRAVITY = 280;
+const FEEL_PARTICLE_DRAG = 0.96;
+const FEEL_POPUP_RISE_SPEED = 42;
+const FEEL_POPUP_FADE_MS = 900;
+
+class GameFeel {
+  constructor() {
+    this.drawLayer = 'gameplay';
+    this.particles = [];
+    this.popups = [];
+    this.shockwaves = [];
+
+    this._onParticles = (data) => this._spawnParticles(data);
+    this._onPopup = (data) => this._spawnPopup(data);
+    this._onShockwave = (data) => this._spawnShockwave(data);
+
+    Bus.subscribe(Events.FX_PARTICLES, this._onParticles);
+    Bus.subscribe(Events.FX_POPUP, this._onPopup);
+    if (Events.FX_SHOCKWAVE) Bus.subscribe(Events.FX_SHOCKWAVE, this._onShockwave);
+  }
+
+  _spawnParticles(data) {
+    const x = (data && data.x) || 0;
+    const y = (data && data.y) || 0;
+    const color = (data && data.color) || '#FFD700';
+    const count = Math.min(24, (data && data.count) || 6);
+
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 40 + Math.random() * 90;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 30,
+        life: 0.4 + Math.random() * 0.5,
+        maxLife: 0.4 + Math.random() * 0.5,
+        size: 3 + Math.random() * 4,
+        color
+      });
+    }
+  }
+
+  /**
+   * Ekspandujący, zanikający pierścień - wizualnie odrębny od zwykłych
+   * cząsteczek (drobne, rozlatujące się kropki), celowo zarezerwowany dla
+   * RZADKICH, ważnych momentów (np. ukończenie modułu statku), żeby nie
+   * spłaszczyć się do "kolejnego efektu" przez nadużycie przy byle okazji.
+   */
+  _spawnShockwave(data) {
+    this.shockwaves.push({
+      x: (data && data.x) || 0,
+      y: (data && data.y) || 0,
+      color: (data && data.color) || '#FFD700',
+      maxRadius: (data && data.maxRadius) || 100,
+      radius: 8,
+      life: 0.55,
+      maxLife: 0.55
+    });
+  }
+
+  _spawnPopup(data) {
+    if (!data || !data.text) return;
+    this.popups.push({
+      text: data.text,
+      x: typeof data.x === 'number' ? data.x : null,
+      y: typeof data.y === 'number' ? data.y : null,
+      color: data.color || '#FFD700',
+      duration: data.duration || FEEL_POPUP_FADE_MS,
+      age: 0,
+      scale: 0.6
+    });
+  }
+
+  update(delta) {
+    const sec = delta / 1000;
+
+    this.particles = this.particles.filter((p) => {
+      p.life -= sec;
+      if (p.life <= 0) return false;
+      p.vy += FEEL_PARTICLE_GRAVITY * sec;
+      p.vx *= FEEL_PARTICLE_DRAG;
+      p.vy *= FEEL_PARTICLE_DRAG;
+      p.x += p.vx * sec;
+      p.y += p.vy * sec;
+      return true;
+    });
+
+    this.popups = this.popups.filter((p) => {
+      p.age += delta;
+      if (p.age < 120) {
+        p.scale = Math.min(1.1, p.scale + sec * 4);
+      } else {
+        p.scale = Math.max(0.85, p.scale - sec * 0.5);
+      }
+      if (p.x !== null) p.y -= FEEL_POPUP_RISE_SPEED * sec;
+      return p.age < p.duration;
+    });
+
+    this.shockwaves = this.shockwaves.filter((s) => {
+      s.life -= sec;
+      if (s.life <= 0) return false;
+      const t = 1 - Math.max(0, s.life / s.maxLife);
+      s.radius = 8 + t * (s.maxRadius - 8);
+      return true;
+    });
+  }
+
+  draw(ctxBg, ctx, ctxUI) {
+    const target = ctx;
+
+    this.particles.forEach((p) => {
+      const alpha = Math.max(0, p.life / p.maxLife);
+      target.fillStyle = ItemRenderer.withAlpha(p.color, alpha * 0.85);
+      target.beginPath();
+      target.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+      target.fill();
+    });
+
+    this.shockwaves.forEach((s) => {
+      const t = Math.max(0, s.life / s.maxLife);
+      target.save();
+      target.globalAlpha = t * 0.75;
+      target.strokeStyle = s.color;
+      target.lineWidth = 2 + t * 4;
+      target.beginPath();
+      target.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+      target.stroke();
+      target.restore();
+    });
+
+    this.popups.forEach((p) => {
+      const t = p.age / p.duration;
+      const alpha = 1 - t;
+      // BUGFIX: ctx (=target) jest już przesunięty o -cameraX/-cameraY (ta
+      // metoda jest wołana WEWNĄTRZ tej translacji, patrz game.js draw()) -
+      // "środek ekranu" w WSPÓŁRZĘDNYCH ŚWIATA to więc cameraX/Y + połowa
+      // SZEROKOŚCI EKRANU, NIE sam canvas.width/2. Bez tego dodania popup bez
+      // jawnego x/y (np. ostrzeżenie o strefie w player.js, zanim to
+      // naprawiliśmy tam osobno) renderował się w STAŁYM punkcie świata - w
+      // praktyce gdziekolwiek akurat ten punkt wypadał względem kamery,
+      // kompletnie niezależnie od tego, gdzie w danej chwili jest gracz/kamera.
+      // window.innerWidth/innerHeight (logiczne piksele CSS), NIE
+      // canvas.width/height - od fixu DPR w game.js (resize()) to ostatnie to
+      // fizyczne piksele bufora (dpr-krotnie większe niż ekran).
+      const camX = window.game ? window.game.cameraX : 0;
+      const camY = window.game ? window.game.cameraY : 0;
+      const cx = p.x !== null ? p.x : camX + window.innerWidth / 2;
+      const cy = p.y !== null ? p.y - 20 : camY + window.innerHeight * 0.38;
+
+      target.save();
+      target.translate(cx, cy);
+      target.scale(p.scale, p.scale);
+      target.globalAlpha = alpha;
+      target.font = 'bold 22px "Segoe UI", Arial, sans-serif';
+      target.textAlign = 'center';
+      target.textBaseline = 'middle';
+      target.fillStyle = 'rgba(0,0,0,0.45)';
+      target.fillText(p.text, 2, 2);
+      target.fillStyle = p.color;
+      target.fillText(p.text, 0, 0);
+      target.restore();
+    });
+  }
+
+  destroy() {
+    Bus.unsubscribe(Events.FX_PARTICLES, this._onParticles);
+    Bus.unsubscribe(Events.FX_POPUP, this._onPopup);
+    if (Events.FX_SHOCKWAVE) Bus.unsubscribe(Events.FX_SHOCKWAVE, this._onShockwave);
+  }
+}
+
+window.GameFeel = GameFeel;

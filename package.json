@@ -1,0 +1,21 @@
+{
+  "name": "eco-mart-game",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Eco Mart - Arcade Idle. Pakowanie pod Google Play przez Capacitor.",
+  "scripts": {
+    "build-ads": "esbuild native-ads-src.js --bundle --outfile=js/native-ads.bundle.js --format=iife",
+    "prepare-www": "node scripts/copy-www.js",
+    "sync": "npm run build-ads && npm run prepare-www && npx cap sync",
+    "android": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.0.0",
+    "@capacitor-community/admob": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "esbuild": "^0.24.0"
+  }
+}

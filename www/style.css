@@ -1,0 +1,1122 @@
+/* ==========================================================================
+   Eco Mart — global UI theme
+   ========================================================================== */
+
+:root {
+    --ui-bg: rgba(15, 23, 20, 0.72);
+    --ui-bg-solid: rgba(22, 32, 28, 0.92);
+    --ui-border: rgba(255, 255, 255, 0.12);
+    --ui-text: #f4f7f5;
+    --ui-text-muted: rgba(244, 247, 245, 0.65);
+    --ui-accent: #66bb6a;
+    --ui-accent-hover: #7dd182;
+    --ui-gold: #ffd54f;
+    --ui-gold-glow: rgba(255, 213, 79, 0.35);
+    --ui-danger: #ef5350;
+    --ui-radius: 14px;
+    --ui-radius-sm: 10px;
+    --ui-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    --ui-font: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --ui-transition: 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #6fae5b;
+}
+
+body {
+    font-family: var(--ui-font);
+    color: var(--ui-text);
+    -webkit-font-smoothing: antialiased;
+}
+
+#game-container {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    isolation: isolate;
+}
+
+canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: transparent;
+}
+
+/* ==========================================================================
+   Ekran ładowania — widoczny od razu (HTML/CSS, zero zależności od JS),
+   chowany dopiero gdy wszystkie assety (tekstury terenu, dekoracje, sprite'y
+   gracza/przedmiotów/maszyn) są gotowe - patrz main.js.
+   ========================================================================== */
+
+#loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #6fae5b;
+    transition: opacity 0.4s ease;
+}
+
+#loading-screen.loading-screen--hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-screen__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+}
+
+.loading-screen__spinner {
+    width: 46px;
+    height: 46px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: loading-screen-spin 0.8s linear infinite;
+}
+
+@keyframes loading-screen-spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-screen__text {
+    color: #fff;
+    font-family: var(--ui-font);
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+#layer-background {
+    z-index: 1;
+    pointer-events: none;
+}
+
+#layer-gameplay {
+    z-index: 2;
+    pointer-events: auto;
+}
+
+/* BUGFIX: było "visibility: hidden" - ta warstwa NIE jest martwa/nieużywana:
+   compass.js (płatne ulepszenie "Kompas Surowców") rysuje swoją strzałkę
+   WYŁĄCZNIE tutaj, więc gracz, który je kupił, nigdy nie widział żadnego
+   efektu. Canvas jest czyszczony (clearRect) co klatkę w game.js draw(),
+   więc odkrycie tej warstwy nie odsłania żadnej "starej" zawartości. */
+#layer-ui {
+    z-index: 3;
+    pointer-events: none;
+}
+
+/* Joystick */
+#joystick-base {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+    display: none;
+}
+
+#joystick-knob {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   Game UI root
+   ========================================================================== */
+
+.game-ui {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    z-index: 10;
+    padding: calc(12px + var(--safe-top)) calc(12px + var(--safe-right)) 0 calc(12px + var(--safe-left));
+    display: block;
+}
+
+.game-ui * {
+    box-sizing: border-box;
+}
+
+.game-ui__top {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: stretch;
+    pointer-events: none;
+}
+
+/* Rząd 1: ŻYWE statystyki (saldo, stos) - to, co zmienia się co sekundę.
+   Osobno od celów niżej, bo to inna kategoria informacji: "gdzie jestem
+   teraz", nie "do czego dążę". */
+.game-ui__stats {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    pointer-events: none;
+}
+
+/* Rząd 2: CELE (wyzwanie dnia, następne odkrycie) - slim paski, nie grube
+   pigułki. BUGFIX layoutu: wcześniej wszystkie 4 widgety były grubymi
+   pigułkami (.ui-stack, ~64px każda) w JEDNYM zawijającym się rzędzie - na
+   telefonie zawijały się do 2-3 rzędów i zjadały ~190px (jakieś 25%
+   ekranu). Slim paski (~30px) + podział na kategorie odzyskują ~100px i
+   dają czytelną hierarchię. */
+.game-ui__goals {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: stretch;
+    max-width: min(340px, 78vw);
+    pointer-events: none;
+}
+
+.game-ui__toasts {
+    position: fixed;
+    top: calc(12px + var(--safe-top));
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    z-index: 200;
+    width: min(420px, 90vw);
+}
+
+.game-ui__fab-row {
+    position: fixed;
+    bottom: calc(16px + var(--safe-bottom));
+    right: calc(16px + var(--safe-right));
+    pointer-events: auto;
+    z-index: 110;
+}
+
+/* Przycisk "Wpłać" statku - NIE w rogu ekranu jak reszta fab-row, tylko
+   przyklejony do pozycji statku w świecie (left/top liczone co klatkę w
+   ui.js UIManager.update() z world->screen przez window.game.cameraX/Y).
+   transform centruje poziomo i "podwiesza" przycisk pod tym punktem (górna
+   krawędź na left/top, przycisk rośnie w dół). */
+.ui-ship-contribute {
+    position: fixed;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, 0);
+    z-index: 90;
+    animation: ui-ship-contribute-pop 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+@keyframes ui-ship-contribute-pop {
+    from { transform: translate(-50%, 0) scale(0.8); opacity: 0; }
+    to { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+
+/* BUGFIX ("minimapa zasłaniana"): na szerokim ekranie 420px/90vw wyśrodkowany
+   toast nigdy nie sięga rogów, ale na wąskim telefonie (90vw) zostaje ledwie
+   kilkanaście px z każdej strony - prosto w górny-prawy róg, gdzie teraz stoi
+   minimapa (patrz minimap.js). Zamiast węższego paska wciąż wyśrodkowanego
+   względem CAŁEGO ekranu (co i tak wchodziłoby w zarezerwowany róg, bo
+   rezerwacja jest tylko po PRAWEJ), lewa/prawa krawędź same wyznaczają
+   dostępny pas, a odziedziczone align-items:center centruje W NIM.
+   140px ~= 2×MINIMAP_RADIUS + 2×MINIMAP_MARGIN z minimap.js + zapas. */
+.game-ui--narrow .game-ui__toasts {
+    left: calc(12px + var(--safe-left));
+    right: calc(140px + var(--safe-right));
+    width: auto;
+    transform: none;
+}
+
+/* BUGFIX ("pasek za długi, nachodzi na minimapę"): ten sam problem co
+   toasty wyżej - "Zbierz Nx Śmieci (.../..)" / "Strefa Bagienna — jeszcze
+   Ns$" to długie teksty, a 78vw na wąskim telefonie i tak sięgał w
+   zarezerwowany górny-prawy róg. .ui-goal__text ma już ellipsis (patrz
+   niżej), ale kontener był na tyle szeroki, że obcinanie nigdy nie
+   wchodziło w grę zanim pasek zdążył nachodzić na radar. */
+.game-ui--narrow .game-ui__goals {
+    max-width: calc(100vw - 140px - 24px - var(--safe-left) - var(--safe-right));
+}
+
+.game-ui--narrow .game-ui__fab-row {
+    bottom: calc(12px + var(--safe-bottom));
+    left: calc(12px + var(--safe-left));
+    right: auto;
+}
+
+/* ==========================================================================
+   Money & stack displays
+   ========================================================================== */
+
+.ui-money,
+.ui-stack {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    position: relative;
+    overflow: hidden;
+    background: var(--ui-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-sm);
+    box-shadow: var(--ui-shadow);
+    pointer-events: auto;
+    transition: transform var(--ui-transition), box-shadow var(--ui-transition);
+}
+
+/* Ikony to teraz SVG (patrz ui.js), nie emoji - flex zamiast font-size,
+   bo <svg> nie skaluje się przez font-size jak znak emoji. BUGFIX
+   spójności: saldo/stos zostały na emoji, podczas gdy nowsze widgety
+   (wyzwanie, odkrycie) dostały SVG - HUD dosłownie mieszał dwa języki
+   wizualne obok siebie. */
+.ui-money__icon,
+.ui-stack__icon {
+    display: flex;
+    align-items: center;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.ui-money__content,
+.ui-stack__content {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+}
+
+.ui-money__value {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--ui-gold);
+    text-shadow: 0 0 12px var(--ui-gold-glow);
+    font-variant-numeric: tabular-nums;
+}
+
+.ui-stack__value {
+    font-size: 1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Pasek zapełnienia jako cienka linia PRZY DOLNEJ KRAWĘDZI pigułki
+   (position:absolute + overflow:hidden na rodzicu) - zamiast osobnego
+   elementu w kolumnie, który dokładał ~10px wysokości każdej pigułce. */
+.ui-stack__bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+}
+
+.ui-stack__fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--ui-accent), #a5d6a7);
+    transition: width 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.ui-stack__fill--full {
+    background: linear-gradient(90deg, #ffa726, #ff7043);
+}
+
+/* --- Slim paski celów (wyzwanie dnia / następne odkrycie) --------------- */
+
+.ui-goal {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    background: rgba(15, 23, 20, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    pointer-events: auto;
+    transition: background var(--ui-transition), border-color var(--ui-transition);
+}
+
+.ui-goal__icon {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    opacity: 0.9;
+}
+
+.ui-goal__text {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--ui-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ui-goal__bar {
+    width: 44px;
+    height: 4px;
+    flex-shrink: 0;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.ui-goal__fill {
+    height: 100%;
+    width: 0%;
+    background: var(--ui-gold);
+    border-radius: 99px;
+    transition: width 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+/* Cel ukończony/gotowy do odebrania - wyraźnie zielony, żeby "odbierz!"
+   rzucało się w oczy w slim pasku bez powiększania go. */
+.ui-goal--ready {
+    background: rgba(46, 125, 50, 0.55);
+    border-color: rgba(102, 187, 106, 0.5);
+    cursor: pointer;
+}
+
+.ui-goal--ready .ui-goal__text {
+    color: #fff;
+}
+
+.ui-goal--ready .ui-goal__fill {
+    background: var(--ui-accent);
+}
+
+.ui-money--pulse {
+    animation: ui-money-pulse 0.45s ease-out;
+}
+
+@keyframes ui-money-pulse {
+    0% { transform: scale(1); box-shadow: var(--ui-shadow); }
+    40% { transform: scale(1.04); box-shadow: 0 8px 32px var(--ui-gold-glow); }
+    100% { transform: scale(1); box-shadow: var(--ui-shadow); }
+}
+
+/* ==========================================================================
+   Panels
+   ========================================================================== */
+
+.ui-panel {
+    background: var(--ui-bg-solid);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    box-shadow: var(--ui-shadow);
+    overflow: hidden;
+    transition: max-height 0.35s ease, opacity 0.25s ease;
+}
+
+.ui-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--ui-border);
+    cursor: default;
+}
+
+.ui-panel__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.ui-panel__icon {
+    font-size: 1rem;
+}
+
+.ui-panel__toggle {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: var(--ui-text);
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s, transform 0.3s;
+    pointer-events: auto;
+}
+
+.ui-panel__toggle:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.ui-panel--collapsed .ui-panel__body {
+    display: none;
+}
+
+.ui-panel--collapsed .ui-panel__toggle {
+    transform: rotate(-90deg);
+}
+
+.ui-panel__body {
+    padding: 12px;
+}
+
+/* ==========================================================================
+   Shop — bottom sheet (domyślnie ukryty, otwierany przyciskiem 🛒)
+   ========================================================================== */
+
+.ui-shop {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    pointer-events: none;
+}
+
+.ui-shop-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 14, 11, 0.55);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.ui-shop-sheet {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translate(-50%, 105%);
+    width: min(440px, calc(100vw - 24px));
+    max-height: min(72vh, 640px);
+    background: var(--ui-bg-solid);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid var(--ui-border);
+    border-bottom: none;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -16px 44px rgba(0, 0, 0, 0.45);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    padding-bottom: var(--safe-bottom);
+}
+
+.ui-shop--open {
+    pointer-events: auto;
+}
+
+.ui-shop--open .ui-shop-backdrop {
+    opacity: 1;
+}
+
+.ui-shop--open .ui-shop-sheet {
+    transform: translate(-50%, 0);
+}
+
+.ui-shop-sheet__handle {
+    width: 40px;
+    height: 4px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.22);
+    margin: 10px auto 2px;
+    flex-shrink: 0;
+}
+
+.ui-shop-sheet__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 18px 14px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--ui-border);
+}
+
+.ui-shop-sheet__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+
+.ui-shop-sheet__close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--ui-text);
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    pointer-events: auto;
+}
+
+.ui-shop-sheet__close:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.ui-shop-sheet__close:active {
+    transform: scale(0.92);
+}
+
+.ui-shop-sheet__body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: 14px 16px calc(18px + var(--safe-bottom));
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.ui-shop-section__title {
+    margin: 0 0 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ui-text-muted);
+}
+
+.ui-shop-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ui-shop-item {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 11px;
+    border-radius: var(--ui-radius-sm);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.ui-shop-item--afford {
+    border-color: rgba(102, 187, 106, 0.45);
+    background: rgba(102, 187, 106, 0.08);
+}
+
+.ui-shop-item--maxed {
+    opacity: 0.6;
+}
+
+.ui-shop-item__icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+    flex-shrink: 0;
+}
+
+.ui-shop-item__info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.ui-shop-item__name {
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.ui-shop-item__desc {
+    font-size: 0.72rem;
+    color: var(--ui-text-muted);
+    line-height: 1.3;
+}
+
+.ui-shop-item__progress {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 3px;
+}
+
+.ui-shop-item__dots {
+    display: flex;
+    gap: 3px;
+}
+
+.ui-shop-item__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.ui-shop-item__dot--filled {
+    background: var(--ui-accent);
+}
+
+.ui-shop-item__level-text {
+    font-size: 0.64rem;
+    color: var(--ui-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Cienki pasek postępu osiągnięcia (AchievementsPanel) - alternatywa dla
+   .ui-shop-item__dots (te są dla dyskretnych poziomów ulepszeń; osiągnięcia
+   mają ciągły postęp X/próg, więc pasek czyta się naturalniej). */
+.ui-shop-item__bar {
+    flex: 1;
+    height: 5px;
+    min-width: 40px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.ui-shop-item__bar-fill {
+    height: 100%;
+    background: var(--ui-gold);
+    border-radius: 99px;
+    transition: width 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+/* Znacznik zdobytego osiągnięcia (kolumna akcji) - zielony ptaszek zamiast
+   przycisku/ceny (osiągnięć się nie "kupuje"). */
+.ui-shop-item__done {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--ui-accent-hover);
+}
+
+.ui-shop-item__maxed {
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(255, 213, 79, 0.15);
+    color: var(--ui-gold);
+    white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ui-shop-sheet,
+    .ui-shop-backdrop {
+        transition-duration: 0.01ms;
+    }
+}
+
+/* ==========================================================================
+   Samouczek - "okienko" (nagłówek + treść), NIE modal na pełny ekran (bez
+   backdropu przechwytującego dotyk) - kroki proszą o realne akcje na mapie
+   (np. "przeciągnij, żeby się poruszać"), więc nic nie może blokować reszty
+   ekranu. Wcześniej to była jedna wąska pigułka z samym tekstem - stąd
+   osobne klasy zamiast dawnego inline-style, żeby dać właściwą ramkę okna
+   (nagłówek/licznik kroku/zamknij) jak reszta paneli w grze.
+   ========================================================================== */
+
+.tutorial-window {
+    position: fixed;
+    left: 50%;
+    bottom: calc(92px + var(--safe-bottom));
+    transform: translateX(-50%);
+    width: min(360px, 88vw);
+    background: var(--ui-bg-solid);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    box-shadow: var(--ui-shadow);
+    z-index: 150;
+    pointer-events: auto;
+    overflow: hidden;
+    animation: tutorial-window-pop 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+@keyframes tutorial-window-pop {
+    from { transform: translateX(-50%) translateY(10px) scale(0.94); opacity: 0; }
+    to { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+}
+
+.tutorial-window__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 8px 8px 14px;
+    border-bottom: 1px solid var(--ui-border);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.tutorial-window__title {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ui-text-muted);
+}
+
+.tutorial-window__step {
+    font-variant-numeric: tabular-nums;
+    color: var(--ui-accent-hover);
+}
+
+.tutorial-window__close {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--ui-text);
+    font-size: 0.72rem;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.tutorial-window__close:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.tutorial-window__close:active {
+    transform: scale(0.92);
+}
+
+.tutorial-window__body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    transition: background 0.3s;
+}
+
+.tutorial-window__body--success {
+    background: rgba(102, 187, 106, 0.22);
+}
+
+.tutorial-window__icon {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.tutorial-window__text {
+    flex: 1;
+    font-size: 0.86rem;
+    line-height: 1.4;
+}
+
+/* ==========================================================================
+   Ekran wygranej (Faza 3) - wyśrodkowana karta, ten sam język co sklep
+   ========================================================================== */
+
+.ui-victory {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    pointer-events: none;
+}
+
+.ui-victory-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(4, 10, 8, 0.72);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.ui-victory-card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.85);
+    width: min(360px, calc(100vw - 40px));
+    background: var(--ui-bg-solid);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    padding: 28px 24px 22px;
+    text-align: center;
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.ui-victory--open {
+    pointer-events: auto;
+}
+
+.ui-victory--open .ui-victory-backdrop {
+    opacity: 1;
+}
+
+.ui-victory--open .ui-victory-card {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+.ui-victory-badge {
+    font-size: 2.6rem;
+    margin-bottom: 6px;
+}
+
+.ui-victory-title {
+    margin: 0 0 10px;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--ui-gold);
+}
+
+.ui-victory-text {
+    margin: 0 0 16px;
+    font-size: 0.85rem;
+    color: var(--ui-text-muted);
+    line-height: 1.4;
+}
+
+.ui-victory-modules {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    font-size: 1.4rem;
+    margin-bottom: 20px;
+}
+
+.ui-victory-close {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--ui-radius-sm);
+    border: none;
+    background: var(--ui-accent);
+    color: #0d1a12;
+    font-weight: 800;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: filter 0.2s, transform 0.15s;
+}
+
+.ui-victory-close:hover {
+    filter: brightness(1.08);
+}
+
+.ui-victory-close:active {
+    transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ui-victory-card,
+    .ui-victory-backdrop {
+        transition-duration: 0.01ms;
+    }
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.ui-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.2s, box-shadow 0.2s, opacity 0.2s;
+    pointer-events: auto;
+    white-space: nowrap;
+}
+
+.ui-btn:active:not(:disabled) {
+    transform: scale(0.96);
+}
+
+.ui-btn--primary {
+    background: linear-gradient(135deg, var(--ui-accent), #43a047);
+    color: #0d1a12;
+    box-shadow: 0 4px 12px rgba(102, 187, 106, 0.35);
+}
+
+.ui-btn--primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--ui-accent-hover), #4caf50);
+}
+
+.ui-btn--accent {
+    background: linear-gradient(135deg, var(--ui-gold), #ffb300);
+    color: #1a1400;
+    box-shadow: 0 4px 12px rgba(255, 179, 0, 0.3);
+}
+
+.ui-btn--accent:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+.ui-btn--ghost {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--ui-text-muted);
+    border: 1px solid var(--ui-border);
+}
+
+.ui-btn--fab {
+    padding: 12px 18px;
+    border-radius: 999px;
+    background: var(--ui-bg-solid);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow);
+    font-size: 0.9rem;
+}
+
+.ui-btn--fab:hover {
+    background: rgba(30, 44, 38, 0.95);
+    transform: translateY(-2px);
+}
+
+.ui-btn--disabled,
+.ui-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.ui-btn__icon {
+    font-size: 1.1em;
+    line-height: 1;
+}
+
+/* ==========================================================================
+   Toasts
+   ========================================================================== */
+
+.ui-toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    background: var(--ui-bg-solid);
+    border: 1px solid var(--ui-border);
+    border-radius: 999px;
+    box-shadow: var(--ui-shadow);
+    font-size: 0.85rem;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(-12px) scale(0.92);
+    transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.ui-toast--visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.ui-toast--exit {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+}
+
+.ui-toast--success {
+    border-color: rgba(102, 187, 106, 0.45);
+}
+
+.ui-toast--info {
+    border-color: rgba(66, 165, 245, 0.4);
+}
+
+.ui-toast--warning {
+    border-color: rgba(255, 167, 38, 0.45);
+}
+
+.ui-toast__icon {
+    font-size: 1.1rem;
+}
+
+/* ==========================================================================
+   Tooltip
+   ========================================================================== */
+
+.ui-tooltip {
+    position: fixed;
+    z-index: 300;
+    padding: 6px 12px;
+    background: rgba(10, 16, 14, 0.92);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ui-text);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    max-width: 240px;
+    box-shadow: var(--ui-shadow);
+}
+
+.ui-tooltip--visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Legacy HUD selectors (kept for compatibility) */
+#hud, #money-display, #stack-display, #notification {
+    display: none !important;
+}
