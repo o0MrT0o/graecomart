@@ -563,9 +563,27 @@ class Game {
    * Rysuje wszystkie 3 warstwy: tło -> gameplay (z screen shake) -> UI.
    */
   draw() {
-    this.ctxBackground.clearRect(0, 0, this.canvasBackground.width, this.canvasBackground.height);
-    this.ctxGameplay.clearRect(0, 0, this.canvasGameplay.width, this.canvasGameplay.height);
-    this.ctxUI.clearRect(0, 0, this.canvasUI.width, this.canvasUI.height);
+    // BUGFIX ("czarny ekran"/"rozmazana postać" przy niskiej jakości): te trzy
+    // clearRect wołały canvas.width/height - FIZYCZNE piksele bufora
+    // (innerWidth*dpr, patrz resize()) - na kontekście, który ma już
+    // ustawiony setTransform(dpr,...). Argumenty clearRect() są interpretowane
+    // W BIEŻĄCEJ przestrzeni transformacji, więc dostawały PRZESKALOWANE
+    // DRUGI RAZ przez dpr - realnie czyściły obszar o boku dpr-krotnie
+    // mniejszym niż cały bufor, nie cały bufor.
+    // Przy dpr >= 1 (jedyne wartości sprzed rozszerzenia GAME_QUALITY_DPR_STEPS
+    // poniżej 1.0) to nadmiarowe czyszczenie - niegroźne, bo obetnie się do
+    // granic canvasu. Przy dpr < 1 (nowe kroki 0.5/0.65/0.8, patrz
+    // GAME_QUALITY_DPR_STEPS) to NIEDOMIAROWE czyszczenie: czyści tylko
+    // ułamek `dpr` bufora w każdej osi, reszta ZOSTAJE - a półprzezroczyste
+    // warstwy (winieta, poświaty) domalowywane na to co klatkę zbijają się w
+    // nieprzezroczystą czerń w kilka klatek, i zostawiają "duchy" ruszających
+    // się sprite'ów tam, gdzie clearRect w ogóle nie sięgał.
+    // Naprawa: te same window.innerWidth/innerHeight (logiczne piksele CSS),
+    // których cała reszta pliku już używa (patrz komentarz w resize()) -
+    // transform przeskaluje je DOKŁADNIE RAZ, tak jak powinien.
+    this.ctxBackground.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    this.ctxGameplay.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    this.ctxUI.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
     this._updateCamera();
 
