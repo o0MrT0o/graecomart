@@ -772,6 +772,19 @@ canvas {
     transition: width 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 
+/* Podgląd skina (SkinsPanel, ui.js) - mały <canvas> z rzeczywistą postacią.
+   BUGFIX: bez tego dziedziczył ogólną regułę `canvas { position:absolute;
+   inset:0; width:100%; height:100% }` (przeznaczoną dla #layer-gameplay) i
+   rozciągał się na CAŁY ekran zamiast zostać małą ikonką w kółku. */
+.ui-shop-item__skin-preview {
+    position: static;
+    inset: auto;
+    width: 40px;
+    height: 40px;
+    display: block;
+    border-radius: 50%;
+}
+
 /* Znacznik zdobytego osiągnięcia (kolumna akcji) - zielony ptaszek zamiast
    przycisku/ceny (osiągnięć się nie "kupuje"). */
 .ui-shop-item__done {

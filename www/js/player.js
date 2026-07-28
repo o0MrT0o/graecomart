@@ -254,6 +254,13 @@ class PlayerController {
       resolveWalkReady();
     });
 
+    // --- Skiny postaci (economy.js: PLAYER_SKINS/selectedSkin) - przebarwione
+    // kopie sprite'a upieczone RAZ na skin, dopiero gdy oryginalne obrazki
+    // skończą się wczytywać (patrz _bakeSkinTints) - ten sam duch "upiecz raz,
+    // blituj wiele razy" co _bakeWorldBackground/_bakeCloudTexture w game.js.
+    this._tintedSprites = {}; // { skinId: { static: canvas|null, walk: canvas|null } }
+    this.spritesReady.then(() => this._bakeSkinTints());
+
     // --- WSAD / strzalki - fallback do testu w przegladarce desktopowej -----
     this._keys = { up: false, down: false, left: false, right: false };
     this._setupKeyboard();
@@ -1240,16 +1247,23 @@ class PlayerController {
    */
   _drawSprite(ctx2) {
     const useWalk = this.isMoving && this._walkLoaded;
-    const img = useWalk ? this._walkImg : this._spriteImg;
+    // Skin wybrany w economy.js (jeśli inny niż domyślny I jego przebarwiona
+    // kopia zdążyła się już upiec - patrz _bakeSkinTints) podmienia obrazek
+    // źródłowy na tintowaną wersję. Sam odczyt geometrii (sx/sy/sw/sh) w
+    // ogóle się nie zmienia - tintowany canvas ma DOKŁADNIE te same wymiary
+    // co oryginał (patrz _bakeTintedCanvas), więc kadrowanie klatek chodu
+    // działa identycznie na obu.
+    const rawImg = useWalk ? this._walkImg : this._spriteImg;
+    const img = this._getSkinImage(useWalk) || rawImg;
 
     let sx = 0;
     let sy = 0;
-    let sw = img.naturalWidth || 66;
-    let sh = img.naturalHeight || 92;
+    let sw = rawImg.naturalWidth || 66;
+    let sh = rawImg.naturalHeight || 92;
 
     if (useWalk) {
-      sw = img.naturalWidth / PLAYER_WALK_FRAME_COUNT;
-      sh = img.naturalHeight;
+      sw = rawImg.naturalWidth / PLAYER_WALK_FRAME_COUNT;
+      sh = rawImg.naturalHeight;
       sx = this._currentWalkFrameIndex() * sw;
     }
 
@@ -1264,6 +1278,68 @@ class PlayerController {
     ctx2.drawImage(img, sx, sy, sw, sh, -w / 2, footY - h, w, h);
   }
 
+  /** Obrazek (tintowany canvas albo null) do użycia w _drawSprite() dla
+   * BIEŻĄCEGO wybranego skina - null = brak/domyślny, wywołujący sam
+   * wraca wtedy do surowego sprite'a. */
+  _getSkinImage(useWalk) {
+    const eco = window.economyManager;
+    const skinId = (eco && eco.selectedSkin) || 'default';
+    if (skinId === 'default') return null;
+    const baked = this._tintedSprites[skinId];
+    if (!baked) return null;
+    return useWalk ? baked.walk : baked.static;
+  }
+
+  /**
+   * Piecze RAZ (po wczytaniu sprite'ów) przebarwioną kopię statycznego
+   * obrazka I spritesheeta chodu dla KAŻDEGO skina z PLAYER_SKINS oprócz
+   * 'default' (tint:null - nic do przebarwienia, oryginał już jest tym
+   * skinem). Bez tego przebarwianie musiałoby się liczyć co klatkę - dla
+   * postaci widocznej bez przerwy 60x/s to byłby zauważalny koszt za darmo.
+   */
+  _bakeSkinTints() {
+    const skins = window.PLAYER_SKINS || [];
+    skins.forEach((skin) => {
+      if (!skin.tint) return; // 'default' - nic do zrobienia
+      this._tintedSprites[skin.id] = {
+        static: this._spriteLoaded ? this._bakeTintedCanvas(this._spriteImg, skin.tint) : null,
+        walk: this._walkLoaded ? this._bakeTintedCanvas(this._walkImg, skin.tint) : null
+      };
+    });
+  }
+
+  /**
+   * Przebarwia CAŁY obrazek jednolitym kolorem (żeby zadziałało identycznie
+   * na spritesheecie chodu jak i na pojedynczym statycznym sprite) metodą
+   * "source-atop": najpierw kopiujemy oryginał 1:1 (zachowuje przezroczystość
+   * PIKSEL PO PIKSELU - klatki spritesheeta zostają rozdzielone), potem
+   * dokładamy półprzezroczystą warstwę koloru, którą 'source-atop' ogranicza
+   * WYŁĄCZNIE do już narysowanych (nieprzezroczystych) pikseli. Alpha 0.5 -
+   * na tyle mocno, żeby kolor był rozpoznawalny, na tyle słabo, żeby oryginalne
+   * cieniowanie/highlights sprite'a nadal przebijały (płaski, w pełni kryjący
+   * kolor wyglądałby jak naklejka, nie jak przefarbowana tkanina).
+   */
+  _bakeTintedCanvas(sourceImg, tintColor) {
+    const w = sourceImg.naturalWidth;
+    const h = sourceImg.naturalHeight;
+    if (!w || !h) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const tctx = canvas.getContext('2d');
+
+    tctx.drawImage(sourceImg, 0, 0, w, h);
+    tctx.globalCompositeOperation = 'source-atop';
+    tctx.globalAlpha = 0.5;
+    tctx.fillStyle = tintColor;
+    tctx.fillRect(0, 0, w, h);
+    tctx.globalCompositeOperation = 'source-over';
+    tctx.globalAlpha = 1;
+
+    return canvas;
+  }
+
   /**
    * Oryginalne rysowanie proceduralne (zaokraglony prostokat + glowa + oczy).
    * Uzywane dopoki assets/player.png sie nie wczyta albo gdyby wczytanie
@@ -1273,7 +1349,11 @@ class PlayerController {
     // Cialo (zaokraglony prostokat) - Squash & Stretch.
     const w = (this.radius * 1.4) / this.bodySquash;
     const h = this.radius * 2 * this.bodySquash;
-    ctx2.fillStyle = '#5C85D6'; // niebieski kombinezon
+    // Skin (economy.js) dziala TEZ tutaj, nie tylko na sprite (_bakeSkinTints) -
+    // gdyby oba obrazki nigdy sie nie wczytaly, gracz i tak widzi wybrany kolor.
+    const eco = window.economyManager;
+    const skin = eco && window.PLAYER_SKINS && window.PLAYER_SKINS.find((s) => s.id === eco.selectedSkin);
+    ctx2.fillStyle = (skin && skin.tint) || '#5C85D6'; // niebieski kombinezon domyslnie
     this._roundRect(ctx2, -w / 2, -h / 2, w, h, 8);
     ctx2.fill();
 

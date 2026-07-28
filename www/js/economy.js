@@ -628,6 +628,31 @@ const PLANET_MODIFIERS = [
   }
 ];
 
+// --- Skiny postaci (kosmetyka za Rdzenie) ------------------------------------
+// Czysto kosmetyczne - ZERO wpływu na rozgrywkę, tylko kolor kombinezonu
+// gracza. Trwałe jak PRESTIGE_UPGRADES (przeżywają prestiż, nigdy nie
+// zerowane) i płatne tą samą walutą - to kolejny sposób na wydanie Rdzeni,
+// obok samych ulepszeń.
+//
+// `tint` to jedyne pole, które NIE jest tu tylko danymi UI - player.js czyta
+// je BEZPOŚREDNIO (window.PLAYER_SKINS, patrz eksport na dole pliku) do
+// przebarwienia sprite'a (_bakeSkinTints). Jeden katalog zamiast dwóch kopii
+// (tu + w player.js), żeby cena/nazwa/kolor NIGDY się nie rozjechały -
+// wyjątek od "brak współdzielonych utili" tej samej klasy co odczyt
+// window.economyManager przez inne moduły (to dane, nie funkcja pomocnicza).
+// `tint: null` = domyślny skin, bez przebarwienia (oryginalny sprite).
+const PLAYER_SKINS = [
+  { id: 'default', name: 'Domyślny Kombinezon', desc: 'Klasyczny wygląd - bez dopłaty', tint: null, cost: 0 },
+  { id: 'verde', name: 'Zielony Kombinezon', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#66BB6A', cost: 2 },
+  { id: 'crimson', name: 'Czerwony Kombinezon', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#EF5350', cost: 2 },
+  { id: 'amber', name: 'Bursztynowy Kombinezon', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#FFB74D', cost: 4 },
+  // Barwy Kryształowej Grani (patrz _bakeCrystalGroundTexture w game.js) -
+  // nagroda-nawiązanie do najtrudniej dostępnej strefy, nie wymaga jednak
+  // faktycznego jej odblokowania (kupowana wyłącznie za Rdzenie, jak reszta).
+  { id: 'crystal', name: 'Kryształowy Kombinezon', desc: 'W barwach Kryształowej Grani', tint: '#B388FF', cost: 8 },
+  { id: 'gold', name: 'Złoty Kombinezon', desc: 'Dla tych, którzy zebrali sporo Rdzeni', tint: '#FFD54F', cost: 15 }
+];
+
 class EconomyManager {
   constructor(game) {
     this.game = game || null;
@@ -728,6 +753,14 @@ class EconomyManager {
     // jest anty-zabawą). Zapisywane jako tablica (Set nie serializuje się
     // wprost do JSON).
     this.unlockedIds = new Set();
+
+    // Skiny postaci (patrz PLAYER_SKINS) - TEŻ meta-postęp, NIE zerowane
+    // prestiżem, ten sam powód co unlockedIds wyżej: kosmetyczny wybór
+    // gracza to nie stan pojedynczego przebiegu. 'default' zawsze odblokowany
+    // (jak łąka+recykler w unlockedIds) - nikt nie zaczyna bez działającego
+    // wyglądu postaci.
+    this.selectedSkin = 'default';
+    this.unlockedSkins = new Set(['default']);
 
     // Liczniki LIFETIME dla osiągnięć (patrz ACHIEVEMENTS) - meta-postęp,
     // NIE zerowane prestiżem (jak unlockedIds/cores), inaczej "zbierz 1000
@@ -1475,6 +1508,48 @@ class EconomyManager {
     return true;
   }
 
+  /** Katalog skinów do UI (patrz PLAYER_SKINS) - ten sam kształt danych co
+   * getCoreShopCatalog(), tylko z unlocked/selected zamiast level/maxed. */
+  getSkinCatalog() {
+    return PLAYER_SKINS.map((def) => ({
+      id: def.id,
+      name: def.name,
+      desc: def.desc,
+      tint: def.tint,
+      cost: def.cost,
+      unlocked: this.unlockedSkins.has(def.id),
+      selected: this.selectedSkin === def.id
+    }));
+  }
+
+  /** Kupuje i OD RAZU zakłada skin (nikt nie kupuje kosmetyki, żeby jej NIE
+   * nosić - osobne "kup" + "wybierz" byłoby zbędnym dodatkowym klikiem). */
+  buySkin(skinId) {
+    const def = PLAYER_SKINS.find((s) => s.id === skinId);
+    if (!def) return false;
+    if (this.unlockedSkins.has(skinId)) return false;
+    if (this.cores < def.cost) return false;
+
+    this.cores -= def.cost;
+    this.unlockedSkins.add(skinId);
+    this.selectedSkin = skinId;
+
+    Bus.publish(Events.FX_POPUP, {
+      text: `${def.name} odblokowany!`,
+      duration: 1200,
+      color: '#81D4FA'
+    });
+    return true;
+  }
+
+  /** Zakłada JUŻ odblokowany skin - osobna metoda od buySkin() (ten sam
+   * podział co buyUpgrade() vs zwykłe czytanie upgradeLevels gdzie indziej). */
+  selectSkin(skinId) {
+    if (!this.unlockedSkins.has(skinId)) return false;
+    this.selectedSkin = skinId;
+    return true;
+  }
+
   /**
    * Odlot na nową planetę - JEDYNY sposób na zdobycie Rdzeni. Zeruje CAŁY
    * przebieg (pieniądze, zwykłe SHOP_UPGRADES + ich efekty w innych modułach,
@@ -1845,6 +1920,16 @@ class EconomyManager {
     if (Array.isArray(data.unlockedIds)) {
       this.unlockedIds = new Set(data.unlockedIds);
     }
+    // Skiny postaci (meta, trwałe jak unlockedIds) - 'default' zostaje w
+    // Secie nawet gdy brak w zapisie (Set() startuje z nim w konstruktorze,
+    // .add poniżej tylko dokłada resztę), więc stary zapis sprzed tej
+    // funkcji nie zostawia gracza bez ŻADNEGO odblokowanego skina.
+    if (Array.isArray(data.unlockedSkins)) {
+      data.unlockedSkins.forEach((id) => this.unlockedSkins.add(id));
+    }
+    if (typeof data.selectedSkin === 'string' && this.unlockedSkins.has(data.selectedSkin)) {
+      this.selectedSkin = data.selectedSkin;
+    }
     // Osiągnięcia + liczniki lifetime (meta, trwałe jak unlockedIds). Merge
     // per-klucz (nie podmiana całego obiektu), żeby zapis SPRZED dodania
     // jakiegoś licznika nie zerował go do undefined - brakujące klucze
@@ -1896,7 +1981,9 @@ class EconomyManager {
       tutorialDismissed: this.tutorialDismissed,
       unlockedIds: Array.from(this.unlockedIds),
       stats: { ...this.stats },
-      unlockedAchievements: Array.from(this.unlockedAchievements)
+      unlockedAchievements: Array.from(this.unlockedAchievements),
+      selectedSkin: this.selectedSkin,
+      unlockedSkins: Array.from(this.unlockedSkins)
     };
   }
 
@@ -1913,6 +2000,9 @@ class EconomyManager {
 window.EconomyManager = EconomyManager;
 window.SHOP_UPGRADES = SHOP_UPGRADES;
 window.ACHIEVEMENTS = ACHIEVEMENTS;
+// Czytane wprost przez player.js (_bakeSkinTints) - patrz komentarz przy
+// PLAYER_SKINS wyżej.
+window.PLAYER_SKINS = PLAYER_SKINS;
 // Do porównania w ui.js (_onPrestigeDone) - żeby dało się rozpoznać moment
 // odblokowania drugiego poziomu ulepszeń bez duplikowania liczby "5" w
 // dwóch plikach.

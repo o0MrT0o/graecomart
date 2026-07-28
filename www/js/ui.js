@@ -48,6 +48,7 @@ const PARTY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 
 const WRENCH_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B0BEC5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 4.5a4.5 4.5 0 0 0-5.9 5L4 15l2 2 5.5-5.6a4.5 4.5 0 0 0 5-5.9l-2.9 2.9-2-2Z"/></svg>';
 const PLANET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B39DDB" stroke-width="1.8"><circle cx="11" cy="12" r="6" fill="#B39DDB" fill-opacity="0.25"/><ellipse cx="11" cy="12" rx="10" ry="3.2" transform="rotate(-18 11 12)"/></svg>';
 const FLAME_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF7043" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c1 1 1.5 2.3 1.5 3.5A4.5 4.5 0 0 1 12 18a5.5 5.5 0 0 1-5.5-5.5C6.5 8 9 6 12 2Z"/></svg>';
+const SHIRT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#90CAF9" stroke-width="1.8" stroke-linejoin="round"><path d="M8 3 4 6l2 3 2-1.2V21h8V7.8L18 9l2-3-4-3-2 2h-4Z" fill="#90CAF9" fill-opacity="0.2"/></svg>';
 
 // --- Bazowy komponent -------------------------------------------------------
 
@@ -1097,9 +1098,10 @@ class SettingsPanel {
    * nie potrzebuje (dawniej synchronizował ikonę osobnego przycisku Wycisz
    * w fabRow - ten przycisk usunięty, patrz komentarz w UIManager._render:
    * dźwięk włącza/wyłącza się TYLKO stąd, z Menu, nie z ekranu gry). */
-  constructor(onChange, onOpenAchievements) {
+  constructor(onChange, onOpenAchievements, onOpenSkins) {
     this.onChange = onChange;
     this.onOpenAchievements = onOpenAchievements;
+    this.onOpenSkins = onOpenSkins;
     this.el = null;
     this.bodyEl = null;
     this.isOpen = false;
@@ -1169,7 +1171,7 @@ class SettingsPanel {
   refresh() {
     if (!this.bodyEl) return;
     this.bodyEl.innerHTML = '';
-    this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow()]));
+    this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow(), this._buildSkinsRow()]));
     this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildTutorialRow(), this._buildFpsRow()]));
     this.bodyEl.appendChild(this._buildSection('Dane', [this._buildResetRow()]));
     this.bodyEl.appendChild(this._buildSection('O grze', [this._buildAboutRow()]));
@@ -1191,6 +1193,23 @@ class SettingsPanel {
       }
     });
     return this._buildRow(TROPHY_ICON_SVG, 'Osiągnięcia', `Zdobyte: ${unlocked}/${catalog.length}`, btn.mount());
+  }
+
+  /** Wiersz "Skiny" - ten sam wzorzec co Osiągnięcia wyżej, otwiera osobny
+   * panel (SkinsPanel, patrz onOpenSkins w UIManager). */
+  _buildSkinsRow() {
+    const eco = window.economyManager;
+    const catalog = (eco && typeof eco.getSkinCatalog === 'function') ? eco.getSkinCatalog() : [];
+    const unlocked = catalog.filter((s) => s.unlocked).length;
+    const btn = new UIButton({
+      label: 'Pokaż',
+      variant: 'ghost',
+      onClick: () => {
+        this.close();
+        if (typeof this.onOpenSkins === 'function') this.onOpenSkins();
+      }
+    });
+    return this._buildRow(SHIRT_ICON_SVG, 'Skiny', `Odblokowane: ${unlocked}/${catalog.length}`, btn.mount());
   }
 
   /** Ten sam trzykolumnowy układ (ikona/opis/akcja) co ShopPanel._buildRow,
@@ -1450,6 +1469,187 @@ class AchievementsPanel {
   }
 }
 
+// --- Skiny postaci -----------------------------------------------------------
+// Ta sama struktura co AchievementsPanel wyżej (bottom sheet, .ui-shop-item
+// wiersze) - czysto kosmetyczny katalog (economy.js: PLAYER_SKINS/
+// getSkinCatalog/buySkin/selectSkin), płatny Rdzeniami jak drugi poziom
+// ulepszeń w PrestigePanel.
+class SkinsPanel {
+  constructor(economyManager) {
+    this.economyManager = economyManager;
+    this.el = null;
+    this.bodyEl = null;
+    this.isOpen = false;
+
+    this._onKeyDown = (e) => {
+      if (e.key === 'Escape' && this.isOpen) this.close();
+    };
+  }
+
+  mount(parent) {
+    if (!this.el) this._render();
+    if (parent && this.el.parentNode !== parent) parent.appendChild(this.el);
+    return this.el;
+  }
+
+  _render() {
+    this.el = document.createElement('div');
+    this.el.className = 'ui-shop';
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'ui-shop-backdrop';
+    backdrop.addEventListener('click', () => this.close());
+
+    const sheet = document.createElement('div');
+    sheet.className = 'ui-shop-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'Skiny');
+    sheet.innerHTML = `
+      <div class="ui-shop-sheet__handle"></div>
+      <header class="ui-shop-sheet__header">
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${SHIRT_ICON_SVG}</span> Skiny</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij skiny">${CLOSE_ICON_SVG}</button>
+      </header>
+      <div class="ui-shop-sheet__body"></div>
+    `;
+    sheet.querySelector('.ui-shop-sheet__close').addEventListener('click', () => this.close());
+    sheet.addEventListener('click', (e) => e.stopPropagation());
+
+    this.bodyEl = sheet.querySelector('.ui-shop-sheet__body');
+
+    this.el.appendChild(backdrop);
+    this.el.appendChild(sheet);
+
+    this.refresh();
+  }
+
+  open() {
+    if (!this.el) this._render();
+    this.isOpen = true;
+    this.el.classList.add('ui-shop--open');
+    document.addEventListener('keydown', this._onKeyDown);
+    this.refresh();
+  }
+
+  close() {
+    this.isOpen = false;
+    if (this.el) this.el.classList.remove('ui-shop--open');
+    document.removeEventListener('keydown', this._onKeyDown);
+  }
+
+  toggle() {
+    if (this.isOpen) this.close();
+    else this.open();
+  }
+
+  refresh() {
+    if (!this.bodyEl || !this.economyManager) return;
+    const catalog = this.economyManager.getSkinCatalog();
+
+    this.bodyEl.innerHTML = '';
+
+    const section = document.createElement('div');
+    section.className = 'ui-shop-section';
+    const heading = document.createElement('h3');
+    heading.className = 'ui-shop-section__title';
+    heading.innerHTML = `${CORE_ICON_SVG} Masz ${this.economyManager.cores}`;
+    section.appendChild(heading);
+
+    const list = document.createElement('div');
+    list.className = 'ui-shop-list';
+    catalog.forEach((s) => list.appendChild(this._buildRow(s)));
+    section.appendChild(list);
+
+    this.bodyEl.appendChild(section);
+  }
+
+  /**
+   * Podgląd - MAŁY <canvas> z rzeczywistą postacią gracza w tym kolorze
+   * (nie tylko kolorowa plamka), narysowany z JUŻ upieczonej tintowanej
+   * kopii sprite'a (player.js: _tintedSprites, patrz _bakeSkinTints) - ten
+   * sam obrazek, który gracz zobaczy w świecie po wybraniu tego skina.
+   * Zwraca null, gdy sprite jeszcze się nie wczytał (rzadkie - wtedy
+   * _buildRow rysuje zwykłe kółko w kolorze tint zamiast podglądu).
+   */
+  _buildPreviewCanvas(skin) {
+    const pc = window.playerController;
+    const srcImg = skin.tint && pc && pc._tintedSprites[skin.id]
+      ? pc._tintedSprites[skin.id].static
+      : (pc && pc._spriteLoaded ? pc._spriteImg : null);
+    if (!srcImg || !srcImg.width) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 40;
+    canvas.height = 40;
+    canvas.className = 'ui-shop-item__skin-preview';
+    const ctx = canvas.getContext('2d');
+    const scale = Math.min(40 / srcImg.width, 40 / srcImg.height) * 0.9;
+    const w = srcImg.width * scale;
+    const h = srcImg.height * scale;
+    ctx.drawImage(srcImg, (40 - w) / 2, (40 - h) / 2, w, h);
+    return canvas;
+  }
+
+  _buildRow(s) {
+    const row = document.createElement('article');
+    row.className = 'ui-shop-item';
+    if (s.selected) row.classList.add('ui-shop-item--afford');
+
+    const iconFallback = `<span style="display:inline-block;width:26px;height:26px;border-radius:50%;background:${s.tint || '#5C85D6'}"></span>`;
+    row.innerHTML = `
+      <div class="ui-shop-item__icon" aria-hidden="true">${iconFallback}</div>
+      <div class="ui-shop-item__info">
+        <span class="ui-shop-item__name">${s.name}</span>
+        <span class="ui-shop-item__desc">${s.desc}</span>
+      </div>
+      <div class="ui-shop-item__action"></div>
+    `;
+
+    // Podmieniamy placeholder-kółko na prawdziwy podgląd postaci, jeśli
+    // sprite już się wczytał (patrz _buildPreviewCanvas).
+    const preview = this._buildPreviewCanvas(s);
+    if (preview) row.querySelector('.ui-shop-item__icon').replaceChildren(preview);
+
+    const actionEl = row.querySelector('.ui-shop-item__action');
+    if (s.selected) {
+      const badge = document.createElement('span');
+      badge.className = 'ui-shop-item__done';
+      badge.setAttribute('aria-label', 'Wybrany');
+      badge.innerHTML = CHECK_ICON_SVG;
+      actionEl.appendChild(badge);
+    } else if (s.unlocked) {
+      const btn = new UIButton({
+        label: 'Wybierz',
+        variant: 'ghost',
+        onClick: () => {
+          if (this.economyManager.selectSkin(s.id)) this.refresh();
+        }
+      });
+      actionEl.appendChild(btn.mount());
+    } else {
+      const canBuy = this.economyManager.cores >= s.cost;
+      const btn = new UIButton({
+        label: `${CORE_ICON_SVG}${s.cost}`,
+        variant: canBuy ? 'accent' : 'ghost',
+        disabled: !canBuy,
+        title: canBuy ? 'Kup skin' : 'Za mało Rdzeni',
+        onClick: () => {
+          if (this.economyManager.buySkin(s.id)) this.refresh();
+        }
+      });
+      actionEl.appendChild(btn.mount());
+    }
+
+    return row;
+  }
+
+  destroy() {
+    document.removeEventListener('keydown', this._onKeyDown);
+    if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
+  }
+}
+
 // --- Powiadomienia (toast) --------------------------------------------------
 
 class NotificationManager {
@@ -1549,6 +1749,7 @@ class UIManager {
     this.prestigePanel = null;
     this.settingsPanel = null;
     this.achievementsPanel = null;
+    this.skinsPanel = null;
     this.offlineModal = null;
     this.notifications = null;
     this.tooltip = null;
@@ -1663,6 +1864,7 @@ class UIManager {
       if (this.shopPanel) this.shopPanel.close();
       if (this.settingsPanel) this.settingsPanel.close();
       if (this.achievementsPanel) this.achievementsPanel.close();
+      if (this.skinsPanel) this.skinsPanel.close();
       if (this.prestigePanel) this.prestigePanel.open();
     };
 
@@ -1770,13 +1972,15 @@ class UIManager {
       this._refreshPrestige();
     });
     this.achievementsPanel = new AchievementsPanel(economy);
+    this.skinsPanel = new SkinsPanel(economy);
     // Dźwięk włącza/wyłącza się TYLKO z Menu (SettingsPanel._buildSoundRow) -
     // brak osobnego przycisku Wycisz na ekranie gry (patrz usunięty
     // muteToggleBtn niżej), więc nie ma już nic do zsynchronizowania po
     // przełączeniu - pierwszy argument (onChange) zostaje pusty.
     this.settingsPanel = new SettingsPanel(
       null,
-      () => this.achievementsPanel.open()
+      () => this.achievementsPanel.open(),
+      () => this.skinsPanel.open()
     );
 
     const toastContainer = document.createElement('div');
@@ -1800,6 +2004,7 @@ class UIManager {
         if (this.prestigePanel) this.prestigePanel.close();
         if (this.settingsPanel) this.settingsPanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
+        if (this.skinsPanel) this.skinsPanel.close();
         this.shopPanel.toggle();
       }
     });
@@ -1816,6 +2021,7 @@ class UIManager {
         if (this.shopPanel) this.shopPanel.close();
         if (this.settingsPanel) this.settingsPanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
+        if (this.skinsPanel) this.skinsPanel.close();
         this.prestigePanel.toggle();
       }
     });
@@ -1833,6 +2039,7 @@ class UIManager {
         if (this.shopPanel) this.shopPanel.close();
         if (this.prestigePanel) this.prestigePanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
+        if (this.skinsPanel) this.skinsPanel.close();
         this.settingsPanel.toggle();
       }
     });
@@ -1875,6 +2082,7 @@ class UIManager {
     this.root.appendChild(this.prestigePanel.mount());
     this.root.appendChild(this.settingsPanel.mount());
     this.root.appendChild(this.achievementsPanel.mount());
+    this.root.appendChild(this.skinsPanel.mount());
     this.offlineModal = new OfflineRewardModal(window.economyManager, () => this._syncMoney(true));
     this.root.appendChild(this.offlineModal.mount());
 
@@ -1949,6 +2157,7 @@ class UIManager {
     if (this.prestigePanel) this.prestigePanel.close();
     if (this.settingsPanel) this.settingsPanel.close();
     if (this.achievementsPanel) this.achievementsPanel.close();
+    if (this.skinsPanel) this.skinsPanel.close();
     if (this.offlineModal) this.offlineModal.open(data);
   }
 
@@ -2047,6 +2256,7 @@ class UIManager {
     if (this.prestigePanel) this.prestigePanel.destroy();
     if (this.settingsPanel) this.settingsPanel.destroy();
     if (this.achievementsPanel) this.achievementsPanel.destroy();
+    if (this.skinsPanel) this.skinsPanel.destroy();
     if (this.offlineModal) this.offlineModal.destroy();
     if (this.root && this.root.parentNode) this.root.parentNode.removeChild(this.root);
   }
