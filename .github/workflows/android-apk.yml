@@ -28,10 +28,13 @@ jobs:
       - run: npm run build-ads
       - run: npm run prepare-www
 
+      # Java 21, nie 17 - @capacitor/android@7 (node_modules/@capacitor/android/
+      # capacitor/build.gradle) ma sourceCompatibility/targetCompatibility
+      # VERSION_21, więc starszy JDK pada na "invalid source release: 21".
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - uses: android-actions/setup-android@v3
 
