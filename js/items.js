@@ -627,8 +627,28 @@ class ItemManager {
     }
   }
 
+  /**
+   * Viewport culling (patrz ten sam wzorzec w ambient.js/critters.js/
+   * game.js._drawDecorations) - przedmioty POZA kadrem (+margines) w ogóle
+   * nie trafiają do drawWorld(), więc nie płacimy za ich sprite/poświatę/cień
+   * na klatkach, w których i tak nie są widoczne. Margines >= promień
+   * poświaty (ITEM_GLOW_RADIUS_MULT), żeby przedmiot był już w pełni
+   * narysowany, ZANIM jego krawędź wjedzie na ekran - inaczej byłoby widać
+   * "wyskakiwanie" zamiast płynnego wjazdu w kadr. update() (zbieranie/
+   * respawn/animacja) NIE jest tu ruszane - działa zawsze, niezależnie od
+   * widoczności, bo to stan gry, nie tylko rendering.
+   */
   draw(ctxBg, ctx, ctxUI) {
+    const camX = window.game ? window.game.cameraX : 0;
+    const camY = window.game ? window.game.cameraY : 0;
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const margin = ITEM_VISUAL_SIZE * ITEM_GLOW_RADIUS_MULT + 40;
+
     this.items.forEach((item) => {
+      if (item.x < camX - margin || item.x > camX + viewW + margin) return;
+      if (item.y < camY - margin || item.y > camY + viewH + margin) return;
+
       ItemRenderer.drawWorld(ctx, item, this.time);
 
       if (this.debugShowPickupRadius) {

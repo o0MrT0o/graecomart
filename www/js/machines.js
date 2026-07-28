@@ -383,8 +383,26 @@ class MachineManager {
     });
   }
 
+  /**
+   * Viewport culling (ten sam wzorzec co items.js/ambient.js/critters.js) -
+   * maszyna poza kadrem (+margines) pomija CAŁY swój draw (obrys zasięgu,
+   * cień, sprite, pasek postępu) - tylko kilka maszyn w grze, ale każda ma
+   * niebagatelny koszt rysowania, a gracz i tak zwykle widzi naraz 1-2 z nich.
+   * Margines pokrywa dropRadius (do 90px) + zapas na płynne wjeżdżanie w
+   * kadr. update() (przetwarzanie/timery) działa zawsze, niezależnie od
+   * widoczności - maszyna ma produkować, nawet gdy gracz na nią nie patrzy.
+   */
   draw(ctxBg, ctx, ctxUI) {
+    const camX = window.game ? window.game.cameraX : 0;
+    const camY = window.game ? window.game.cameraY : 0;
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const margin = 150;
+
     this.machines.forEach((m) => {
+      if (m.x < camX - margin || m.x > camX + viewW + margin) return;
+      if (m.y < camY - margin || m.y > camY + viewH + margin) return;
+
       // Zablokowana maszyna - przygaszona sylwetka z kłódką, zamiast pełnej
       // działającej maszyny. Widoczna (gracz wie że coś tu będzie i po co
       // zarabiać), ale wyraźnie "jeszcze nie". Rysujemy i KOŃCZYMY dla tej

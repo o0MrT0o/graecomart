@@ -261,7 +261,22 @@ class TradingPost {
     this._lastSaleFlash = 220;
   }
 
+  /**
+   * Viewport culling (ten sam wzorzec co items.js/machines.js) - jedna
+   * instancja, ale rysowanie (nogi, skrzynki, gradient korpusu, markiza)
+   * kosztuje niezależnie od tego ile ich jest, więc szkoda płacić za nią
+   * na każdej klatce, gdy gracz jest na drugim końcu mapy. update() (ceny,
+   * timer sprzedaży) działa zawsze, niezależnie od widoczności.
+   */
   draw(ctxBg, ctx, ctxUI) {
+    const camX = window.game ? window.game.cameraX : 0;
+    const camY = window.game ? window.game.cameraY : 0;
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const margin = 150;
+    if (this.x < camX - margin || this.x > camX + viewW + margin) return;
+    if (this.y < camY - margin || this.y > camY + viewH + margin) return;
+
     const hw = this.w / 2;
     const hh = this.h / 2;
 

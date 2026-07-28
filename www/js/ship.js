@@ -299,7 +299,22 @@ class Ship {
     }
   }
 
+  /**
+   * Viewport culling (ten sam wzorzec co items.js/machines.js/market.js) -
+   * jedna instancja, ale rysowanie (kadłub z gradientem, nogi, wskaźniki
+   * modułów, poświata po wygranej) kosztuje niezależnie od tego ile ich
+   * jest. update() (stan ukończenia modułów) działa zawsze, niezależnie od
+   * widoczności - statek ma pamiętać postęp, nawet gdy nikt na niego nie patrzy.
+   */
   draw(ctxBg, ctx, ctxUI) {
+    const camX = window.game ? window.game.cameraX : 0;
+    const camY = window.game ? window.game.cameraY : 0;
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const margin = 150;
+    if (this.x < camX - margin || this.x > camX + viewW + margin) return;
+    if (this.y < camY - margin || this.y > camY + viewH + margin) return;
+
     const hw = this.w / 2;
     const hh = this.h / 2;
     const idx = this._currentModuleIndex();
