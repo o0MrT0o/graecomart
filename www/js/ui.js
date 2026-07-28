@@ -853,6 +853,8 @@ class PrestigePanel {
     if (!this.bodyEl || !this.economyManager) return;
 
     this.bodyEl.innerHTML = '';
+    const modifierCard = this._buildModifierCard();
+    if (modifierCard) this.bodyEl.appendChild(modifierCard);
     this.bodyEl.appendChild(this._buildPrestigeCard());
 
     const catalog = this.economyManager.getCoreShopCatalog();
@@ -917,6 +919,35 @@ class PrestigePanel {
       `;
     }
 
+    wrap.appendChild(card);
+    return wrap;
+  }
+
+  /**
+   * Karta aktywnego modyfikatora BIEŻĄCEJ planety (patrz PLANET_MODIFIERS w
+   * economy.js) - null na pierwszej planecie (zanim gracz choć raz poleci
+   * dalej), więc refresh() wtedy pomija tę kartę zamiast pokazywać pustkę.
+   * Czysto informacyjna (bez przycisku) - modyfikator losuje się sam w
+   * prestige(), gracz go tylko widzi.
+   */
+  _buildModifierCard() {
+    const mod = this.economyManager.getActiveModifier
+      ? this.economyManager.getActiveModifier()
+      : null;
+    if (!mod) return null;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ui-shop-section';
+
+    const card = document.createElement('div');
+    card.className = 'ui-shop-item';
+    card.style.gridTemplateColumns = '1fr';
+    card.innerHTML = `
+      <div class="ui-shop-item__info">
+        <span class="ui-shop-item__name">${mod.icon} Modyfikator planety: ${mod.name}</span>
+        <span class="ui-shop-item__desc">${mod.desc}</span>
+      </div>
+    `;
     wrap.appendChild(card);
     return wrap;
   }
@@ -1575,7 +1606,9 @@ class UIManager {
       this._refreshPrestige();
       const planet = (d && d.planetNumber) || '?';
       const cores = (d && d.coresEarned) || 0;
-      this.notifications.show(`🌌 Nowa planeta #${planet}! +⚡${cores} Rdzeni`, {
+      const mod = d && d.modifier;
+      const modSuffix = mod ? ` — ${mod.icon} ${mod.name}` : '';
+      this.notifications.show(`🌌 Nowa planeta #${planet}${modSuffix}! +⚡${cores} Rdzeni`, {
         type: 'success',
         icon: '✨',
         duration: 4200

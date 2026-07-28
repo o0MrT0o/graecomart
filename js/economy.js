@@ -483,6 +483,74 @@ const SHOP_UPGRADES_SUPERSEDED_BY_PERK = {
   radiation_suit: 'hazard_immunity'
 };
 
+// --- Modyfikatory planety (zawartość długoterminowa) ------------------------
+// Rozwiązuje realny problem pętli prestiżu: PRESTIGE_UPGRADES/SHOP_UPGRADES/
+// PROGRESSION_UNLOCKS są identyczne na KAŻDEJ planecie - po kilku odlotach
+// gracz robi dokładnie to samo od nowa. prestige() (niżej) losuje JEDEN
+// modyfikator z tej puli i aplikuje go do nowego przebiegu - ten sam duch co
+// roguelite'owe "seedy rundy": inny układ mnożników na TYCH SAMYCH systemach
+// (ceny targu, tempo spawnu, tempo maszyn), więc zero nowej mechaniki do
+// zbalansowania od zera.
+//
+// Celowo TYLKO jeden naraz (nie kombinacja kilku) - łatwiej opisać jednym
+// zdaniem w UI i łatwiej zbalansować (brak kombinatorycznych par do
+// przetestowania). Efekty czytane NA BIEŻĄCO przez inne moduły (patrz
+// getPlanetPriceMultiplier/getPlanetSpawnMultiplier/
+// getPlanetMachineSpeedMultiplier niżej) i MNOŻĄ się z odpowiednikami z
+// Rdzeni (core_prices/core_machine_speed), nie zastępują ich - tak jak
+// Silnik statku i Szybsze buty w player.js.
+//
+// Brak modyfikatora na pierwszej planecie (this.activeModifier = null w
+// konstruktorze, rollowane wyłącznie w prestige()) - pierwszy przebieg ma
+// uczyć podstaw bez dodatkowej zmiennej.
+const PLANET_MODIFIERS = [
+  {
+    id: 'bountiful',
+    icon: '🌾',
+    name: 'Obfite Złoża',
+    desc: 'Surowce pojawiają się o 40% częściej, ale targ płaci o 15% mniej',
+    spawnMult: 1.4,
+    priceMult: 0.85
+  },
+  {
+    id: 'scarce',
+    icon: '🏜️',
+    name: 'Jałowa Gleba',
+    desc: 'Surowce pojawiają się o 30% rzadziej, za to targ płaci o 25% więcej',
+    spawnMult: 0.7,
+    priceMult: 1.25
+  },
+  {
+    id: 'efficient_factory',
+    icon: '⚙️',
+    name: 'Sprawna Fabryka',
+    desc: 'Wszystkie maszyny przetwarzają o 20% szybciej',
+    machineSpeedMult: 0.8
+  },
+  {
+    id: 'rusty_gear',
+    icon: '🔩',
+    name: 'Zardzewiały Sprzęt',
+    desc: 'Maszyny przetwarzają o 15% wolniej, ale surowce pojawiają się o 25% częściej',
+    machineSpeedMult: 1.15,
+    spawnMult: 1.25
+  },
+  {
+    id: 'gold_rush',
+    icon: '💰',
+    name: 'Gorączka Złota',
+    desc: 'Targ płaci o 20% więcej za wszystko',
+    priceMult: 1.2
+  },
+  {
+    id: 'soft_landing',
+    icon: '🛬',
+    name: 'Miękkie Lądowanie',
+    desc: '+150$ gotówki na start tej planety',
+    cashBonus: 150
+  }
+];
+
 class EconomyManager {
   constructor(game) {
     this.game = game || null;
@@ -552,6 +620,10 @@ class EconomyManager {
     this.cores = 0; // trwała waluta - patrz PRESTIGE_UPGRADES
     this.prestigeLevels = {}; // trwałe poziomy PRESTIGE_UPGRADES
     this.planetNumber = 1; // licznik "które to podejście" - kosmetyczne/UI
+
+    // Modyfikator BIEŻĄCEJ planety (patrz PLANET_MODIFIERS powyżej) - null na
+    // pierwszej planecie, losowany od nowa przy każdym prestige().
+    this.activeModifier = null;
 
     PRESTIGE_UPGRADES.forEach((u) => {
       this.prestigeLevels[u.id] = 0;
@@ -903,6 +975,45 @@ class EconomyManager {
   getMarketPriceMultiplier() {
     const v = this.getCoreValue('core_prices');
     return typeof v === 'number' ? v : 1;
+  }
+
+  /** Losuje nowy modyfikator BIEŻĄCEJ planety z PLANET_MODIFIERS - wołane
+   * WYŁĄCZNIE z prestige() niżej. */
+  _rollPlanetModifier() {
+    const def = PLANET_MODIFIERS[Math.floor(Math.random() * PLANET_MODIFIERS.length)];
+    this.activeModifier = { ...def };
+  }
+
+  /** Modyfikator aktywny na bieżącej planecie, albo null (pierwsza planeta,
+   * zanim gracz choć raz poleci dalej) - do wyświetlenia w UI (ui.js). */
+  getActiveModifier() {
+    return this.activeModifier;
+  }
+
+  /** Mnożnik cen targu z modyfikatora planety (1 = brak) - MNOŻY się z
+   * getMarketPriceMultiplier() (Rdzenie), nie zastępuje go - patrz getPrice()
+   * w market.js. */
+  getPlanetPriceMultiplier() {
+    return (this.activeModifier && typeof this.activeModifier.priceMult === 'number')
+      ? this.activeModifier.priceMult
+      : 1;
+  }
+
+  /** Mnożnik tempa spawnu surowców z modyfikatora planety (>1 = częściej) -
+   * patrz ItemManager.update() w items.js. */
+  getPlanetSpawnMultiplier() {
+    return (this.activeModifier && typeof this.activeModifier.spawnMult === 'number')
+      ? this.activeModifier.spawnMult
+      : 1;
+  }
+
+  /** Mnożnik czasu przetwarzania maszyn z modyfikatora planety (<1 =
+   * szybciej) - MNOŻY się z getMachineSpeedMultiplier() (Rdzenie), patrz
+   * _getSpeedMultiplier() w machines.js. */
+  getPlanetMachineSpeedMultiplier() {
+    return (this.activeModifier && typeof this.activeModifier.machineSpeedMult === 'number')
+      ? this.activeModifier.machineSpeedMult
+      : 1;
   }
 
   /**
@@ -1319,13 +1430,21 @@ class EconomyManager {
       window.stackController.clear(); // plecak NIE leci z Tobą na nową planetę
     }
 
+    // Modyfikator nowej planety (patrz PLANET_MODIFIERS) - losowany TU, przed
+    // ustaleniem gotówki startowej, żeby ewentualny cashBonus wszedł w tę samą
+    // sumę co Zapasy Startowe (jedno przypisanie do this.money, nie dwa
+    // kolejne nadpisujące się nawzajem).
+    this._rollPlanetModifier();
+
     // Zapasy Startowe (core_headstart) - jedyny trwały bonus wchodzący jako
     // gotówka NA START nowego przebiegu, a nie jako pasywny mnożnik przy
     // każdej sprzedaży (to robi core_income, patrz _getCoreIncomeMultiplier).
     const headstartDef = PRESTIGE_UPGRADES.find((u) => u.id === 'core_headstart');
-    if (headstartDef) {
-      this.money = headstartDef.getValue(this.prestigeLevels.core_headstart || 0);
-    }
+    const headstartMoney = headstartDef ? headstartDef.getValue(this.prestigeLevels.core_headstart || 0) : 0;
+    const modifierCash = (this.activeModifier && typeof this.activeModifier.cashBonus === 'number')
+      ? this.activeModifier.cashBonus
+      : 0;
+    this.money = headstartMoney + modifierCash;
 
     this.planetNumber += 1;
 
@@ -1340,7 +1459,12 @@ class EconomyManager {
     }
     Bus.publish(Events.MONEY_COLLECTED, { amount: 0, total: this.money });
 
-    const result = { coresEarned, totalCores: this.cores, planetNumber: this.planetNumber };
+    const result = {
+      coresEarned,
+      totalCores: this.cores,
+      planetNumber: this.planetNumber,
+      modifier: this.activeModifier
+    };
     Bus.publish(Events.PRESTIGE_DONE, result);
     return result;
   }
@@ -1572,6 +1696,14 @@ class EconomyManager {
     if (typeof data.planetNumber === 'number') {
       this.planetNumber = data.planetNumber;
     }
+    // Modyfikator planety - zapisywany jako samo id (patrz getSaveData), tu
+    // odtwarzamy pełny obiekt z bieżącej definicji PLANET_MODIFIERS. Zapis
+    // sprzed dodania tej funkcji (albo id, które zniknęło z puli) po prostu
+    // zostaje bez modyfikatora zamiast wywalać się na undefined.
+    if (typeof data.activeModifierId === 'string') {
+      const def = PLANET_MODIFIERS.find((m) => m.id === data.activeModifierId);
+      this.activeModifier = def ? { ...def } : null;
+    }
     if (data.prestigeLevels && typeof data.prestigeLevels === 'object') {
       Object.keys(data.prestigeLevels).forEach((id) => {
         if (this.prestigeLevels[id] !== undefined) {
@@ -1643,6 +1775,7 @@ class EconomyManager {
       shipCompletedModules: [...this.shipCompletedModules],
       cores: this.cores,
       planetNumber: this.planetNumber,
+      activeModifierId: this.activeModifier ? this.activeModifier.id : null,
       prestigeLevels: { ...this.prestigeLevels },
       loginStreak: this.loginStreak,
       lastLoginDateStr: this.lastLoginDateStr,

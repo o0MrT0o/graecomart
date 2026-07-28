@@ -143,7 +143,12 @@ class MarketManager {
     const coreMult = (eco && typeof eco.getMarketPriceMultiplier === 'function')
       ? eco.getMarketPriceMultiplier()
       : 1;
-    return Math.max(1, Math.round(base * this.multipliers[typeId] * coreMult));
+    // Modyfikator planety (patrz PLANET_MODIFIERS w economy.js) - MNOŻY się z
+    // coreMult wyżej, nie zastępuje go.
+    const planetMult = (eco && typeof eco.getPlanetPriceMultiplier === 'function')
+      ? eco.getPlanetPriceMultiplier()
+      : 1;
+    return Math.max(1, Math.round(base * this.multipliers[typeId] * coreMult * planetMult));
   }
 
   getTrend(typeId) {

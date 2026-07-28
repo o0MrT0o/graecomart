@@ -831,10 +831,15 @@ class MachineManager {
     const global = typeof eco.getMachineSpeedMultiplier === 'function'
       ? eco.getMachineSpeedMultiplier()
       : 1;
+    // Modyfikator planety (patrz PLANET_MODIFIERS w economy.js) - MNOŻY się z
+    // global/perMachine wyżej/niżej, nie zastępuje ich.
+    const planet = typeof eco.getPlanetMachineSpeedMultiplier === 'function'
+      ? eco.getPlanetMachineSpeedMultiplier()
+      : 1;
     const perMachine = (machineId && typeof eco.getMachineUpgradeValue === 'function')
       ? eco.getMachineUpgradeValue(machineId, 'speed')
       : 1;
-    return global * perMachine;
+    return global * planet * perMachine;
   }
 
   /** Ile sztuk wypada z JEDNEGO cyklu tej maszyny (ulepszenie 'yield'). */

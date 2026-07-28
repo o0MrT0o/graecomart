@@ -562,8 +562,15 @@ class ItemManager {
     this.time += sec;
 
     // NOWE: Automatyczne dodawanie śmieci co jakiś czas, żeby mapa nie była pusta
+    // Modyfikator planety (patrz PLANET_MODIFIERS w economy.js) skraca/wydłuża
+    // efektywny odstęp - spawnInterval samo w sobie zostaje stałe (>1 mult =
+    // częściej, więc dzielimy, nie mnożymy).
+    const eco = window.economyManager;
+    const spawnMult = (eco && typeof eco.getPlanetSpawnMultiplier === 'function')
+      ? eco.getPlanetSpawnMultiplier()
+      : 1;
     this.spawnTimer += delta;
-    if (this.spawnTimer >= this.spawnInterval) {
+    if (this.spawnTimer >= this.spawnInterval / spawnMult) {
       this.spawnTimer = 0;
       if (this.items.length < 25) { // Maksymalny limit przedmiotów na mapie
         this._spawnItem(null);
