@@ -39,8 +39,12 @@
 // używane są wartości domyślne poniżej.
 const MACHINE_DEFINITIONS = [
   {
+    // Etykieta/wygląd (Faza kosmicznego reskinu): "Recykler" -> "Reaktor
+    // Recyklingowy" - id/acceptsType/outputType/processingDuration/
+    // maxInventory NIETKNIĘTE (czysto wizualna zmiana), patrz bespoke
+    // _drawRecycleMachine w draw() zamiast dawnego assets/machines/recycle.png.
     id: 'recycle_a',
-    label: 'Recykler',
+    label: 'Reaktor Recyklingowy',
     xRatio: 0.32,
     yRatio: 0.4,
     color: '#66BB6A',
@@ -62,8 +66,10 @@ const MACHINE_DEFINITIONS = [
     maxInventory: 3
   },
   {
+    // "Prasa" -> "Kompresor Grawitonowy" - ten sam powód co przy recycle_a
+    // wyżej, patrz bespoke _drawPressMachine.
     id: 'press_b',
-    label: 'Prasa',
+    label: 'Kompresor Grawitonowy',
     xRatio: 0.28,
     yRatio: 0.72,
     color: '#FFA726',
@@ -78,8 +84,11 @@ const MACHINE_DEFINITIONS = [
     maxInventory: 3
   },
   {
+    // "Piec hutniczy" -> "Piec Plazmowy" - ten sam powód co przy recycle_a/
+    // press_b wyżej, patrz bespoke _drawFurnaceMachine (zastępuje dawny
+    // assets/machines/piechutniczy.png + głośny różowy fallback).
     id: 'furnace_c',
-    label: 'Piec hutniczy',
+    label: 'Piec Plazmowy',
     xRatio: 0.59,
     yRatio: 0.35,
     color: '#EF5350',
@@ -471,23 +480,24 @@ class MachineManager {
       // za duży efekt. Jedna, kontrolowana elipsa wystarczy.
       ctx.save();
 
-      // --- LOGIKA RYSOWANIA GRAFIKI DLA PIECA HUTNICZEGO ---
-      if (m.id === 'furnace_c') {
-        if (!(spriteKey && window.spriteLoader.draw(ctx, spriteKey, m.x, m.y, spriteSize))) {
-          // Różowy kwadrat informacyjny widoczny TYLKO, gdy żadna z kandydatur
-          // ścieżki (sprites.js: SPRITE_PATH_CANDIDATES.machine_furnace) się
-          // nie wczytała - celowo głośniejszy niż standardowy fallback reszty
-          // maszyn (gradient+żeberka), żeby brak akurat TEGO pliku rzucał się
-          // w oczy, a nie zlewał się z resztą jako "normalnie wygląda".
-          ctx.fillStyle = '#FF00FF';
-          this._traceRoundedRect(ctx, m.x - hw, m.y - hh, m.w, m.h, 10);
-          ctx.fill();
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = 'bold 12px Arial';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('Brak pliku PNG!', m.x, m.y);
-        }
+      // --- LOGIKA RYSOWANIA GRAFIKI DLA REAKTORA RECYKLINGOWEGO ---
+      // Faza kosmicznego reskinu: dawniej assets/machines/recycle.png (sprite
+      // przez generyczną ścieżkę niżej) - teraz bespoke proceduralna bryła w
+      // tym samym stylu co Oczyszczalnia/Szlifiernia, żeby WSZYSTKIE maszyny
+      // wyglądały spójnie "kosmicznie", nie tylko te dwie bez własnego PNG-a.
+      if (m.id === 'recycle_a') {
+        this._drawRecycleMachine(ctx, m, isActive);
+      }
+      // --- LOGIKA RYSOWANIA GRAFIKI DLA KOMPRESORA GRAWITONOWEGO ---
+      else if (m.id === 'press_b') {
+        this._drawPressMachine(ctx, m, isActive);
+      }
+      // --- LOGIKA RYSOWANIA GRAFIKI DLA PIECA PLAZMOWEGO ---
+      // Zastępuje dawny assets/machines/piechutniczy.png ORAZ jego głośny
+      // różowy fallback ("Brak pliku PNG!") - ten drugi stał się martwym
+      // kodem, bo ta maszyna nie próbuje już w ogóle sprite'a.
+      else if (m.id === 'furnace_c') {
+        this._drawFurnaceMachine(ctx, m, isActive);
       }
       // --- LOGIKA RYSOWANIA GRAFIKI DLA OCZYSZCZALNI ---
       // Brak pliku PNG w projekcie (jak Piec Hutniczy WYŻEJ, ale bez własnej
@@ -661,6 +671,476 @@ class MachineManager {
     });
 
     ctx.textAlign = 'center';
+  }
+
+  /**
+   * Wspólny motyw "kosmicznej poświaty" pod maszyną - miękki radialny
+   * gradient (kolor -> przezroczystość), rysowany PRZED korpusem. Jeden z
+   * niewielu wspólnych helperów w tym pliku (obok _lighten/_traceRoundedRect)
+   * bo to czysto kosmetyczny rysunek bez żadnych danych per-maszyna - każda
+   * z trzech maszyn niżej (Reaktor/Kompresor/Piec Plazmowy) woła go z innym
+   * kolorem/promieniem, tak jak dwie bespoke maszyny wyżej dzielą _lighten.
+   */
+  _drawCosmicGlow(ctx, cx, cy, r, rgbaInner) {
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, rgbaInner);
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.save();
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /**
+   * Wspólny motyw "orbitującego pierścienia" (jak spłaszczony pierścień
+   * planety) - cienka przerywana elipsa wokół korpusu maszyny, z kreskami
+   * "płynącymi" po obwodzie (animacja przez lineDashOffset, nie przez
+   * ctx.rotate - taniej liczyć, a efekt "orbitowania" wychodzi ten sam).
+   * rx/ry kontrolują rozmiar/spłaszczenie (pochylenie pierścienia), speed
+   * jak szybko kreski płyną, dash długość pojedynczej kreski.
+   */
+  _drawCosmicRing(ctx, cx, cy, rx, ry, color, speed, dash) {
+    const now = performance.now();
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, ry / rx);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.55;
+    ctx.setLineDash([dash, dash * 0.8]);
+    ctx.lineDashOffset = -(now * speed);
+    ctx.beginPath();
+    ctx.arc(0, 0, rx, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
+   * Reaktor Recyklingowy (dawniej Recykler, assets/machines/recycle.png) -
+   * pierwsza z trzech maszyn "Fazy kosmicznego reskinu" (obok Kompresora
+   * Grawitonowego i Pieca Plazmowego niżej). Ten sam szkielet co Oczyszczalnia/
+   * Szlifiernia (lej -> korpus -> okienko -> panel -> przenośnik -> nóżki,
+   * liczony od MACHINE_PROC_UNIT), ale okienko to okrągły "iluminator" ze
+   * spiralą wciąganych w środek okruchów śmieci (zamiast bulgoczącej kadzi/
+   * wirującej tarczy) - motyw "rozkładu materii" pasujący do recyklingu.
+   * Poświata + orbitujący pierścień (_drawCosmicGlow/_drawCosmicRing) to
+   * wspólny akcent łączący wszystkie maszyny w jeden, spójnie "kosmiczny"
+   * język wizualny.
+   */
+  _drawRecycleMachine(ctx, m, isActive) {
+    const U = MACHINE_PROC_UNIT;
+    const cx = m.x;
+    const cy = m.y;
+    const now = performance.now();
+
+    const hull = isActive ? this._lighten('#4B5563', MACHINE_LIGHTEN_AMOUNT) : '#4B5563';
+    const hullDark = this._lighten(hull, -34);
+    const accent = '#66BB6A';
+    const accentGlow = '#A8FF9E';
+
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, 'rgba(102, 187, 106, 0.28)');
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.66, U * 0.2, 'rgba(168, 255, 158, 0.55)', 0.0007, 6);
+
+    // --- Lej u góry (ten sam trapez co u sąsiadów), z kawałkami śmieci/
+    // papieru czekającymi na wsyp zamiast szkła/kryształu. ---
+    const hopW = U * 0.62, hopNeck = U * 0.24;
+    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.34;
+    ctx.fillStyle = hull;
+    ctx.beginPath();
+    ctx.moveTo(cx - hopW / 2, hopTop);
+    ctx.lineTo(cx + hopW / 2, hopTop);
+    ctx.lineTo(cx + hopNeck / 2, hopBot);
+    ctx.lineTo(cx - hopNeck / 2, hopBot);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = hullDark;
+    ctx.beginPath();
+    ctx.moveTo(cx + hopW * 0.16, hopTop);
+    ctx.lineTo(cx + hopW / 2, hopTop);
+    ctx.lineTo(cx + hopNeck / 2, hopBot);
+    ctx.lineTo(cx + hopNeck * 0.1, hopBot);
+    ctx.closePath();
+    ctx.fill();
+    ['#8D6E63', '#BCAAA4'].forEach((col, i) => {
+      ctx.fillStyle = col;
+      const gx = cx + (i === 0 ? -U * 0.14 : U * 0.1);
+      const gy = hopTop - U * 0.03;
+      ctx.fillRect(gx - U * 0.045, gy - U * 0.08, U * 0.09, U * 0.11);
+    });
+
+    // --- Korpus: zaokrąglony prostokąt, gunmetal, jaśniejsza lewa / ciemniejsza
+    // prawa strona (ten sam prosty trik co u sąsiadów), z cienką neonową
+    // obwódką w kolorze akcentu - to ta linia daje wrażenie "poszycia statku"
+    // zamiast zwykłej skrzynki. ---
+    const bw = U * 0.78, bh = U * 0.72;
+    const bx = cx - bw / 2, by = cy - U * 0.34;
+    ctx.fillStyle = hull;
+    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
+    ctx.fill();
+    ctx.save();
+    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
+    ctx.clip();
+    ctx.fillStyle = hullDark;
+    ctx.fillRect(bx + bw * 0.62, by, bw * 0.38, bh);
+    ctx.restore();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.7;
+    this._traceRoundedRect(ctx, bx + 1, by + 1, bw - 2, bh - 2, U * 0.06);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // --- Iluminator: okrągłe okienko ze spiralą okruchów wciąganych do
+    // środka (rozkład materii), zamiast prostokątnego okna sąsiadów - żeby
+    // ta maszyna czytała się jako "kapsuła", nie skrzynka. ---
+    const winCx = cx - bw * 0.06, winCy = by + bh * 0.4, winR = Math.min(bw, bh) * 0.28;
+    ctx.fillStyle = '#152018';
+    ctx.beginPath();
+    ctx.arc(winCx, winCy, winR + 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = hullDark;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(winCx, winCy, winR, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = '#152018';
+    ctx.fillRect(winCx - winR, winCy - winR, winR * 2, winR * 2);
+    for (let i = 0; i < 4; i++) {
+      const t = ((now * 0.0006 + i * 0.25) % 1);
+      const a = t * Math.PI * 6 + i;
+      const r = winR * (1 - t) * 0.9;
+      ctx.globalAlpha = 0.85 * t;
+      ctx.fillStyle = i % 2 === 0 ? accentGlow : accent;
+      ctx.fillRect(winCx + Math.cos(a) * r - 2, winCy + Math.sin(a) * r - 2, 4, 4);
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = accentGlow;
+    ctx.beginPath();
+    ctx.arc(winCx, winCy, winR * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // --- Panel z kolorowymi kwadracikami - ten sam detal co u sąsiadów. ---
+    const px0 = bx + bw * 0.72, py0 = by + bh * 0.2, ps = U * 0.055;
+    [['#E8574B', 0], ['#F2C14E', 1], ['#63C267', 2]].forEach(([col, i]) => {
+      ctx.fillStyle = col;
+      ctx.fillRect(px0, py0 + i * ps * 1.7, ps, ps);
+    });
+
+    // --- Antenka na dachu z pulsującym światłem - drobny sci-fi akcent. ---
+    ctx.strokeStyle = hullDark;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + bw * 0.22, by);
+    ctx.lineTo(cx + bw * 0.22, by - U * 0.12);
+    ctx.stroke();
+    ctx.globalAlpha = 0.55 + 0.45 * Math.sin(now * 0.006);
+    ctx.fillStyle = accentGlow;
+    ctx.beginPath();
+    ctx.arc(cx + bw * 0.22, by - U * 0.12, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // --- Przenośnik po prawej + gotowy plastik (jak u sąsiadów). ---
+    const beltY = cy + U * 0.2, beltX = cx + bw * 0.42, beltW = U * 0.34, beltH = U * 0.1;
+    ctx.fillStyle = hull;
+    this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
+    ctx.fill();
+    ctx.fillStyle = hullDark;
+    [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
+      ctx.beginPath();
+      ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.fillStyle = m.outputColor;
+    const ox = beltX + beltW * 0.55, oy = beltY - beltH * 0.75;
+    this._traceRoundedRect(ctx, ox - U * 0.045, oy - U * 0.045, U * 0.09, U * 0.09, U * 0.02);
+    ctx.fill();
+
+    // --- Nóżki. ---
+    ctx.fillStyle = hullDark;
+    [-bw * 0.3, bw * 0.22].forEach((dx) => {
+      ctx.fillRect(cx + dx, by + bh, U * 0.08, U * 0.06);
+    });
+  }
+
+  /**
+   * Kompresor Grawitonowy (dawniej Prasa, assets/machines/press.png) - druga
+   * z trzech maszyn "Fazy kosmicznego reskinu". Ten sam szkielet co sąsiedzi,
+   * ale okienko to dwie płyty ściskające się pulsującą wiązką energii między
+   * nimi (zamiast bulgoczącej kadzi/spirali) - motyw "kompresji polem
+   * grawitacyjnym" zamiast mechanicznego tłoka.
+   */
+  _drawPressMachine(ctx, m, isActive) {
+    const U = MACHINE_PROC_UNIT;
+    const cx = m.x;
+    const cy = m.y;
+    const now = performance.now();
+
+    const hull = isActive ? this._lighten('#4B5563', MACHINE_LIGHTEN_AMOUNT) : '#4B5563';
+    const hullDark = this._lighten(hull, -34);
+    const accent = '#AB47BC';
+    const accentGlow = '#E1BEE7';
+
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, 'rgba(171, 71, 188, 0.28)');
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.66, U * 0.2, 'rgba(225, 190, 231, 0.55)', -0.0005, 5);
+
+    // --- Lej u góry, z plastikowymi kawałkami czekającymi na wsyp. ---
+    const hopW = U * 0.62, hopNeck = U * 0.24;
+    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.34;
+    ctx.fillStyle = hull;
+    ctx.beginPath();
+    ctx.moveTo(cx - hopW / 2, hopTop);
+    ctx.lineTo(cx + hopW / 2, hopTop);
+    ctx.lineTo(cx + hopNeck / 2, hopBot);
+    ctx.lineTo(cx - hopNeck / 2, hopBot);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = hullDark;
+    ctx.beginPath();
+    ctx.moveTo(cx + hopW * 0.16, hopTop);
+    ctx.lineTo(cx + hopW / 2, hopTop);
+    ctx.lineTo(cx + hopNeck / 2, hopBot);
+    ctx.lineTo(cx + hopNeck * 0.1, hopBot);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#42A5F5';
+    const gx = cx, gy = hopTop - U * 0.02;
+    this._traceRoundedRect(ctx, gx - U * 0.06, gy - U * 0.06, U * 0.12, U * 0.1, U * 0.02);
+    ctx.fill();
+
+    // --- Korpus, ta sama geometria co sąsiedzi, fioletowa neonowa obwódka. ---
+    const bw = U * 0.78, bh = U * 0.72;
+    const bx = cx - bw / 2, by = cy - U * 0.34;
+    ctx.fillStyle = hull;
+    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
+    ctx.fill();
+    ctx.save();
+    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
+    ctx.clip();
+    ctx.fillStyle = hullDark;
+    ctx.fillRect(bx + bw * 0.62, by, bw * 0.38, bh);
+    ctx.restore();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.7;
+    this._traceRoundedRect(ctx, bx + 1, by + 1, bw - 2, bh - 2, U * 0.06);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // --- Okienko: dwie płyty grawitonowe ściskające się, z wiązką energii
+    // między nimi (jaśniejszą, gdy płyty najbliżej siebie). ---
+    const ww = bw * 0.5, wh = bh * 0.42;
+    const wx = cx - ww / 2 - bw * 0.06, wy = by + bh * 0.16;
+    ctx.fillStyle = '#241B2E';
+    this._traceRoundedRect(ctx, wx - 2, wy - 2, ww + 4, wh + 4, 4);
+    ctx.fill();
+    ctx.save();
+    this._traceRoundedRect(ctx, wx, wy, ww, wh, 3);
+    ctx.clip();
+    ctx.fillStyle = '#241B2E';
+    ctx.fillRect(wx, wy, ww, wh);
+    const pulse = (Math.sin(now * 0.003) + 1) / 2; // 0..1
+    const gap = wh * (0.12 + 0.3 * pulse);
+    const plateH = (wh - gap) / 2;
+    ctx.fillStyle = hullDark;
+    ctx.fillRect(wx, wy, ww, plateH);
+    ctx.fillRect(wx, wy + wh - plateH, ww, plateH);
+    ctx.globalAlpha = 0.4 + 0.6 * (1 - pulse);
+    ctx.fillStyle = accentGlow;
+    ctx.fillRect(wx, wy + plateH, ww, gap);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // --- Panel z kolorowymi kwadracikami. ---
+    const px0 = bx + bw * 0.72, py0 = by + bh * 0.2, ps = U * 0.055;
+    [['#E8574B', 0], ['#F2C14E', 1], ['#63C267', 2]].forEach(([col, i]) => {
+      ctx.fillStyle = col;
+      ctx.fillRect(px0, py0 + i * ps * 1.7, ps, ps);
+    });
+
+    // --- Dwa emitery po bokach leja z iskrzącym łukiem między nimi -
+    // wizualne źródło "pola grawitonowego" napędzającego kompresję. ---
+    const emY = hopTop - U * 0.04;
+    const emL = cx - hopW / 2 - U * 0.03, emR = cx + hopW / 2 + U * 0.03;
+    ctx.fillStyle = hullDark;
+    ctx.beginPath();
+    ctx.arc(emL, emY, U * 0.045, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(emR, emY, U * 0.045, 0, Math.PI * 2);
+    ctx.fill();
+    if (Math.sin(now * 0.02) > 0.3) {
+      ctx.strokeStyle = accentGlow;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(emL, emY);
+      ctx.quadraticCurveTo(cx, emY - U * 0.06 * Math.sin(now * 0.05), emR, emY);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // --- Przenośnik po prawej + gotowy produkt. ---
+    const beltY = cy + U * 0.2, beltX = cx + bw * 0.42, beltW = U * 0.34, beltH = U * 0.1;
+    ctx.fillStyle = hull;
+    this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
+    ctx.fill();
+    ctx.fillStyle = hullDark;
+    [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
+      ctx.beginPath();
+      ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.fillStyle = m.outputColor;
+    const ox = beltX + beltW * 0.55, oy = beltY - beltH * 0.75;
+    this._traceRoundedRect(ctx, ox - U * 0.045, oy - U * 0.045, U * 0.09, U * 0.09, U * 0.02);
+    ctx.fill();
+
+    // --- Nóżki. ---
+    ctx.fillStyle = hullDark;
+    [-bw * 0.3, bw * 0.22].forEach((dx) => {
+      ctx.fillRect(cx + dx, by + bh, U * 0.08, U * 0.06);
+    });
+  }
+
+  /**
+   * Piec Plazmowy (dawniej Piec hutniczy, assets/machines/piechutniczy.png) -
+   * trzecia z maszyn "Fazy kosmicznego reskinu". Okienko to sferyczny rdzeń
+   * plazmy z orbitującymi iskrami (mini-słońce w komorze), zamiast kadzi z
+   * metalem/szkłem - motyw "stapiania energią" zamiast zwykłego ognia.
+   */
+  _drawFurnaceMachine(ctx, m, isActive) {
+    const U = MACHINE_PROC_UNIT;
+    const cx = m.x;
+    const cy = m.y;
+    const now = performance.now();
+
+    const hull = isActive ? this._lighten('#4B3A3E', MACHINE_LIGHTEN_AMOUNT) : '#4B3A3E';
+    const hullDark = this._lighten(hull, -34);
+    const accent = '#EF5350';
+    const accentGlow = '#FFAB91';
+
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, 'rgba(239, 83, 80, 0.3)');
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.68, U * 0.22, 'rgba(255, 171, 145, 0.55)', 0.0006, 7);
+
+    // --- Lej u góry, z bryłkami metalu czekającymi na wsyp. ---
+    const hopW = U * 0.62, hopNeck = U * 0.24;
+    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.34;
+    ctx.fillStyle = hull;
+    ctx.beginPath();
+    ctx.moveTo(cx - hopW / 2, hopTop);
+    ctx.lineTo(cx + hopW / 2, hopTop);
+    ctx.lineTo(cx + hopNeck / 2, hopBot);
+    ctx.lineTo(cx - hopNeck / 2, hopBot);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = hullDark;
+    ctx.beginPath();
+    ctx.moveTo(cx + hopW * 0.16, hopTop);
+    ctx.lineTo(cx + hopW / 2, hopTop);
+    ctx.lineTo(cx + hopNeck / 2, hopBot);
+    ctx.lineTo(cx + hopNeck * 0.1, hopBot);
+    ctx.closePath();
+    ctx.fill();
+    ['#90A4AE', '#8ED8E8'].forEach((col, i) => {
+      ctx.fillStyle = col;
+      const gx = cx + (i === 0 ? -U * 0.12 : U * 0.1);
+      const gy = hopTop - U * 0.03;
+      ctx.beginPath();
+      ctx.arc(gx, gy, U * 0.05, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // --- Korpus, ta sama geometria co sąsiedzi, czerwono-pomarańczowa
+    // neonowa obwódka + żeberka wentylacyjne (piec grzeje mocniej niż
+    // reszta, więc trochę więcej "przemysłowego" detalu). ---
+    const bw = U * 0.78, bh = U * 0.72;
+    const bx = cx - bw / 2, by = cy - U * 0.34;
+    ctx.fillStyle = hull;
+    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
+    ctx.fill();
+    ctx.save();
+    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
+    ctx.clip();
+    ctx.fillStyle = hullDark;
+    ctx.fillRect(bx + bw * 0.62, by, bw * 0.38, bh);
+    ctx.restore();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.7;
+    this._traceRoundedRect(ctx, bx + 1, by + 1, bw - 2, bh - 2, U * 0.06);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // --- Okienko: sferyczna komora plazmy z pulsującym rdzeniem i dwiema
+    // orbitującymi iskrami - mini-słońce w środku maszyny. ---
+    const winCx = cx - bw * 0.06, winCy = by + bh * 0.4, winR = Math.min(bw, bh) * 0.28;
+    ctx.fillStyle = '#2A1518';
+    ctx.beginPath();
+    ctx.arc(winCx, winCy, winR + 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = hullDark;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(winCx, winCy, winR, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = '#2A1518';
+    ctx.fillRect(winCx - winR, winCy - winR, winR * 2, winR * 2);
+    const coreR = winR * (0.42 + 0.08 * Math.sin(now * 0.005));
+    const coreGrad = ctx.createRadialGradient(winCx, winCy, 0, winCx, winCy, coreR);
+    coreGrad.addColorStop(0, '#FFF3E0');
+    coreGrad.addColorStop(0.5, accentGlow);
+    coreGrad.addColorStop(1, accent);
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(winCx, winCy, coreR, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 2; i++) {
+      const a = now * 0.003 * (i === 0 ? 1 : -1.3) + i * Math.PI;
+      const r = winR * 0.75;
+      ctx.fillStyle = '#FFE0B2';
+      ctx.beginPath();
+      ctx.arc(winCx + Math.cos(a) * r, winCy + Math.sin(a) * r * 0.6, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // --- Panel z kolorowymi kwadracikami. ---
+    const px0 = bx + bw * 0.72, py0 = by + bh * 0.2, ps = U * 0.055;
+    [['#E8574B', 0], ['#F2C14E', 1], ['#63C267', 2]].forEach(([col, i]) => {
+      ctx.fillStyle = col;
+      ctx.fillRect(px0, py0 + i * ps * 1.7, ps, ps);
+    });
+
+    // --- Przenośnik po prawej + gotowy stop. ---
+    const beltY = cy + U * 0.2, beltX = cx + bw * 0.42, beltW = U * 0.34, beltH = U * 0.1;
+    ctx.fillStyle = hull;
+    this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
+    ctx.fill();
+    ctx.fillStyle = hullDark;
+    [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
+      ctx.beginPath();
+      ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.fillStyle = m.outputColor;
+    const ox = beltX + beltW * 0.55, oy = beltY - beltH * 0.75;
+    this._traceRoundedRect(ctx, ox - U * 0.05, oy - U * 0.035, U * 0.1, U * 0.07, U * 0.015);
+    ctx.fill();
+
+    // --- Nóżki. ---
+    ctx.fillStyle = hullDark;
+    [-bw * 0.3, bw * 0.22].forEach((dx) => {
+      ctx.fillRect(cx + dx, by + bh, U * 0.08, U * 0.06);
+    });
   }
 
   /**
