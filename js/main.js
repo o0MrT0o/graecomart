@@ -286,9 +286,28 @@ function hideLoadingScreenWhenReady(game, player) {
 
     const ready = Promise.all([
         game.assetsReady || Promise.resolve(),
-        player.spritesReady || Promise.resolve()
+        player.spritesReady || Promise.resolve(),
+        // Czekamy TEŻ na pierwszą kalibrację adaptacyjnej jakości (patrz
+        // Game.firstQualityCheckReady/_trackPerformance w game.js) - bez
+        // tego gracz zawsze widziałby pierwsze kilka sekund w NAJWYŻSZEJ
+        // jakości (2x), niezależnie od tego czy urządzenie to wyrabia, i
+        // dopiero PO tym adaptacyjny system zdążyłby zareagować - czyli
+        // dokładnie te "spadki klatek na początku", o które chodziło w
+        // zgłoszeniu. game.start() (wyżej w startGame()) już działa POD
+        // ekranem ładowania, więc te ~50 klatek pomiaru (GAME_PERF_WARMUP_
+        // FRAMES+GAME_PERF_SAMPLE_SIZE) mijają NIEWIDOCZNIE - gracz widzi
+        // grę dopiero, gdy jakość jest już dobrana do jego urządzenia.
+        game.firstQualityCheckReady || Promise.resolve()
     ]);
-    const timeout = new Promise((resolve) => setTimeout(resolve, 6000));
+    // 9s, nie 6s jak dawniej - dawny limit istniał tylko jako zabezpieczenie
+    // "gdyby obrazek nigdy się nie wczytał" (rzadkie). Teraz w tej samej
+    // puli czeka TEŻ firstQualityCheckReady, które na naprawdę słabym
+    // urządzeniu potrzebuje realnego czasu (GAME_PERF_WARMUP_FRAMES+
+    // GAME_PERF_SAMPLE_SIZE klatek, patrz game.js) - chcemy dać mu szansę
+    // dokończyć kalibrację, nie odciąć ją w połowie. Nadal skończony limit,
+    // żeby ekran nie wisiał w nieskończoność na urządzeniu, które nie
+    // wyrobi nawet 30 klatek w rozsądnym czasie.
+    const timeout = new Promise((resolve) => setTimeout(resolve, 9000));
     const minDelay = new Promise((resolve) => setTimeout(resolve, LOADING_SCREEN_MIN_MS));
 
     Promise.all([Promise.race([ready, timeout]), minDelay]).then(() => {

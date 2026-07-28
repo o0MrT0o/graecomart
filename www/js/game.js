@@ -224,9 +224,16 @@ const GAME_QUALITY_DPR_STEPS = [0.5, 0.65, 0.8, 1, 1.5, 2];
 // 20 SEKUND zacinania, zanim padnie choć jedna decyzja o obniżeniu jakości.
 // Krótsze okno reaguje szybciej kosztem odrobiny stabilności klasyfikacji -
 // akceptowalny kompromis, bo mediana i tak filtruje pojedyncze zacięcia.
-const GAME_PERF_WARMUP_FRAMES = 20;
+//
+// BUGFIX ("spadki FPS na początku"): main.js czeka teraz z odsłonięciem
+// gry na PIERWSZĄ kalibrację (patrz Game.firstQualityCheckReady) - więc te
+// klatki nie są już "zacinaniem, które gracz widzi", tylko czasem POD
+// ekranem ładowania. Ale to wciąż czas oczekiwania, więc im krócej, tym
+// lepiej - dalsze cięcie z 20+30 do 10+20 (30 klatek razem) na słabym
+// sprzęcie skraca kalibrację o kolejne ~40%.
+const GAME_PERF_WARMUP_FRAMES = 10;
 // Z ilu klatek liczymy medianę przed podjęciem decyzji.
-const GAME_PERF_SAMPLE_SIZE = 30;
+const GAME_PERF_SAMPLE_SIZE = 20;
 // Próg (ms na klatkę), powyżej którego schodzimy o krok jakości niżej.
 // 22ms (~45 FPS), nie 16.7 (60 FPS) - odrobina zapasu, żeby gra nie obniżała
 // sobie jakości przy sporadycznym drobnym przekroczeniu budżetu.
@@ -370,6 +377,19 @@ class Game {
     this._qualityLevel = GAME_QUALITY_DPR_STEPS.length - 1;
     this._frameSamples = [];
     this._perfWarmupFrames = 0;
+    // Rozwiązuje się PO pierwszym pełnym cyklu pomiaru (patrz _trackPerformance) -
+    // czyli w momencie, gdy jakość jest już DOBRANA do urządzenia, nie tylko
+    // "zaczęta na najwyższej i czekająca na porażkę". main.js czeka na to
+    // PRZED schowaniem ekranu ładowania (patrz hideLoadingScreenWhenReady) -
+    // dzięki temu ewentualny spadek jakości dzieje się NIEWIDOCZNIE pod
+    // ekranem ładowania, zamiast jako kilka sekund zacinania na oczach
+    // gracza tuż po starcie. Ograniczone tym samym 6s timeoutem co reszta
+    // warunków w main.js, więc na urządzeniu, które nie zdąży nawet SKOŃCZYĆ
+    // pierwszego pomiaru, ekran i tak w końcu zniknie.
+    this._firstQualityCheckResolve = null;
+    this.firstQualityCheckReady = new Promise((resolve) => {
+      this._firstQualityCheckResolve = resolve;
+    });
 
     // --- Timing pętli gry -------------------------------------------------------
     this.lastTimestamp = 0;
@@ -492,6 +512,15 @@ class Game {
     const sorted = this._frameSamples.slice().sort((a, b) => a - b);
     const median = sorted[Math.floor(sorted.length / 2)];
     this._frameSamples.length = 0;
+
+    // Pierwszy pełny cykl pomiaru zakończony - jakość jest już DOBRANA
+    // (obniżona teraz, jeśli trzeba, albo świadomie zostawiona na
+    // najwyższej). Wołane RAZ (resolve() na już rozwiązanej Promise jest
+    // no-opem z definicji, więc bez dodatkowej flagi/guarda).
+    if (this._firstQualityCheckResolve) {
+      this._firstQualityCheckResolve();
+      this._firstQualityCheckResolve = null;
+    }
 
     if (median > GAME_PERF_BUDGET_MS) {
       const ratio = median / GAME_PERF_BUDGET_MS;
