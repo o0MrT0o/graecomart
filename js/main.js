@@ -264,6 +264,22 @@ function startGame() {
     );
 }
 
+// Minimalny czas, przez jaki ekran ładowania ZOSTAJE na ekranie, nawet gdy
+// assety wczytają się błyskawicznie (bundlowana apka czyta je lokalnie, więc
+// bez tego ekran potrafił błysnąć i zniknąć w ułamek sekundy - "za szybko,
+// żeby cokolwiek zdążyło się na spokojnie załadować"). Nie jest to fake
+// opóźnienie bez powodu: dopiero PO tym czasie (plus zapas klatek niżej)
+// świat zdążył upiec swoje statyczne tło (patrz komentarz przy
+// LOADING_SCREEN_SETTLE_FRAMES).
+const LOADING_SCREEN_MIN_MS = 2200;
+// Ile klatek requestAnimationFrame czekamy PO tym, jak assety są już gotowe,
+// zanim schowamy ekran. game.start() (patrz startGame() wyżej) już wtedy
+// działa POD ekranem ładowania, więc w tym oknie Game._bakeWorldBackground
+// (jednorazowe upieczenie tła świata - patrz game.js, dawniej główny
+// winowajca zacinania) zdąży się wykonać, zamiast być widoczne jako
+// zacięcie NA GOŁYM EKRANIE GRY tuż po zniknięciu tego ekranu.
+const LOADING_SCREEN_SETTLE_FRAMES = 3;
+
 function hideLoadingScreenWhenReady(game, player) {
     const loadingScreen = document.getElementById('loading-screen');
     if (!loadingScreen) return;
@@ -273,8 +289,29 @@ function hideLoadingScreenWhenReady(game, player) {
         player.spritesReady || Promise.resolve()
     ]);
     const timeout = new Promise((resolve) => setTimeout(resolve, 6000));
+    const minDelay = new Promise((resolve) => setTimeout(resolve, LOADING_SCREEN_MIN_MS));
 
-    Promise.race([ready, timeout]).then(() => {
-        loadingScreen.classList.add('loading-screen--hidden');
+    Promise.all([Promise.race([ready, timeout]), minDelay]).then(() => {
+        let framesLeft = LOADING_SCREEN_SETTLE_FRAMES;
+        const waitForSettle = () => {
+            framesLeft--;
+            if (framesLeft > 0) {
+                requestAnimationFrame(waitForSettle);
+                return;
+            }
+            // Domyka pasek do 100% (patrz animacja "na oko" w index.html) -
+            // gracz widzi wyraźne zakończenie zamiast paska ucinającego się
+            // w połowie, zanim ekran zniknie.
+            if (window.__loadingBarGrowInterval) {
+                clearInterval(window.__loadingBarGrowInterval);
+            }
+            const fillEl = document.getElementById('loading-bar-fill');
+            if (fillEl) fillEl.style.width = '100%';
+
+            setTimeout(() => {
+                loadingScreen.classList.add('loading-screen--hidden');
+            }, 200);
+        };
+        requestAnimationFrame(waitForSettle);
     });
 }
