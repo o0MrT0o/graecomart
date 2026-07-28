@@ -204,6 +204,14 @@ class ItemRenderer {
       ItemRenderer._drawCrystal(ctx, x, y, size, typeId === 'crystal_shard');
       return;
     }
+    // 'crystal_gem' (ze Szlifierni Kryształów, machines.js) - ten sam powód
+    // co crystal/crystal_shard wyżej: brak pliku PNG, więc dostaje własną
+    // proceduralną bryłę zamiast emoji '✨' w skali size*0.52, żeby nie
+    // wyglądał drobniejszy niż sąsiedzi na liście cen terminala.
+    if (typeId === 'crystal_gem') {
+      ItemRenderer._drawPolishedGem(ctx, x, y, size);
+      return;
+    }
     ctx.font = `${size * 0.52}px "Segoe UI Emoji", Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -310,6 +318,78 @@ class ItemRenderer {
     ctx.beginPath();
     ctx.moveTo(top.x, top.y + size * 0.06);
     ctx.lineTo(left.x + w * 0.12, left.y + size * 0.05);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  /**
+   * Proceduralny OSZLIFOWANY kryształ (crystal_gem, ze Szlifierni Kryształów -
+   * machines.js) - ten sam sześciokątny szkielet co _drawCrystal (czyta się
+   * jako "ten sam materiał, kolejny etap"), ale bledsza/lodowata paleta
+   * (zgodna z outputColor Szlifierni, #E1F5FE) zamiast fioletu surowego
+   * odłamka, GĘSTSZA siatka facetów (dodatkowe cięcia między wierzchołkami)
+   * i błysk w kształcie gwiazdki zamiast pojedynczej linii odblasku -
+   * wizualnie "bardziej dopracowany", zgodnie z tym, że to najdroższy towar
+   * w grze (patrz MARKET_BASE_PRICES.crystal_gem).
+   */
+  static _drawPolishedGem(ctx, x, y, size) {
+    const w = size * 0.7;
+    const h = size * 0.7;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    const top = { x: 0, y: -h / 2 };
+    const right = { x: w / 2, y: -h * 0.08 };
+    const bottomRight = { x: w * 0.32, y: h / 2 };
+    const bottomLeft = { x: -w * 0.32, y: h / 2 };
+    const left = { x: -w / 2, y: -h * 0.08 };
+    const center = { x: 0, y: h * 0.06 };
+
+    const grad = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
+    grad.addColorStop(0, '#FFFFFF');
+    grad.addColorStop(0.45, '#E1F5FE');
+    grad.addColorStop(1, '#7FD8D0');
+
+    ctx.beginPath();
+    ctx.moveTo(top.x, top.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.lineTo(bottomRight.x, bottomRight.y);
+    ctx.lineTo(bottomLeft.x, bottomLeft.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.lineWidth = Math.max(1, size * 0.03);
+    ctx.stroke();
+
+    // Gęstsza siatka facetów niż surowy odłamek - wierzchołki DO środka,
+    // plus dodatkowe cięcia między sąsiednimi wierzchołkami.
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = Math.max(1, size * 0.018);
+    ctx.beginPath();
+    [top, left, right, bottomLeft, bottomRight].forEach((p) => {
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(center.x, center.y);
+    });
+    [[top, right], [right, bottomRight], [bottomLeft, left], [left, top]].forEach(([a, b]) => {
+      ctx.moveTo((a.x + b.x) / 2, (a.y + b.y) / 2);
+      ctx.lineTo(center.x, center.y);
+    });
+    ctx.stroke();
+
+    // Błysk w kształcie gwiazdki (4 ramiona) - sygnał "gotowy/wypolerowany",
+    // którego surowy odłamek (jeden prosty odblask) nie ma.
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = Math.max(1, size * 0.025);
+    const sparkX = -w * 0.12, sparkY = -h * 0.15, sparkR = size * 0.09;
+    ctx.beginPath();
+    ctx.moveTo(sparkX - sparkR, sparkY);
+    ctx.lineTo(sparkX + sparkR, sparkY);
+    ctx.moveTo(sparkX, sparkY - sparkR);
+    ctx.lineTo(sparkX, sparkY + sparkR);
     ctx.stroke();
 
     ctx.restore();

@@ -110,6 +110,33 @@ const MACHINE_DEFINITIONS = [
     outputColor: '#B388FF',
     processingDuration: 3200,
     maxInventory: 3
+  },
+  {
+    // Szlifiernia Kryształów - jedyna maszyna FIZYCZNIE stojąca w Strefie D
+    // (Kryształowa Grań, patrz GAME_ZONE_CORE_WIDTH w game.js) - xRatio > 1
+    // CELOWO (1.15 * MACHINE_WORLD_WIDTH=1400 = 1610px), bo Grań to teraz
+    // niezależny pas ZA starą szerokością świata, nie wycinek rdzenia jak
+    // reszta maszyn. Odłamek (surowiec bez żadnego przetwarzania, patrz
+    // komentarz przy crystal_shard w market.js) dostaje tu drugie,
+    // wolniejsze zastosowanie obok bezpośredniej sprzedaży - ten sam duch co
+    // Oczyszczalnia dla szkła. Brak pliku PNG (jak Oczyszczalnia) - bespoke
+    // proceduralna bryła, patrz _drawCrystalPolisherMachine.
+    id: 'crystal_polisher',
+    label: 'Szlifiernia Kryształów',
+    xRatio: 1.15,
+    yRatio: 0.28,
+    color: '#4DD0C8',
+    acceptsType: 'crystal_shard',
+    outputType: 'crystal_gem',
+    outputLabel: '✨',
+    outputColor: '#E1F5FE',
+    // Najdłuższy cykl w grze (rzadszy niż nawet Oczyszczalnia) - wsad to
+    // odłamek epickiej rzadkości, więc wynik ma być odpowiednio powolny/cenny.
+    processingDuration: 4500,
+    // Mniej niż reszta maszyn (3) - odłamki są rzadkie (Strefa D + pełny
+    // sprzęt), więc wymaganie zebrania 3 naraz byłoby zbyt dużym progiem
+    // wejścia dla pierwszego użycia tej maszyny.
+    maxInventory: 2
   }
 ];
 
@@ -471,6 +498,14 @@ class MachineManager {
       else if (m.id === 'refinery_b') {
         this._drawRefineryMachine(ctx, m, isActive);
       }
+      // --- LOGIKA RYSOWANIA GRAFIKI DLA SZLIFIERNI KRYSZTAŁÓW ---
+      // Ten sam powód co Oczyszczalnia wyżej - brak pliku PNG, więc bespoke
+      // proceduralna bryła zamiast generycznego fallbacku (który obok 3
+      // prawdziwych sprite'ów i Oczyszczalni wyglądałby jak niedokończony
+      // placeholder - patrz komentarz przy _drawRefineryMachine).
+      else if (m.id === 'crystal_polisher') {
+        this._drawCrystalPolisherMachine(ctx, m, isActive);
+      }
       // --- LOGIKA DLA POZOSTAŁYCH MASZYN ---
       else if (!(spriteKey && window.spriteLoader.draw(ctx, spriteKey, m.x, m.y, spriteSize))) {
         const baseColor = isActive ? this._lighten(m.color, MACHINE_LIGHTEN_AMOUNT) : m.color;
@@ -750,6 +785,144 @@ class MachineManager {
     ctx.fill();
 
     // --- Nóżki - PNG-i stoją na krótkich podporach, nie na samym korpusie. ---
+    ctx.fillStyle = metalDark;
+    [-bw * 0.3, bw * 0.22].forEach((dx) => {
+      ctx.fillRect(cx + dx, by + bh, U * 0.08, U * 0.06);
+    });
+  }
+
+  /**
+   * Szlifiernia Kryształów - druga bespoke proceduralna bryła (brak pliku
+   * PNG, jak Oczyszczalnia wyżej - patrz jej komentarz o "niedokończonym
+   * placeholderze"). Ten sam język wizualny (lej/hopper, korpus, okienko,
+   * panel, przenośnik, nóżki), ale paleta lodowato-turkusowa zamiast
+   * fioletowej Oczyszczalni - żeby dwie bespoke maszyny obok siebie w Grani/
+   * na jej granicy nie wyglądały jak duplikat tej samej bryły w innym
+   * kolorze. Różni się głównie oknem procesu: zamiast bulgoczącej kadzi,
+   * WIRUJĄCA tarcza szlifierska (kilka trójkątnych "zębów" obracających się
+   * wokół środka) - inny, bardziej "mechaniczny" niż "chemiczny" ruch,
+   * pasujący do tematu szlifowania twardego kryształu, nie warzenia cieczy.
+   */
+  _drawCrystalPolisherMachine(ctx, m, isActive) {
+    const U = MACHINE_PROC_UNIT;
+    const cx = m.x;
+    const cy = m.y;
+    const now = performance.now();
+
+    const body = isActive ? this._lighten('#3F9E97', MACHINE_LIGHTEN_AMOUNT) : '#3F9E97';
+    const bodyDark = this._lighten(body, -34);
+    const metal = '#8A94A6';
+    const metalDark = '#6C7585';
+
+    // --- Lej u góry - ten sam trapez co u sąsiadów, z odłamkiem kryształu
+    // (fioletowy romb, ten sam kolor co crystal_shard w items.js) czekającym
+    // na wsyp, zamiast butelek szkła. ---
+    const hopW = U * 0.62, hopNeck = U * 0.24;
+    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.34;
+    ctx.fillStyle = metal;
+    ctx.beginPath();
+    ctx.moveTo(cx - hopW / 2, hopTop);
+    ctx.lineTo(cx + hopW / 2, hopTop);
+    ctx.lineTo(cx + hopNeck / 2, hopBot);
+    ctx.lineTo(cx - hopNeck / 2, hopBot);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = metalDark;
+    ctx.beginPath();
+    ctx.moveTo(cx + hopW * 0.16, hopTop);
+    ctx.lineTo(cx + hopW / 2, hopTop);
+    ctx.lineTo(cx + hopNeck / 2, hopBot);
+    ctx.lineTo(cx + hopNeck * 0.1, hopBot);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#9575CD';
+    const gx = cx, gy = hopTop - U * 0.02;
+    ctx.beginPath();
+    ctx.moveTo(gx, gy - U * 0.09);
+    ctx.lineTo(gx + U * 0.055, gy);
+    ctx.lineTo(gx, gy + U * 0.09);
+    ctx.lineTo(gx - U * 0.055, gy);
+    ctx.closePath();
+    ctx.fill();
+
+    // --- Korpus: identyczna geometria co Oczyszczalnia (zaokrąglony
+    // prostokąt, jaśniejsza lewa / ciemniejsza prawa strona), inna paleta. ---
+    const bw = U * 0.78, bh = U * 0.72;
+    const bx = cx - bw / 2, by = cy - U * 0.34;
+    ctx.fillStyle = body;
+    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
+    ctx.fill();
+    ctx.save();
+    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
+    ctx.clip();
+    ctx.fillStyle = bodyDark;
+    ctx.fillRect(bx + bw * 0.62, by, bw * 0.38, bh);
+    ctx.restore();
+
+    // --- Okienko procesu: WIRUJĄCA tarcza szlifierska (kilka trójkątnych
+    // "zębów" wokół środka, obracających się w czasie) - zamiast bulgoczącej
+    // kadzi Oczyszczalni, mechaniczny ruch pasujący do szlifowania. ---
+    const ww = bw * 0.5, wh = bh * 0.42;
+    const wx = cx - ww / 2 - bw * 0.06, wy = by + bh * 0.16;
+    ctx.fillStyle = '#1B3A38';
+    this._traceRoundedRect(ctx, wx - 2, wy - 2, ww + 4, wh + 4, 4);
+    ctx.fill();
+    ctx.save();
+    this._traceRoundedRect(ctx, wx, wy, ww, wh, 3);
+    ctx.clip();
+    ctx.fillStyle = '#1B3A38';
+    ctx.fillRect(wx, wy, ww, wh);
+    const wheelCx = wx + ww / 2, wheelCy = wy + wh / 2;
+    const wheelR = Math.min(ww, wh) * 0.42;
+    const spin = (now * 0.004) % (Math.PI * 2);
+    const teeth = 6;
+    for (let i = 0; i < teeth; i++) {
+      const a = spin + (i / teeth) * Math.PI * 2;
+      const tx = wheelCx + Math.cos(a) * wheelR;
+      const ty = wheelCy + Math.sin(a) * wheelR;
+      ctx.fillStyle = i % 2 === 0 ? '#B2EBE6' : '#7FD8D0';
+      ctx.beginPath();
+      ctx.arc(tx, ty, wheelR * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#E1F5FE';
+    ctx.beginPath();
+    ctx.arc(wheelCx, wheelCy, wheelR * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // --- Panel z kolorowymi kwadracikami - ten sam detal co u sąsiadów. ---
+    const px0 = bx + bw * 0.72, py0 = by + bh * 0.2, ps = U * 0.055;
+    [['#E8574B', 0], ['#F2C14E', 1], ['#63C267', 2]].forEach(([col, i]) => {
+      ctx.fillStyle = col;
+      ctx.fillRect(px0, py0 + i * ps * 1.7, ps, ps);
+    });
+
+    // --- Przenośnik po prawej + gotowy, oszlifowany kryształ (blady,
+    // prawie biały - outputColor #E1F5FE, wyraźnie jaśniejszy niż surowy
+    // fioletowy odłamek w leju powyżej, żeby widać było "przemianę"). ---
+    const beltY = cy + U * 0.2, beltX = cx + bw * 0.42, beltW = U * 0.34, beltH = U * 0.1;
+    ctx.fillStyle = metal;
+    this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
+    ctx.fill();
+    ctx.fillStyle = metalDark;
+    [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
+      ctx.beginPath();
+      ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.fillStyle = '#E1F5FE';
+    const kx = beltX + beltW * 0.55, ky = beltY - beltH * 0.75;
+    ctx.beginPath();
+    ctx.moveTo(kx, ky - U * 0.07);
+    ctx.lineTo(kx + U * 0.045, ky);
+    ctx.lineTo(kx, ky + U * 0.05);
+    ctx.lineTo(kx - U * 0.045, ky);
+    ctx.closePath();
+    ctx.fill();
+
+    // --- Nóżki. ---
     ctx.fillStyle = metalDark;
     [-bw * 0.3, bw * 0.22].forEach((dx) => {
       ctx.fillRect(cx + dx, by + bh, U * 0.08, U * 0.06);

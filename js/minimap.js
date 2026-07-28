@@ -55,7 +55,10 @@ const MINIMAP_POIS = [
   { xr: 0.59, yr: 0.35, color: '#EF5350' }, // piec hutniczy
   { xr: 0.8, yr: 0.62, color: '#7E57C2' }, // oczyszczalnia (te same xr/yr co refinery_b w machines.js)
   { xr: 0.5, yr: 0.85, color: '#FFD54F' }, // terminal handlowy
-  { xr: 0.18, yr: 0.55, color: '#81D4FA' } // statek
+  { xr: 0.18, yr: 0.55, color: '#81D4FA' }, // statek
+  // Szlifiernia Kryształów - xr > 1 CELOWO (te same xr/yr co crystal_polisher
+  // w machines.js) - stoi w Strefie D, za starą szerokością rdzenia.
+  { xr: 1.15, yr: 0.28, color: '#4DD0C8' } // szlifiernia kryształów
 ];
 
 class MinimapManager {

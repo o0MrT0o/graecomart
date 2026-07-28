@@ -247,7 +247,14 @@ class AudioManager {
 
     this._onItemPickup = () => this.play('pickup');
     this._onMachineReceived = () => this.play('machine_feed');
-    this._onMachineOutput = () => this.play('machine_complete');
+    // Szlifiernia Kryształów (machines.js) - JEDYNA maszyna z WŁASNYM
+    // dźwiękiem ukończenia zamiast wspólnego 'machine_complete' - najdroższy
+    // produkt w grze (patrz MARKET_BASE_PRICES.crystal_gem) zasługuje na
+    // wyraźnie inny, bardziej "specjalny" sygnał niż reszta maszyn.
+    this._onMachineOutput = (data) => {
+      if (data && data.machineId === 'crystal_polisher') this._playCrystalChime();
+      else this.play('machine_complete');
+    };
     this._onMoneyCollected = (data) => {
       // Tylko FAKTYCZNIE zarobione pieniądze (amount > 0) - EconomyManager
       // publikuje ten sam event z amount:0 też przy wydawaniu (np. wpłata
@@ -614,6 +621,41 @@ class AudioManager {
     gain.connect(this._musicGain);
     osc.start(t0);
     osc.stop(t0 + dur);
+  }
+
+  /**
+   * "Fanfara" ukończenia Szlifierni Kryształów (machines.js) - trzy szybkie,
+   * wznoszące sinusy z górnej oktawy skali (ten sam budulec co
+   * _maybePlayShimmer, tylko trzy nuty pod rząd zamiast jednej) zamiast
+   * wspólnego 'machine_complete' reszty maszyn - najdroższy produkt w grze
+   * (patrz MARKET_BASE_PRICES.crystal_gem) ma się wyraźnie wyróżniać na
+   * ucho. Gra na _sfxGain (SFX, nie muzyka w tle), więc respektuje ten sam
+   * mute co _playFootstep/play(), niezależnie od stanu podkładu muzycznego.
+   */
+  _playCrystalChime() {
+    if (this.muted) return;
+    if (!this._ensureAudioContext()) return;
+    const ctx = this._audioCtx;
+    const now = ctx.currentTime;
+    const notes = [7, 8, 9]; // górna oktawa, wznoszące (indeksy w AUDIO_MUSIC_SCALE)
+
+    notes.forEach((idx, i) => {
+      const t0 = now + i * 0.09;
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = AUDIO_MUSIC_SCALE[idx] * 2; // oktawa wyżej niż skala bazowa
+
+      const gain = ctx.createGain();
+      const dur = 0.5;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.3, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+
+      osc.connect(gain);
+      gain.connect(this._sfxGain);
+      osc.start(t0);
+      osc.stop(t0 + dur);
+    });
   }
 
   toggleMute() {

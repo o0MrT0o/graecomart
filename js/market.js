@@ -67,7 +67,14 @@ const MARKET_BASE_PRICES = {
   // wyposażenie i najdalszą wyprawę), ale NIŻEJ niż kryształ z Oczyszczalni
   // (40 - łańcuch produkcyjny zostaje najbardziej dochodowy). Realna przewaga
   // odłamka to brak kursów do maszyn, nie cena za sztukę.
-  crystal_shard: 30
+  crystal_shard: 30,
+  // 'crystal_gem' (Szlifiernia Kryształów - machines.js: crystal_shard ->
+  // crystal_gem) - NAJDROŻSZY towar w grze. Odłamek sam w sobie NIE wymaga
+  // przetwarzania (patrz komentarz wyżej), więc żeby Szlifiernia miała sens
+  // obok bezpośredniej sprzedaży, jej wyjście musi przebić 30 na tyle, żeby
+  // zrekompensować czekanie na najdłuższy cykl w grze (4500ms, machines.js)
+  // i maxInventory:2. 70 = ponad dwukrotność ceny wsadu za sztukę.
+  crystal_gem: 70
 };
 
 // Emoji do wyświetlenia na terminalu (czysto kosmetyczne, niezależne od
@@ -78,7 +85,8 @@ const MARKET_ICONS = {
   product: '🎁',
   alloy: '🧱',
   crystal: '🔮',
-  crystal_shard: '💠'
+  crystal_shard: '💠',
+  crystal_gem: '✨'
 };
 
 class MarketManager {
@@ -192,7 +200,7 @@ const TRADING_POST_MIN_ICON = 20;
 // Ten sam rytm co MACHINE_UNLOAD_INTERVAL_MS w machines.js - jedna sprzedaż
 // na tyle ms, dopóki gracz stoi w zasięgu i ma coś do sprzedania.
 const TRADING_POST_SELL_INTERVAL_MS = 150;
-const TRADING_POST_ACCEPTS = ['plastic', 'product', 'alloy', 'crystal', 'crystal_shard'];
+const TRADING_POST_ACCEPTS = ['plastic', 'product', 'alloy', 'crystal', 'crystal_shard', 'crystal_gem'];
 
 class TradingPost {
   constructor(canvas, marketManager) {

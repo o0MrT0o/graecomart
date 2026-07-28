@@ -499,7 +499,14 @@ const PROGRESSION_UNLOCKS = [
   // w player.js dodatkowo wymaga OBU strojów ochronnych naraz (Filtr +
   // Kombinezon), więc to naturalna "nagroda za pełne wyposażenie" pod koniec
   // przebiegu, nie kolejny przystanek po drodze.
-  { id: 'zone_D', kind: 'zone', threshold: 950, name: 'Kryształowa Grań', desc: 'Odłamki Kryształu - wymaga PEŁNEJ ochrony (Filtr + Kombinezon)' }
+  { id: 'zone_D', kind: 'zone', threshold: 950, name: 'Kryształowa Grań', desc: 'Odłamki Kryształu - wymaga PEŁNEJ ochrony (Filtr + Kombinezon)' },
+  // Szlifiernia Kryształów - kapitalizuje Grań (odblokowaną wyżej) drugim,
+  // wolniejszym zastosowaniem odłamka obok bezpośredniej sprzedaży (ten sam
+  // duch co Oczyszczalnia dla szkła: surowiec ma teraz realny wybór -
+  // szybko i pewnie na targ, albo przez maszynę na coś droższego). Próg
+  // WYŻSZY niż zone_D (950), bo wymaga, żeby gracz zdążył już nazbierać
+  // odłamków - wypełnia lukę między Granią a 3. modułem statku (1600$).
+  { id: 'crystal_polisher', kind: 'machine', threshold: 1400, name: 'Szlifiernia Kryształów', desc: 'Szlifuje Odłamki Kryształu w najcenniejszy towar w grze' }
 ];
 
 // --- Zdolności z modułów statku ---------------------------------------------

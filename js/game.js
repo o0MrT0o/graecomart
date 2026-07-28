@@ -1237,6 +1237,10 @@ class Game {
       { xr: 0.32, yr: 0.4 }, // recykler
       { xr: 0.28, yr: 0.72 }, // prasa
       { xr: 0.59, yr: 0.35 }, // piec hutniczy
+      // BUGFIX: Oczyszczalnia (dodana w Fazie progresji) nigdy nie dostała
+      // wpisu tutaj - dekoracje mogły spawnować się wprost na niej. xr/yr
+      // muszą się zgadzać z refinery_b w machines.js.
+      { xr: 0.8, yr: 0.62 }, // oczyszczalnia
       { xr: 0.5, yr: 0.85 }, // terminal handlowy
       // BUGFIX: było (0.42, 0.58) - stara pozycja statku SPRZED przesunięcia
       // opisanego w ship.js (komentarz przy this.xRatio/this.yRatio tam) na
@@ -1244,7 +1248,11 @@ class Game {
       // dekoracje mogły spawnować się na/tuż obok statku zamiast dookoła
       // niego.
       { xr: 0.18, yr: 0.55 }, // statek
-      { xr: 0.5, yr: 0.5 } // start gracza
+      { xr: 0.5, yr: 0.5 }, // start gracza
+      // Szlifiernia Kryształów (crystal_polisher w machines.js) - JEDYNA
+      // pozycja tutaj z xr > 1 (patrz komentarz przy jej definicji w
+      // machines.js: stoi w Strefie D, za starą szerokością rdzenia).
+      { xr: 1.15, yr: 0.28 } // szlifiernia kryształów
       // BUGFIX (poszerzenie mapy pod Strefę D): xr/yr wyżej to ratio
       // WZGLĘDEM GAME_ZONE_CORE_WIDTH (gdzie maszyny/statek faktycznie stoją -
       // patrz machines.js/ship.js/market.js), NIE względem this.worldWidth
