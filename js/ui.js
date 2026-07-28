@@ -1638,6 +1638,17 @@ class UIManager {
         icon: '✨',
         duration: 4200
       });
+      // Drugi poziom trwałych ulepszeń (economy.js) jest CELOWO ukryty z
+      // katalogu do tego momentu (patrz CORE_TIER2_UNLOCK_PLANET) - bez tego
+      // toastu gracz mógłby nigdy nie zauważyć, że w Statku pojawiły się
+      // nowe pozycje, skoro sam katalog wcześniej wyglądał "ukończony".
+      if (window.CORE_TIER2_UNLOCK_PLANET && planet === window.CORE_TIER2_UNLOCK_PLANET) {
+        this.notifications.show('🔓 Nowe trwałe ulepszenia dostępne w Statku!', {
+          type: 'success',
+          icon: '⚡',
+          duration: 4600
+        });
+      }
     };
 
     this._onCoreUpgrade = () => this._refreshPrestige();

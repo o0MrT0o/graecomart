@@ -172,6 +172,11 @@ const ECONOMY_SHIP_MODULE_COUNT = 5;
 // aktualnego money - inaczej opłacałoby się zostać z pustym portfelem tuż
 // przed odlotem (np. przez zakup upgrade'u na chwilę przed), co byłoby
 // mylące i karałoby dokładnie odwrotne zachowanie niż chcemy nagradzać.
+//
+// Od której planetNumber odblokowuje się drugi poziom ulepszeń niżej
+// (unlockPlanet: CORE_TIER2_UNLOCK_PLANET) - patrz komentarz przy "Drugi
+// poziom (weterani)".
+const CORE_TIER2_UNLOCK_PLANET = 5;
 const PRESTIGE_UPGRADES = [
   {
     id: 'core_income',
@@ -251,6 +256,70 @@ const PRESTIGE_UPGRADES = [
     maxLevel: 6,
     getValue(level) {
       return level * 3;
+    }
+  },
+  // --- Drugi poziom (weterani) -----------------------------------------------
+  // Sześć ulepszeń wyżej wyczerpuje się po kilku odlotach (maxLevel 6-10,
+  // koszty rosną, ale w końcu każde da się dobić do maksa) - gracz, który
+  // zebrał sporo Rdzeni, zostawał bez żadnego powodu, żeby dalej odlatywać.
+  // Te cztery odblokowują się dopiero na planetNumber >= CORE_TIER2_UNLOCK_PLANET
+  // (patrz getCoreShopCatalog/buyCoreUpgrade niżej) - CELOWO ukryte, nie
+  // pokazane jako "zablokowane" (w przeciwieństwie do SHOP_UPGRADES, ten
+  // katalog nie ma wzorca zaszarzonych pozycji), żeby dotarcie do 5. planety
+  // dawało realną, nieoczekiwaną nagrodę: nowy rząd katalogu. Każde z nich
+  // CELOWO dotyka innej, już istniejącej formuły (combo/offline/streak/
+  // prestiż), więc zero nowych systemów - tylko głębsze skalowanie tego, co
+  // już jest.
+  {
+    id: 'core_combo_master',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FF7043" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 C9 6 7 9 7 13 a5 5 0 0 0 10 0 C17 10.5 15.5 9.5 15.5 9.5 C15.7 12 14 13 14 13 C15 8.5 12 2.5 12 2.5 Z" fill="#FF7043" fill-opacity="0.3"/></svg>',
+    name: 'Mistrz Combo',
+    description: '+1 do maks. poziomu combo za poziom - dłuższe serie sprzedaży, zanim mnożnik przestanie rosnąć',
+    baseCost: 6,
+    costScale: 1.9,
+    maxLevel: 6,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return level;
+    }
+  },
+  {
+    id: 'core_offline_master',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#26C6DA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13 A10 10 0 0 1 13 3" fill="#26C6DA" fill-opacity="0.15"/><path d="M3 13 L10.5 20.5"/><circle cx="3" cy="13" r="1.8" fill="#26C6DA" stroke="none"/><path d="M13 3 V9 M13 3 H19" stroke-dasharray="1.6 1.6"/><circle cx="19" cy="17" r="2.4"/></svg>',
+    name: 'Zdalne Zarządzanie',
+    description: '+5% skuteczności produkcji offline za poziom',
+    baseCost: 8,
+    costScale: 1.85,
+    maxLevel: 6,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return level * 0.05;
+    }
+  },
+  {
+    id: 'core_daily_master',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#EC407A" stroke-width="2" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9.5 H20"/><path d="M8 3 V6.5 M16 3 V6.5" stroke-linecap="round"/><path d="M12 12 L13 14.2 L15.4 14.5 L13.6 16.2 L14.1 18.6 L12 17.3 L9.9 18.6 L10.4 16.2 L8.6 14.5 L11 14.2 Z" fill="#EC407A" stroke="none"/></svg>',
+    name: 'Stały Bywalec',
+    description: '+8% do nagrody za passę codziennego logowania za poziom',
+    baseCost: 6,
+    costScale: 1.85,
+    maxLevel: 6,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return 1 + level * 0.08;
+    }
+  },
+  {
+    id: 'core_prestige_boost',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#7E57C2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="7"/><path d="M15.5 15.5 L21 21"/><path d="M10.5 7 L11.4 9.6 L14 10.5 L11.4 11.4 L10.5 14 L9.6 11.4 L7 10.5 L9.6 9.6 Z" fill="#7E57C2" stroke="none"/></svg>',
+    name: 'Głębsza Analiza',
+    description: '+10% Rdzeni z każdego odlotu za poziom',
+    baseCost: 10,
+    costScale: 2.0,
+    maxLevel: 5,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return 1 + level * 0.1;
     }
   }
 ];
@@ -764,8 +833,9 @@ class EconomyManager {
    */
   sellItem(typeId, unitPrice, x, y) {
     const now = Date.now();
+    const comboMax = this._getComboMaxStacks();
     this.comboStacks = (now - this._lastPayoutAt <= ECONOMY_COMBO_WINDOW_MS)
-      ? Math.min(ECONOMY_COMBO_MAX_STACKS, this.comboStacks + 1)
+      ? Math.min(comboMax, this.comboStacks + 1)
       : 0;
     this._lastPayoutAt = now;
 
@@ -806,7 +876,7 @@ class EconomyManager {
       x,
       y,
       duration: 900,
-      color: this.comboStacks >= ECONOMY_COMBO_MAX_STACKS ? '#FF7043' : '#FFD700'
+      color: this.comboStacks >= comboMax ? '#FF7043' : '#FFD700'
     });
 
     return paidOut;
@@ -950,6 +1020,12 @@ class EconomyManager {
     const def = PRESTIGE_UPGRADES.find((u) => u.id === 'core_income');
     if (!def) return 1;
     return def.getValue(this.prestigeLevels.core_income || 0);
+  }
+
+  /** Maks. poziom combo (ECONOMY_COMBO_MAX_STACKS + trwały bonus z
+   * core_combo_master, patrz drugi poziom Rdzeni) - czytane w sellItem(). */
+  _getComboMaxStacks() {
+    return ECONOMY_COMBO_MAX_STACKS + (this.getCoreValue('core_combo_master') || 0);
   }
 
   /**
@@ -1303,9 +1379,14 @@ class EconomyManager {
    * jednego przebiegu w nieskończoność ma malejący sens, a start kolejnej
    * planety zawsze się opłaca. Współczynniki NIEZBALANSOWANE/nietestowane -
    * do podkręcenia po zagraniu, ta sama zasada co reszta liczb w tej grze.
+   *
+   * Drugi poziom Rdzeni (core_prestige_boost) mnoży WYNIK pierwiastka, nie
+   * totalEarned pod nim - inaczej rósłby wolniej niż liniowo (sam
+   * pierwiastek), co przeczyłoby opisowi "+10% Rdzeni za poziom".
    */
   previewPrestigeCores() {
-    return Math.max(1, Math.floor(Math.sqrt(this.totalEarned) / 10));
+    const boostMult = this.getCoreValue('core_prestige_boost') || 1;
+    return Math.max(1, Math.floor((Math.sqrt(this.totalEarned) / 10) * boostMult));
   }
 
   getCoreUpgradeCost(upgradeId) {
@@ -1317,21 +1398,27 @@ class EconomyManager {
   }
 
   getCoreShopCatalog() {
-    return PRESTIGE_UPGRADES.map((def) => {
-      const level = this.prestigeLevels[def.id] || 0;
-      const maxed = level >= def.maxLevel;
-      return {
-        id: def.id,
-        icon: def.icon,
-        name: def.name,
-        description: def.description,
-        level,
-        maxLevel: def.maxLevel,
-        cost: maxed ? null : this.getCoreUpgradeCost(def.id),
-        maxed,
-        nextValue: maxed ? def.getValue(level) : def.getValue(level + 1)
-      };
-    });
+    return PRESTIGE_UPGRADES
+      // Drugi poziom (patrz komentarz przy definicjach) jest CELOWO
+      // niewidoczny w katalogu, dopóki gracz nie dotrze do odpowiedniej
+      // planety - nie "zablokowany/zaszarzony" jak w zwykłym sklepie, tylko
+      // w ogóle nieobecny, żeby odblokowanie było niespodzianką.
+      .filter((def) => !def.unlockPlanet || this.planetNumber >= def.unlockPlanet)
+      .map((def) => {
+        const level = this.prestigeLevels[def.id] || 0;
+        const maxed = level >= def.maxLevel;
+        return {
+          id: def.id,
+          icon: def.icon,
+          name: def.name,
+          description: def.description,
+          level,
+          maxLevel: def.maxLevel,
+          cost: maxed ? null : this.getCoreUpgradeCost(def.id),
+          maxed,
+          nextValue: maxed ? def.getValue(level) : def.getValue(level + 1)
+        };
+      });
   }
 
   /** Kupuje poziom trwałego ulepszenia za Rdzenie. Osobny katalog/waluta od
@@ -1341,6 +1428,10 @@ class EconomyManager {
   buyCoreUpgrade(upgradeId) {
     const def = PRESTIGE_UPGRADES.find((u) => u.id === upgradeId);
     if (!def) return false;
+    // Lustrzane zabezpieczenie do filtra w getCoreShopCatalog() - katalog i
+    // tak nie pokazuje tej pozycji przed odblokowaniem, ale metoda broni się
+    // sama, tak samo jak isReadyToPrestige() niżej w prestige().
+    if (def.unlockPlanet && this.planetNumber < def.unlockPlanet) return false;
 
     const level = this.prestigeLevels[upgradeId] || 0;
     if (level >= def.maxLevel) return false;
@@ -1510,7 +1601,12 @@ class EconomyManager {
     this.loginStreak = gap === 1 ? this.loginStreak + 1 : 1;
     this.lastLoginDateStr = today;
 
-    const baseMoneyReward = DAILY_STREAK_BASE + Math.min(this.loginStreak, DAILY_STREAK_CAP_DAYS) * DAILY_STREAK_PER_DAY;
+    const rawMoneyReward = DAILY_STREAK_BASE + Math.min(this.loginStreak, DAILY_STREAK_CAP_DAYS) * DAILY_STREAK_PER_DAY;
+    // Drugi poziom Rdzeni (core_daily_master) - mnożnik NA nagrodę streaka,
+    // ten sam duch co core_prices na targu, tylko dla innej pętli. Domyślnie
+    // getValue(0) zwraca 1 (patrz definicja), więc bez zakupu nic się nie zmienia.
+    const dailyMult = this.getCoreValue('core_daily_master') || 1;
+    const baseMoneyReward = Math.round(rawMoneyReward * dailyMult);
     const coreBonus = (this.loginStreak % DAILY_STREAK_CORE_INTERVAL === 0) ? 1 : 0;
 
     // BUGFIX: ten sam powód co w sellItem() (patrz komentarz przy
@@ -1612,9 +1708,13 @@ class EconomyManager {
     if (elapsedSeconds < OFFLINE_MIN_SECONDS) return null;
     if (this.totalPlaytimeSeconds < OFFLINE_MIN_PLAYTIME_SECONDS) return null;
 
+    // Drugi poziom Rdzeni (core_offline_master) dokłada się WPROST do
+    // skuteczności, zamiast osobnego mnożnika - efekt identyczny co
+    // podniesienie samej stałej, tylko trwały i skalowalny z poziomami.
+    const efficiency = OFFLINE_EFFICIENCY + (this.getCoreValue('core_offline_master') || 0);
     const cappedSeconds = Math.min(elapsedSeconds, OFFLINE_MAX_SECONDS);
     const rate = this.sellEarnings / this.totalPlaytimeSeconds;
-    const reward = Math.round(rate * cappedSeconds * OFFLINE_EFFICIENCY);
+    const reward = Math.round(rate * cappedSeconds * efficiency);
     if (reward <= 0) return null;
 
     return { elapsedSeconds: cappedSeconds, reward };
@@ -1801,3 +1901,7 @@ class EconomyManager {
 window.EconomyManager = EconomyManager;
 window.SHOP_UPGRADES = SHOP_UPGRADES;
 window.ACHIEVEMENTS = ACHIEVEMENTS;
+// Do porównania w ui.js (_onPrestigeDone) - żeby dało się rozpoznać moment
+// odblokowania drugiego poziomu ulepszeń bez duplikowania liczby "5" w
+// dwóch plikach.
+window.CORE_TIER2_UNLOCK_PLANET = CORE_TIER2_UNLOCK_PLANET;
