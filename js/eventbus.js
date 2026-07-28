@@ -41,6 +41,7 @@ const Events = {
     GAME_WON:          'game:won',            // {}
     FOOTSTEP:          'player:footstep',     // {}
     ZONE_HAZARD_WARNING: 'player:zoneHazardWarning', // { zone }
+    ZONE_CHANGED:      'player:zoneChanged',    // { zone } - strzela RAZ na wejście do nowej strefy (nie co klatkę)
     PRESTIGE_DONE:     'game:prestigeDone',   // { planetNumber, coresEarned, totalCores }
     CORE_UPGRADE_BOUGHT: 'prestige:coreUpgradeBought', // { upgradeId, level, value }
     DAILY_LOGIN:       'daily:login',         // { streak, moneyReward, coreBonus }

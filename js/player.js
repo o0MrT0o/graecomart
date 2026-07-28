@@ -214,6 +214,10 @@ class PlayerController {
 
     // --- Strefy / hazard (Faza 2) --------------------------------------------
     this.currentZone = 'A';
+    // null (nie 'A') - wymusza pierwszy Events.ZONE_CHANGED zaraz na starcie
+    // gry (patrz update()), żeby audio.js od razu poznało startową strefę
+    // zamiast czekać na pierwsze faktyczne przejście graniczne.
+    this._lastZoneEmitted = null;
     this._hazardShakeTimer = 0;
     this._hazardWarnedZone = null; // zeby ostrzezenie pokazac raz na wejscie, nie co klatke
     // Faza 4: czas do utraty przedmiotu (patrz ZONE_HAZARD_ITEM_LOSS_MS) oraz
@@ -501,6 +505,19 @@ class PlayerController {
 
     // Strefa gracza PRZED ruchem w tej klatce - decyduje o mnożniku kary.
     this.currentZone = this._getZoneAt(this.x, this.y);
+
+    // Events.ZONE_CHANGED - EDGE-TRIGGERED (tylko przy faktycznej zmianie
+    // strefy, nie co klatkę), żeby moduły bez własnego update()/dostępu do
+    // pozycji gracza (audio.js - muzyka ambientowa zależna od biomu) mogły
+    // poznać bieżącą strefę bez pollowania. Osobne od Events.FOOTSTEP (ten
+    // niesie zonę też, ale tylko podczas ruchu) i od _hazardWarnedZone
+    // (ten tylko dla stref niebezpiecznych bez sprzętu) - to ogólny sygnał
+    // "gracz jest teraz w strefie X", niezależny od obu.
+    if (this.currentZone !== this._lastZoneEmitted) {
+      this._lastZoneEmitted = this.currentZone;
+      if (Events.ZONE_CHANGED) Bus.publish(Events.ZONE_CHANGED, { zone: this.currentZone });
+    }
+
     const hasGear = this._hasGearForZone(this.currentZone);
     const inHazard = this.currentZone !== 'A' && !hasGear;
 
