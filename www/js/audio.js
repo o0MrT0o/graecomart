@@ -21,7 +21,7 @@
  * Zależności globalne (muszą być załadowane przed tym plikiem):
  *   - window.Bus / window.Events (m.in. ITEM_PICKUP, MACHINE_RECEIVED,
  *      MACHINE_OUTPUT, MONEY_COLLECTED, UPGRADE_BOUGHT, SHIP_MODULE_COMPLETED,
- *      GAME_WON, FOOTSTEP, ZONE_HAZARD_WARNING, ZONE_CHANGED)
+ *      GAME_WON, FOOTSTEP, ZONE_HAZARD_WARNING)
  *
  * Użycie w main.js:
  *   window.audioManager = new AudioManager();
@@ -163,36 +163,47 @@ const AUDIO_MUSIC_SCALE = [
   220.00, 261.63, 293.66, 329.63, 392.00  // A3 C4 D4 E4 G4
 ];
 
-// --- Muzyka ZALEŻNA OD STREFY (biomu) ----------------------------------------
-// Mapa robi się coraz bardziej zróżnicowana (4 biomy, każdy z własną
-// teksturą/paletą/dźwiękiem kroków - patrz AUDIO_STEP_SURFACE) - podkład
-// muzyczny wciąż był identyczny wszędzie. Zamiast osobnych utworów (poza
-// zasięgiem tego projektu - patrz komentarz przy startMusic) każda strefa
-// dostaje WŁASNE nastrojenie TEGO SAMEGO generatora nut: który rejestr skali
-// (scaleFrom/scaleTo, indeksy w AUDIO_MUSIC_SCALE), jak jasno/matowo brzmi
-// (filterFreq - niżej = bardziej stłumione), jak gęsto/rzadko lecą nuty
-// (gapMin/gapMax) i jak głośno (peak). A to DOKŁADNIE dotychczasowe wartości
-// (scaleFrom:0, scaleTo:10, filterFreq:900, dur 2.6-4.8, gap 1400-3000,
-// peak 0.9) - zerowa zmiana brzmienia w bezpiecznej łące, żeby nic, co już
-// działało, się nie zepsuło.
-const AUDIO_MUSIC_ZONE_PARAMS = {
-  A: { scaleFrom: 0, scaleTo: 10, filterFreq: 900, durMin: 2.6, durMax: 4.8, gapMin: 1400, gapMax: 3000, peak: 0.9 },
-  // Bagno (B) - tylko DOLNA oktawa (indeksy 0-4), mocno stłumiony filtr,
-  // wolniej i ciszej niż łąka - ma brzmieć ociężale/duszno, zgodnie z
-  // najdłuższym/najciemniejszym krokiem (AUDIO_STEP_SURFACE.B).
-  B: { scaleFrom: 0, scaleTo: 5, filterFreq: 480, durMin: 3.4, durMax: 6.2, gapMin: 2000, gapMax: 3800, peak: 0.75 },
-  // Popiół/Atomowa (C) - PEŁNY rejestr, ale szybciej/gęściej i odrobinę
-  // głośniej niż łąka - niepokój/napięcie zamiast spokoju, bez łamania
-  // pentatoniki (nadal zero dysonansu).
-  C: { scaleFrom: 0, scaleTo: 10, filterFreq: 700, durMin: 1.6, durMax: 3.0, gapMin: 850, gapMax: 1700, peak: 1.0 },
-  // Kryształowa Grań (D) - tylko GÓRNA oktawa (indeksy 5-9), jasny filtr,
-  // + shimmer (patrz _maybePlayShimmer) - eteryczne, "szklane" tło zgodne z
-  // dzwoniącym tonem kroku (AUDIO_STEP_SURFACE.D ring) i fioletowymi
-  // iskierkami otoczenia (ambient.js).
-  D: { scaleFrom: 5, scaleTo: 10, filterFreq: 1700, durMin: 2.2, durMax: 4.0, gapMin: 1200, gapMax: 2600, peak: 0.85, shimmer: true }
-};
+// --- Muzyka: kilka "nastrojów" grających NA ZMIANĘ ---------------------------
+// PIERWSZA wersja tego pomysłu wiązała brzmienie ze strefą, w której akurat
+// stoi gracz (biom = nastrój) - zmienione na prośbę: nastroje mają rotować
+// OGÓLNIE, w tle, niezależnie od tego, gdzie gracz akurat jest, zamiast
+// przełączać się przy każdym przekroczeniu granicy strefy.
+//
+// Ten sam generator nut (pentatonika, zero ryzyka dysonansu) gra kolejno
+// "utwory" z AUDIO_MUSIC_TRACKS - każdy to inne nastrojenie: który rejestr
+// skali (scaleFrom/scaleTo, indeksy w AUDIO_MUSIC_SCALE), jak jasno/matowo
+// brzmi (filterFreq - niżej = bardziej stłumione), jak gęsto/rzadko lecą
+// nuty (gapMin/gapMax) i jak głośno (peak). Rotacja co AUDIO_MUSIC_TRACK_*
+// nut (patrz _scheduleNextNote), NIE co event z Bus - żaden inny moduł nie
+// musi o tym wiedzieć.
+//
+// Track 0 to DOKŁADNIE dotychczasowe wartości (scaleFrom:0, scaleTo:10,
+// filterFreq:900, dur 2.6-4.8, gap 1400-3000, peak 0.9) - zerowa zmiana
+// brzmienia w pierwszej fazie rotacji, żeby nic, co już działało, się nie
+// zepsuło.
+const AUDIO_MUSIC_TRACKS = [
+  // 0: spokojny (dotychczasowe brzmienie, bez zmian).
+  { scaleFrom: 0, scaleTo: 10, filterFreq: 900, durMin: 2.6, durMax: 4.8, gapMin: 1400, gapMax: 3000, peak: 0.9 },
+  // 1: mroczny/przytłumiony - tylko DOLNA oktawa (indeksy 0-4), mocno
+  // stłumiony filtr, wolniej i ciszej - ten sam charakter co bagno
+  // (najdłuższy/najciemniejszy krok, AUDIO_STEP_SURFACE.B).
+  { scaleFrom: 0, scaleTo: 5, filterFreq: 480, durMin: 3.4, durMax: 6.2, gapMin: 2000, gapMax: 3800, peak: 0.75 },
+  // 2: niespokojny - PEŁNY rejestr, ale szybciej/gęściej i odrobinę
+  // głośniej - napięcie zamiast spokoju, bez łamania pentatoniki.
+  { scaleFrom: 0, scaleTo: 10, filterFreq: 700, durMin: 1.6, durMax: 3.0, gapMin: 850, gapMax: 1700, peak: 1.0 },
+  // 3: jasny/eteryczny - tylko GÓRNA oktawa (indeksy 5-9), jasny filtr +
+  // shimmer (patrz _maybePlayShimmer) - "szklane" brzmienie zgodne z
+  // dzwoniącym tonem kroku Kryształowej Grani (AUDIO_STEP_SURFACE.D.ring).
+  { scaleFrom: 5, scaleTo: 10, filterFreq: 1700, durMin: 2.2, durMax: 4.0, gapMin: 1200, gapMax: 2600, peak: 0.85, shimmer: true }
+];
+// Po ilu nutach (losowo w tym zakresie) rotujemy na kolejny utwór z listy -
+// "fraza muzyczna", nie sztywna liczba, żeby przejścia nie wypadały w
+// przewidywalnym rytmie.
+const AUDIO_MUSIC_TRACK_NOTES_MIN = 5;
+const AUDIO_MUSIC_TRACK_NOTES_MAX = 9;
 // Szansa na dodatkowy "błysk" (wysoki, szybko gasnący sinus - jak
-// _playSynthFootstep's ring) NAŁOŻONY na główną nutę, TYLKO w Strefie D.
+// _playSynthFootstep's ring) NAŁOŻONY na główną nutę, TYLKO gdy bieżący
+// utwór ma shimmer:true (patrz AUDIO_MUSIC_TRACKS[3]).
 const AUDIO_MUSIC_SHIMMER_CHANCE = 0.4;
 
 // Losowe wahnięcie wysokości dźwięku (playbackRate) przy KAŻDYM odtworzeniu -
@@ -215,10 +226,12 @@ class AudioManager {
     this._audioCtx = null;
     this._musicGain = null;
     this._musicTimer = null;
-    // Bieżąca strefa gracza dla AUDIO_MUSIC_ZONE_PARAMS (patrz
-    // Events.ZONE_CHANGED niżej) - 'A' zanim pierwszy event zdąży dotrzeć,
-    // czyli dokładnie ten sam (niezmieniony) dźwięk co przed tą funkcją.
-    this._musicZone = 'A';
+    // Rotacja "utworów" (patrz AUDIO_MUSIC_TRACKS) - zaczynamy od 0 (dawne,
+    // niezmienione brzmienie), _musicTrackNotesLeft losowany dopiero przy
+    // starcie muzyki (patrz startMusic/_scheduleNextNote), żeby pierwsza
+    // fraza też miała losową długość, nie zawsze tę samą.
+    this._musicTrackIndex = 0;
+    this._musicTrackNotesLeft = null;
     // Szyna + bufor szumu dla SYNTEZOWANYCH kroków (patrz AUDIO_STEP_SURFACE).
     this._sfxGain = null;
     this._noiseBuffer = null;
@@ -249,10 +262,6 @@ class AudioManager {
     // której _playFootstep dobiera brzmienie kroku.
     this._onFootstep = (data) => this._playFootstep(data);
     this._onZoneHazardWarning = () => this.play('hazard');
-    // Muzyka w tle reaguje na strefę BIEŻĄCĄ (patrz AUDIO_MUSIC_ZONE_PARAMS) -
-    // tylko zapamiętuje wartość, _scheduleNextNote() czyta ją przy KOLEJNEJ
-    // zaplanowanej nucie, więc zmiana strefy nigdy nie ucina nuty w trakcie.
-    this._onZoneChanged = (data) => { this._musicZone = (data && data.zone) || 'A'; };
 
     Bus.subscribe(Events.ITEM_PICKUP, this._onItemPickup);
     Bus.subscribe(Events.MACHINE_RECEIVED, this._onMachineReceived);
@@ -263,7 +272,6 @@ class AudioManager {
     if (Events.GAME_WON) Bus.subscribe(Events.GAME_WON, this._onGameWon);
     if (Events.FOOTSTEP) Bus.subscribe(Events.FOOTSTEP, this._onFootstep);
     if (Events.ZONE_HAZARD_WARNING) Bus.subscribe(Events.ZONE_HAZARD_WARNING, this._onZoneHazardWarning);
-    if (Events.ZONE_CHANGED) Bus.subscribe(Events.ZONE_CHANGED, this._onZoneChanged);
   }
 
   /**
@@ -504,7 +512,10 @@ class AudioManager {
 
   /** Gra JEDNĄ nutę (miękki trójkąt + filtr dolnoprzepustowy, długi atak i
    * wybrzmienie) i planuje kolejną. Rekurencyjny setTimeout zamiast setInterval -
-   * odstęp jest losowy, więc frazy nie wpadają w słyszalny, mechaniczny rytm. */
+   * odstęp jest losowy, więc frazy nie wpadają w słyszalny, mechaniczny rytm.
+   * Co AUDIO_MUSIC_TRACK_NOTES_MIN..MAX nut rotuje na kolejny "utwór" z
+   * AUDIO_MUSIC_TRACKS (patrz komentarz tam) - NIEZALEŻNIE od tego, gdzie
+   * akurat jest gracz, w przeciwieństwie do pierwszej wersji tego pomysłu. */
   _scheduleNextNote() {
     const ctx = this._audioCtx;
     if (!ctx) return;
@@ -517,13 +528,13 @@ class AudioManager {
       return;
     }
 
-    const zp = AUDIO_MUSIC_ZONE_PARAMS[this._musicZone] || AUDIO_MUSIC_ZONE_PARAMS.A;
+    const track = AUDIO_MUSIC_TRACKS[this._musicTrackIndex];
 
     if (!this.muted) {
-      const scaleSlice = AUDIO_MUSIC_SCALE.slice(zp.scaleFrom, zp.scaleTo);
+      const scaleSlice = AUDIO_MUSIC_SCALE.slice(track.scaleFrom, track.scaleTo);
       const freq = scaleSlice[Math.floor(Math.random() * scaleSlice.length)];
       const now = ctx.currentTime;
-      const dur = zp.durMin + Math.random() * (zp.durMax - zp.durMin);
+      const dur = track.durMin + Math.random() * (track.durMax - track.durMin);
 
       const osc = ctx.createOscillator();
       osc.type = 'triangle';
@@ -531,17 +542,17 @@ class AudioManager {
 
       // Filtr ścina ostre górne harmoniczne - bez niego trójkąt brzmi
       // "elektronicznie/piskliwie", z nim miękko, jak pad. Częstotliwość
-      // zależy od strefy (zp.filterFreq) - niżej = bardziej stłumione/matowe
-      // (bagno), wyżej = jaśniejsze/dzwoniące (Grań).
+      // zależy od bieżącego utworu (track.filterFreq) - niżej = bardziej
+      // stłumione/matowe, wyżej = jaśniejsze/dzwoniące.
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.value = zp.filterFreq;
+      filter.frequency.value = track.filterFreq;
 
       // Obwiednia: powolne narastanie i długie wybrzmienie (żadnych
       // słyszalnych "klików" na starcie/końcu nuty).
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(zp.peak, now + dur * 0.35);
+      gain.gain.linearRampToValueAtTime(track.peak, now + dur * 0.35);
       gain.gain.linearRampToValueAtTime(0, now + dur);
 
       osc.connect(filter);
@@ -550,22 +561,37 @@ class AudioManager {
       osc.start(now);
       osc.stop(now + dur);
 
-      if (zp.shimmer) this._maybePlayShimmer(now);
+      if (track.shimmer) this._maybePlayShimmer(now);
+    }
+
+    // Rotacja utworów - odliczana NIEZALEŻNIE od this.muted (cichy gracz
+    // wraca do dźwięku dokładnie w tym samym miejscu rotacji, w którym by
+    // był, gdyby nie wyciszał), więc tylko SAMO odtworzenie jest pominięte
+    // wyżej, nie licznik frazy.
+    if (this._musicTrackNotesLeft === null) {
+      this._musicTrackNotesLeft = AUDIO_MUSIC_TRACK_NOTES_MIN
+        + Math.floor(Math.random() * (AUDIO_MUSIC_TRACK_NOTES_MAX - AUDIO_MUSIC_TRACK_NOTES_MIN + 1));
+    }
+    this._musicTrackNotesLeft--;
+    if (this._musicTrackNotesLeft <= 0) {
+      this._musicTrackIndex = (this._musicTrackIndex + 1) % AUDIO_MUSIC_TRACKS.length;
+      this._musicTrackNotesLeft = AUDIO_MUSIC_TRACK_NOTES_MIN
+        + Math.floor(Math.random() * (AUDIO_MUSIC_TRACK_NOTES_MAX - AUDIO_MUSIC_TRACK_NOTES_MIN + 1));
     }
 
     // Kolejna nuta zachodzi na poprzednią (krótszy odstęp niż czas trwania) -
     // stąd wrażenie ciągłego, nakładającego się padu zamiast pojedynczych,
-    // odseparowanych dźwięków. Odstęp też zależy od strefy (zp.gapMin/Max).
-    this._musicTimer = setTimeout(() => this._scheduleNextNote(), zp.gapMin + Math.random() * (zp.gapMax - zp.gapMin));
+    // odseparowanych dźwięków. Odstęp też zależy od bieżącego utworu.
+    this._musicTimer = setTimeout(() => this._scheduleNextNote(), track.gapMin + Math.random() * (track.gapMax - track.gapMin));
   }
 
   /**
-   * "Błysk" - krótki, cichy, wysoki sinus nałożony NA GŁÓWNĄ nutę, tylko w
-   * Strefie D (patrz AUDIO_MUSIC_ZONE_PARAMS.D.shimmer) - ten sam duch co
-   * dzwoniący ton kroku (_playSynthFootstep, AUDIO_STEP_SURFACE.D.ring),
-   * tylko wpleciony w podkład muzyczny zamiast w krok. Oktawa WYŻEJ niż
-   * najwyższa nuta skali (×2 częstotliwości) - ma brzmieć jak odległy
-   * brzęk szkła/kryształu, nie jak kolejna nuta melodii.
+   * "Błysk" - krótki, cichy, wysoki sinus nałożony NA GŁÓWNĄ nutę, tylko gdy
+   * bieżący utwór ma shimmer:true (patrz AUDIO_MUSIC_TRACKS[3]) - ten sam
+   * duch co dzwoniący ton kroku Kryształowej Grani (_playSynthFootstep,
+   * AUDIO_STEP_SURFACE.D.ring), tylko wpleciony w podkład muzyczny zamiast
+   * w krok. Oktawa WYŻEJ niż najwyższa nuta skali (×2 częstotliwości) - ma
+   * brzmieć jak odległy brzęk szkła/kryształu, nie jak kolejna nuta melodii.
    */
   _maybePlayShimmer(now) {
     if (Math.random() > AUDIO_MUSIC_SHIMMER_CHANCE) return;
@@ -639,7 +665,6 @@ class AudioManager {
     if (Events.GAME_WON) Bus.unsubscribe(Events.GAME_WON, this._onGameWon);
     if (Events.FOOTSTEP) Bus.unsubscribe(Events.FOOTSTEP, this._onFootstep);
     if (Events.ZONE_HAZARD_WARNING) Bus.unsubscribe(Events.ZONE_HAZARD_WARNING, this._onZoneHazardWarning);
-    if (Events.ZONE_CHANGED) Bus.unsubscribe(Events.ZONE_CHANGED, this._onZoneChanged);
 
     this.stopMusic();
     if (this._audioCtx && typeof this._audioCtx.close === 'function') {
