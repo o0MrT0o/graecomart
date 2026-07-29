@@ -500,13 +500,8 @@ class MachineManager {
         this._drawFurnaceMachine(ctx, m, isActive);
       }
       // --- LOGIKA RYSOWANIA GRAFIKI DLA OCZYSZCZALNI ---
-      // Brak pliku PNG w projekcie (jak Piec Hutniczy WYŻEJ, ale bez własnej
-      // grafiki źródłowej od Tomka) - w przeciwieństwie do reszty maszyn bez
-      // sprite'a NIE korzysta z generycznego fallbacku niżej (płaski gradient
-      // + "żeberka" + emoji na środku wyglądały jak placeholder obok trzech
-      // prawdziwych sprite'ów - patrz _drawRefineryMachine). Bespoke
-      // proceduralna bryła w TYM SAMYM języku wizualnym co reszta maszyn
-      // (lej/hopper na górze, "okienko" procesu, panel kontrolny, przenośnik).
+      // Bryła złożona z prawdziwego sprite'a Kenney + świecącego rdzenia,
+      // ten sam duch co reszta maszyn reskinu - patrz _drawRefineryMachine.
       else if (m.id === 'refinery_b') {
         this._drawRefineryMachine(ctx, m, isActive);
       }
@@ -963,24 +958,6 @@ class MachineManager {
       ctx.globalAlpha = 1;
     }
     this._drawGlassHighlight(ctx, hubCx, hubCy, coreR);
-
-    // --- Przenośnik z boku + gotowy plastik (jak u sąsiadów - jedyny
-    // pozostały rysowany ręcznie element, bo żadna bryła w paczkach nie
-    // odgrywa roli "wyjścia produktu"). ---
-    const beltY = cy + U * 0.42, beltX = cx + modW * 0.32, beltW = U * 0.34, beltH = U * 0.1;
-    ctx.fillStyle = hull;
-    this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
-    ctx.fill();
-    ctx.fillStyle = hullDark;
-    [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
-      ctx.beginPath();
-      ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.fillStyle = m.outputColor;
-    const ox = beltX + beltW * 0.55, oy = beltY - beltH * 0.75;
-    this._traceRoundedRect(ctx, ox - U * 0.045, oy - U * 0.045, U * 0.09, U * 0.09, U * 0.02);
-    ctx.fill();
   }
 
   /**
@@ -1007,36 +984,11 @@ class MachineManager {
     this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.28);
     this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.66, U * 0.2, 'rgba(225, 190, 231, 0.55)', -0.0005, 5);
 
-    // --- Lej u góry, z plastikowymi kawałkami czekającymi na wsyp - jedyny
-    // pozostały rysowany ręcznie element (żadna bryła w paczkach nie pełni
-    // roli "wsypu surowca"). ---
-    const hopW = U * 0.5, hopNeck = U * 0.2;
-    const hopTop = cy - U * 0.66, hopBot = cy - U * 0.44;
-    ctx.fillStyle = hull;
-    ctx.beginPath();
-    ctx.moveTo(cx - hopW / 2, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx - hopNeck / 2, hopBot);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = hullDark;
-    ctx.beginPath();
-    ctx.moveTo(cx + hopW * 0.16, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx + hopNeck * 0.1, hopBot);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#42A5F5';
-    this._traceRoundedRect(ctx, cx - U * 0.05, hopTop - U * 0.1, U * 0.1, U * 0.08, U * 0.02);
-    ctx.fill();
-
     // --- Klepsydra: PRAWDZIWA bryła Kenney (sci_press.png) przefarbowana na
     // fioletowo - dwie płyty zbiegające się w środku, gdzie siedzi rdzeń. ---
-    const pressW = U * 0.95;
+    const pressW = U * 1.05;
     const pressH = pressW * (88 / 96);
-    const pressTop = cy - U * 0.42;
+    const pressTop = cy - pressH / 2;
     const pressLeft = cx - pressW / 2;
     const pressSprite = this._getRecoloredSprite('machine_sci_press', 100, 1.7, 0.08, [accent, 0.55]);
     if (pressSprite) {
@@ -1070,11 +1022,11 @@ class MachineManager {
     }
     this._drawGlassHighlight(ctx, winCx, winCy, winR);
 
-    // --- Dwa emitery po bokach leja z iskrzącym łukiem między nimi -
+    // --- Dwa emitery nad klepsydrą z iskrzącym łukiem między nimi -
     // wizualne źródło "pola grawitonowego" napędzającego kompresję (jedyny
     // pozostały ręcznie animowany akcent poza rdzeniem). ---
-    const emY = hopTop - U * 0.04;
-    const emL = cx - hopW / 2 - U * 0.03, emR = cx + hopW / 2 + U * 0.03;
+    const emY = pressTop - U * 0.06;
+    const emL = cx - pressW * 0.3, emR = cx + pressW * 0.3;
     ctx.fillStyle = hullDark;
     ctx.beginPath();
     ctx.arc(emL, emY, U * 0.045, 0, Math.PI * 2);
@@ -1101,22 +1053,6 @@ class MachineManager {
       }
       ctx.globalAlpha = 1;
     }
-
-    // --- Przenośnik po prawej + gotowy produkt. ---
-    const beltY = cy + U * 0.38, beltX = cx + pressW * 0.36, beltW = U * 0.34, beltH = U * 0.1;
-    ctx.fillStyle = hull;
-    this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
-    ctx.fill();
-    ctx.fillStyle = hullDark;
-    [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
-      ctx.beginPath();
-      ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.fillStyle = m.outputColor;
-    const ox = beltX + beltW * 0.55, oy = beltY - beltH * 0.75;
-    this._traceRoundedRect(ctx, ox - U * 0.045, oy - U * 0.045, U * 0.09, U * 0.09, U * 0.02);
-    ctx.fill();
   }
 
   /**
@@ -1142,33 +1078,12 @@ class MachineManager {
     this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.3);
     this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.68, U * 0.22, 'rgba(255, 171, 145, 0.55)', 0.0006, 7);
 
-    // --- Lej u góry, z bryłkami metalu czekającymi na wsyp - jedyny
-    // pozostały rysowany ręcznie element ponad kopułą. ---
-    const hopW = U * 0.4, hopNeck = U * 0.16;
-    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.46;
-    ctx.fillStyle = hull;
-    ctx.beginPath();
-    ctx.moveTo(cx - hopW / 2, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx - hopNeck / 2, hopBot);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = hullDark;
-    ctx.beginPath();
-    ctx.moveTo(cx + hopW * 0.16, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx + hopNeck * 0.1, hopBot);
-    ctx.closePath();
-    ctx.fill();
-
     // --- Kopuła: PRAWDZIWA bryła Kenney (sci_dome.png) - jej naturalny
     // srebrny odcień zostaje (dome nie potrzebuje przefarbowania, kontrastuje
     // ładnie z pomarańczem rdzenia w środku), osadzona na postumencie. ---
-    const domeW = U * 1.05;
+    const domeW = U * 1.15;
     const domeH = domeW * (116 / 248);
-    const domeTop = cy - U * 0.3;
+    const domeTop = cy - domeH / 2 - U * 0.08;
     const domeLeft = cx - domeW / 2;
     const domeSprite = window.spriteLoader && window.spriteLoader.get('machine_sci_dome');
     if (domeSprite && domeSprite.complete && domeSprite.naturalWidth) {
@@ -1211,22 +1126,6 @@ class MachineManager {
       }
     }
     this._drawGlassHighlight(ctx, winCx, winCy, winR);
-
-    // --- Przenośnik po prawej + gotowy stop. ---
-    const beltY = cy + U * 0.28, beltX = cx + domeW * 0.32, beltW = U * 0.34, beltH = U * 0.1;
-    ctx.fillStyle = hull;
-    this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
-    ctx.fill();
-    ctx.fillStyle = hullDark;
-    [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
-      ctx.beginPath();
-      ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.fillStyle = m.outputColor;
-    const ox = beltX + beltW * 0.55, oy = beltY - beltH * 0.75;
-    this._traceRoundedRect(ctx, ox - U * 0.05, oy - U * 0.035, U * 0.1, U * 0.07, U * 0.015);
-    ctx.fill();
   }
 
   /**
@@ -1253,41 +1152,11 @@ class MachineManager {
     this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.66, U * 0.2, 'rgba(213, 196, 240, 0.55)', 0.00055, 6);
 
     // --- Lej u góry, ze szkłem czekającym na wsyp. ---
-    const hopW = U * 0.5, hopNeck = U * 0.2;
-    const hopTop = cy - U * 0.66, hopBot = cy - U * 0.46;
-    ctx.fillStyle = hull;
-    ctx.beginPath();
-    ctx.moveTo(cx - hopW / 2, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx - hopNeck / 2, hopBot);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = hullDark;
-    ctx.beginPath();
-    ctx.moveTo(cx + hopW * 0.16, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx + hopNeck * 0.1, hopBot);
-    ctx.closePath();
-    ctx.fill();
-    ['#8ED8E8', '#C3EAF2'].forEach((col, i) => {
-      ctx.fillStyle = col;
-      const gx = cx + (i === 0 ? -U * 0.1 : U * 0.08);
-      const gy = hopTop - U * 0.03;
-      ctx.beginPath();
-      ctx.moveTo(gx, gy - U * 0.08);
-      ctx.lineTo(gx + U * 0.045, gy + U * 0.02);
-      ctx.lineTo(gx - U * 0.045, gy + U * 0.02);
-      ctx.closePath();
-      ctx.fill();
-    });
-
     // --- Kapsuła: PRAWDZIWA bryła Kenney (sci_capsule.png) przefarbowana na
     // fioletowo overlayem (jak klepsydra Kompresora - prawie bez saturacji). ---
-    const capW = U * 1.05;
+    const capW = U * 1.2;
     const capH = capW * (72 / 168);
-    const capTop = cy - U * 0.18;
+    const capTop = cy - capH / 2;
     const capLeft = cx - capW / 2;
     const capsuleSprite = this._getRecoloredSprite('machine_sci_capsule', -69, 1.5, 0.08, [accent, 0.55]);
     if (capsuleSprite) {
@@ -1313,27 +1182,6 @@ class MachineManager {
       ctx.fill();
     }
     this._drawGlassHighlight(ctx, winCx, winCy, winR);
-
-    // --- Przenośnik po prawej + gotowy kryształ. ---
-    const beltY = cy + U * 0.24, beltX = cx + capW * 0.32, beltW = U * 0.34, beltH = U * 0.1;
-    ctx.fillStyle = hull;
-    this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
-    ctx.fill();
-    ctx.fillStyle = hullDark;
-    [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
-      ctx.beginPath();
-      ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.fillStyle = m.outputColor;
-    const kx = beltX + beltW * 0.55, ky = beltY - beltH * 0.75;
-    ctx.beginPath();
-    ctx.moveTo(kx, ky - U * 0.07);
-    ctx.lineTo(kx + U * 0.045, ky);
-    ctx.lineTo(kx, ky + U * 0.05);
-    ctx.lineTo(kx - U * 0.045, ky);
-    ctx.closePath();
-    ctx.fill();
   }
 
   /**
@@ -1341,11 +1189,13 @@ class MachineManager {
    * reskinu, wersja 2". Bryła to prawdziwy stożek zbiegający się w oszlifowany
    * ośmiokątny klejnot z Kenney "Space Shooter Extension" (spaceStation_028,
    * assets/machines/sci_grinder.png, CC0) - naturalnie fasetowany kształt
-   * pasuje tematycznie do kryształu BEZ ŻADNEJ edycji. Stożek zostaje
+   * pasuje tematycznie do kryształu BEZ ŻADNEJ edycji. OBRÓCONY -90° (patrz
+   * niżej) - pionowo, szeroką podstawą u dołu i klejnotem u góry, żeby nie
+   * czytał się jak duplikat poziomej kapsuły Oczyszczalni. Stożek zostaje
    * neutralnie metalowy (saturacja=0, hue-rotate nie ma czego chwycić), ale
-   * klejnot na czubku dostaje turkusowy tint przez osobny, PRZYCIĘTY
-   * (clipowany) drugi drawImage - jedyny sposób pomalować TYLKO fragment
-   * sprite'a, skoro _getRecoloredSprite działa na całym obrazku naraz.
+   * klejnot dostaje turkusowy tint przez osobny, PRZYCIĘTY (clipowany) drugi
+   * drawImage - jedyny sposób pomalować TYLKO fragment sprite'a, skoro
+   * _getRecoloredSprite działa na całym obrazku naraz.
    */
   _drawCrystalPolisherMachine(ctx, m, isActive) {
     const U = MACHINE_PROC_UNIT;
@@ -1361,64 +1211,46 @@ class MachineManager {
     this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.3);
     this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.68, U * 0.22, 'rgba(225, 245, 254, 0.55)', 0.00065, 7);
 
-    // --- Lej u góry, z odłamkiem kryształu czekającym na wsyp. ---
-    const hopW = U * 0.4, hopNeck = U * 0.16;
-    const hopTop = cy - U * 0.66, hopBot = cy - U * 0.5;
-    ctx.fillStyle = hull;
-    ctx.beginPath();
-    ctx.moveTo(cx - hopW / 2, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx - hopNeck / 2, hopBot);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#9575CD';
-    const gx = cx, gy = hopTop - U * 0.02;
-    ctx.beginPath();
-    ctx.moveTo(gx, gy - U * 0.08);
-    ctx.lineTo(gx + U * 0.05, gy);
-    ctx.lineTo(gx, gy + U * 0.08);
-    ctx.lineTo(gx - U * 0.05, gy);
-    ctx.closePath();
-    ctx.fill();
-
-    // --- Szlifierka: PRAWDZIWA bryła Kenney (sci_grinder.png) - stożek
-    // metalowy (bez tinta) zbiegający w klejnot (tint turkusowy TYLKO na
-    // prawych ~40% szerokości, gdzie faktycznie jest klejnot). Delikatne
-    // kołysanie kątem (nie pełny obrót - stożek ma kierunek) w rytm "pracy". ---
-    const grindW = U * 1.08;
-    const grindH = grindW * (89 / 164);
-    const grindTop = cy - U * 0.14;
-    const grindLeft = cx - grindW / 2;
+    // --- Szlifierka: PRAWDZIWA bryła Kenney (sci_grinder.png), OBRÓCONA
+    // -90° - w oryginale to poziomy stożek zbiegający w klejnot PO PRAWEJ
+    // (patrz komentarz w _getRecoloredSprite), ale poziomo za bardzo
+    // przypominał kapsułę Oczyszczalni obok. Pionowo (szeroka podstawa u
+    // dołu, klejnot na czubku u góry) czyta się jak zamontowany, szlifowany
+    // kryształ - inna sylwetka niż reszta maszyn, więc łatwiej odróżnić na
+    // pierwszy rzut oka. Stożek zostaje metalowy (saturacja=0), tylko
+    // klejnot (ostatnie ~38% oryginalnej DŁUGOŚCI, czyli teraz górna część)
+    // dostaje turkusowy tint przez osobny, przycięty (clip) drugi drawImage. ---
+    const grindLen = U * 1.1;
+    const grindThick = grindLen * (89 / 164);
     const rock = Math.sin(now * 0.003) * 0.025;
     const grinderNative = window.spriteLoader && window.spriteLoader.get('machine_sci_grinder');
     const grinderTinted = this._getRecoloredSprite('machine_sci_grinder', 150, 1.4, 0.08, [accent, 0.6]);
     ctx.save();
-    ctx.translate(cx, grindTop + grindH / 2);
-    ctx.rotate(rock);
-    ctx.translate(-cx, -(grindTop + grindH / 2));
+    ctx.translate(cx, cy);
+    ctx.rotate(-Math.PI / 2 + rock);
     if (grinderNative && grinderNative.complete && grinderNative.naturalWidth) {
-      ctx.drawImage(grinderNative, grindLeft, grindTop, grindW, grindH);
+      ctx.drawImage(grinderNative, -grindLen / 2, -grindThick / 2, grindLen, grindThick);
       if (grinderTinted) {
         ctx.save();
         ctx.beginPath();
-        ctx.rect(grindLeft + grindW * 0.62, grindTop, grindW * 0.38, grindH);
+        ctx.rect(grindLen * 0.12, -grindThick / 2, grindLen * 0.38, grindThick);
         ctx.clip();
-        ctx.drawImage(grinderTinted, grindLeft, grindTop, grindW, grindH);
+        ctx.drawImage(grinderTinted, -grindLen / 2, -grindThick / 2, grindLen, grindThick);
         ctx.restore();
       }
     } else {
       ctx.fillStyle = hull;
-      this._traceRoundedRect(ctx, grindLeft, grindTop, grindW, grindH, U * 0.06);
+      this._traceRoundedRect(ctx, -grindLen / 2, -grindThick / 2, grindLen, grindThick, U * 0.06);
       ctx.fill();
     }
     ctx.restore();
 
     // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana turkusowo,
-    // osadzona na klejnocie - iskrzy, jakby właśnie się szlifował. ---
-    const winCx = cx + grindW * 0.32, winCy = grindTop + grindH * 0.5;
+    // osadzona na klejnocie (teraz u GÓRY po obrocie) - iskrzy, jakby
+    // właśnie się szlifował. ---
+    const winCx = cx, winCy = cy - grindLen * 0.32;
     const pulse = 1 + 0.07 * Math.sin(now * 0.006);
-    const winR = grindH * 0.34 * pulse;
+    const winR = grindThick * 0.34 * pulse;
     const coreSprite = this._getRecoloredSprite('machine_sci_core', 163, 1.2, 0.4);
     if (coreSprite) {
       ctx.drawImage(coreSprite, winCx - winR, winCy - winR, winR * 2, winR * 2);
@@ -1436,27 +1268,6 @@ class MachineManager {
       ctx.globalAlpha = 1;
     }
     this._drawGlassHighlight(ctx, winCx, winCy, winR);
-
-    // --- Przenośnik po prawej + gotowy, oszlifowany kryształ. ---
-    const beltY = cy + U * 0.26, beltX = cx + grindW * 0.34, beltW = U * 0.34, beltH = U * 0.1;
-    ctx.fillStyle = hull;
-    this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
-    ctx.fill();
-    ctx.fillStyle = hullDark;
-    [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
-      ctx.beginPath();
-      ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.fillStyle = m.outputColor;
-    const kx = beltX + beltW * 0.55, ky = beltY - beltH * 0.75;
-    ctx.beginPath();
-    ctx.moveTo(kx, ky - U * 0.07);
-    ctx.lineTo(kx + U * 0.045, ky);
-    ctx.lineTo(kx, ky + U * 0.05);
-    ctx.lineTo(kx - U * 0.045, ky);
-    ctx.closePath();
-    ctx.fill();
   }
 
   /**
