@@ -22,6 +22,10 @@
 // pierwszy krok, zanim gracz faktycznie się poruszył.
 const TUTORIAL_MOVE_SPEED_THRESHOLD = 20;
 
+// Symbol głównej waluty - własna kopia ui.js/economy.js CREDIT_ICON_SVG
+// (konwencja projektu: brak współdzielonych utili między plikami).
+const TUTORIAL_CREDIT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px" fill="#FFD54F" stroke="none"><path fill-rule="evenodd" d="M21 12 16.5 19.79 7.5 19.79 3 12 7.5 4.21 16.5 4.21Z M14.2 12A2.2 2.2 0 1 1 9.8 12A2.2 2.2 0 1 1 14.2 12Z"/></svg>';
+
 // Jednorazowa nagroda za ukończenie całego samouczka - mały "dziękuję, że
 // przeczytałeś", ten sam duch co nagroda za wyzwanie dnia/streak, żeby
 // samouczek też dawał namacalny powód, żeby nie kliknąć od razu "pomiń".
@@ -235,7 +239,7 @@ class TutorialManager {
     this.economyManager.tutorialStep = TUTORIAL_STEPS.length;
     const paidOut = this.economyManager._addMoney(TUTORIAL_COMPLETION_BONUS);
     if (window.uiManager && window.uiManager.notifications) {
-      window.uiManager.notifications.show(`Samouczek ukończony! +${paidOut}$`, {
+      window.uiManager.notifications.show(`Samouczek ukończony! +${paidOut}${TUTORIAL_CREDIT_ICON_SVG}`, {
         type: 'success',
         icon: TUTORIAL_GRADUATE_ICON_SVG,
         duration: 3400

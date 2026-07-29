@@ -403,14 +403,19 @@ class TradingPost {
       // dawało to ~8 px, a po chwilowym zmniejszeniu korpusu ~6 px, czyli
       // cennika nie dało się odczytać (a to główna informacja, po którą gracz
       // tu przychodzi). Większy udział wysokości wiersza + twardy minimum.
-      ctx.font = `bold ${Math.max(TRADING_POST_MIN_FONT, Math.floor(rowH * 0.62))}px Arial`;
+      const priceFontSize = Math.max(TRADING_POST_MIN_FONT, Math.floor(rowH * 0.62));
+      ctx.font = `bold ${priceFontSize}px Arial`;
       ctx.fillStyle = '#FFD54F';
       ctx.textAlign = 'left';
       // Cena zaraz za ikoną - odstęp liczony z FAKTYCZNEJ szerokości ikony,
       // nie z rowH: odkąd ikona ma własny minimalny rozmiar, rowH przestał
       // być wiarygodną miarą tego, gdzie ikona się kończy (tekst potrafił na
-      // nią nachodzić).
-      ctx.fillText(`$${row.price}`, iconX + iconSize * 0.62, rowY);
+      // nią nachodzić). Sześciokątny czip (_drawCreditGlyph) zamiast "$" -
+      // rysowany PRZED liczbą, tekst przesunięty o jego szerokość + odstęp.
+      const priceX = iconX + iconSize * 0.62;
+      const glyphR = priceFontSize * 0.34;
+      this._drawCreditGlyph(ctx, priceX + glyphR, rowY, glyphR, '#FFD54F');
+      ctx.fillText(`${row.price}`, priceX + glyphR * 2 + 4, rowY);
 
       const arrow = row.trend === 'up' ? '▲' : row.trend === 'down' ? '▼' : '►';
       ctx.fillStyle = row.trend === 'up' ? '#66BB6A' : row.trend === 'down' ? '#EF5350' : 'rgba(255,255,255,0.4)';
@@ -575,6 +580,34 @@ class TradingPost {
     ctx.strokeText(text, x, y);
     ctx.fillStyle = fillColor;
     ctx.fillText(text, x, y);
+  }
+
+  /**
+   * Symbol głównej waluty na canvasie (cennik targu) - sześciokątny "czip
+   * energetyczny" z wydrążonym środkiem, ten sam kształt co CREDIT_ICON_SVG
+   * (ui.js/economy.js), tylko rysowany proceduralnie zamiast jako SVG w
+   * DOM - to czysty canvas, więc nie da się tu wstawić gotowego znacznika.
+   * fill('evenodd') (dwa subpath'y: sześciokąt + okrąg) wypala dziurę na
+   * środku, zamiast rysować pełną plamę.
+   */
+  _drawCreditGlyph(ctx, cx, cy, radius, color) {
+    const holeR = radius * (2.2 / 9);
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i;
+      const x = cx + radius * Math.cos(angle);
+      const y = cy + radius * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.moveTo(cx + holeR, cy);
+    ctx.arc(cx, cy, holeR, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.fill('evenodd');
+    ctx.restore();
   }
 
   /** Ten sam fallback co MachineManager._traceRoundedRect (machines.js). */

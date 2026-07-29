@@ -1338,9 +1338,12 @@ class MachineManager {
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
-        // Bez prefiksu 🔒 - kłódka jest już narysowana proceduralnie tuż nad
-        // tym tekstem (patrz wyżej), więc emoji byłoby zbędnym powtórzeniem.
-        this._drawOutlinedText(ctx, `za ${Math.ceil(next.remaining)}$`, m.x, m.y - hh - 8, '#FFD54F');
+        // Bez prefiksu 🔒 (kłódka już narysowana proceduralnie tuż nad tym
+        // tekstem, patrz wyżej) i bez symbolu waluty - to czysty canvas
+        // fillText, nie DOM, więc nie da się tu wstawić CREDIT_ICON_SVG
+        // (ui.js) jak w reszcie gry; złoty kolor + kontekst (mała podpowiedź
+        // "ile brakuje" nad zablokowaną maszyną) wystarczą bez symbolu.
+        this._drawOutlinedText(ctx, `za ${Math.ceil(next.remaining)}`, m.x, m.y - hh - 8, '#FFD54F');
       }
     }
   }

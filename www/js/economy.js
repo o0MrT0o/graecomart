@@ -19,6 +19,18 @@ const ECONOMY_COMBO_WINDOW_MS = 4000;
 const ECONOMY_COMBO_MAX_STACKS = 8;
 const ECONOMY_COMBO_BONUS_PER_STACK = 0.08; // +8% do wypłaty za poziom combo
 
+// Symbol głównej waluty - własna kopia ui.js CREDIT_ICON_SVG, pod INNĄ
+// nazwą (przedrostek ECONOMY_) - klasyczne <script> (nie moduły) dzielą
+// JEDNĄ globalną przestrzeń nazw najwyższego poziomu, więc dwie stałe
+// `const` o tej samej nazwie w dwóch plikach wysadzają całą stronę
+// (SyntaxError: already been declared) zamiast się cicho nadpisać jak
+// `var`. economy.js i tak ładuje się PRZED ui.js (patrz kolejność
+// <script> w index.html), więc nie mógłby się odwołać do tamtej stałej
+// nawet gdyby nazwa się zgadzała - stąd pełna, osobna kopia (ta sama
+// "brak współdzielonych utili" konwencja co reszta projektu). Wstawiany
+// jako sufiks w opisach wyzwań/osiągnięć/ulepszeń zamiast dawnego "180$".
+const ECONOMY_CREDIT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px" fill="#FFD54F" stroke="none"><path fill-rule="evenodd" d="M21 12 16.5 19.79 7.5 19.79 3 12 7.5 4.21 16.5 4.21Z M14.2 12A2.2 2.2 0 1 1 9.8 12A2.2 2.2 0 1 1 14.2 12Z"/></svg>';
+
 const SHOP_UPGRADES = [
   {
     id: 'capacity',
@@ -433,8 +445,8 @@ const DAILY_CHALLENGE_TEMPLATES = [
   { type: 'collect', material: 'paper', target: 15, reward: 100, label: 'Zbierz 15x Papieru' },
   { type: 'collect', material: 'glass', target: 10, reward: 110, label: 'Zbierz 10x Szkła' },
   { type: 'collect', material: 'metal', target: 10, reward: 110, label: 'Zbierz 10x Metalu' },
-  { type: 'earn', target: 180, reward: 100, label: 'Zarób 180$' },
-  { type: 'earn', target: 400, reward: 200, label: 'Zarób 400$' },
+  { type: 'earn', target: 180, reward: 100, label: `Zarób 180${ECONOMY_CREDIT_ICON_SVG}` },
+  { type: 'earn', target: 400, reward: 200, label: `Zarób 400${ECONOMY_CREDIT_ICON_SVG}` },
   { type: 'process', target: 15, reward: 90, label: 'Nakarm maszyny 15 razy' },
   { type: 'process', target: 30, reward: 160, label: 'Nakarm maszyny 30 razy' },
   { type: 'sell', target: 20, reward: 110, label: 'Sprzedaj 20 przedmiotów' },
@@ -459,8 +471,8 @@ const ACHIEVEMENTS = [
   { id: 'collector_1000', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#4FC3F7" stroke-width="1.8"><circle cx="12" cy="12" r="9" fill="#4FC3F7" fill-opacity="0.2"/><path d="M3.5 9.5h17M3.5 14.5h17"/><path d="M9.5 3c-2.5 4-2.5 14 0 18M14.5 3c2.5 4 2.5 14 0 18"/></svg>', name: 'Strażnik planety', desc: 'Zbierz łącznie 1000 surowców', stat: 'itemsCollected', target: 1000 },
   { id: 'feeder_50', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFB74D" stroke-width="2" stroke-linejoin="round"><path d="M3 20V11l5 3v-3l5 3v-3l5 3v6Z" fill="#FFB74D" fill-opacity="0.25"/><path d="M6 11V8M11 11V8M16 11V7 a1 1 0 0 1 2 0v1h1V7"/></svg>', name: 'Taśmowa produkcja', desc: 'Nakarm maszyny 50 razy', stat: 'machinesFed', target: 50 },
   { id: 'feeder_500', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="1.8" stroke-linejoin="round"><path d="M4 9 7 4l5 3 5-3 3 5-2 3v6H6v-6Z" fill="#FFD54F" fill-opacity="0.25"/><circle cx="12" cy="15" r="2.4"/></svg>', name: 'Król fabryki', desc: 'Nakarm maszyny 500 razy', stat: 'machinesFed', target: 500 },
-  { id: 'earn_500', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#A5D6A7" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="1.5" fill="#A5D6A7" fill-opacity="0.2"/><circle cx="12" cy="12" r="3"/></svg>', name: 'Pierwsze zarobki', desc: 'Zarób łącznie 500$', stat: 'lifetimeEarned', target: 500 },
-  { id: 'earn_10000', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.5 2 6 6 5 10-.7 3-3 6-5 6s-4.3-3-5-6c-1-4 .5-8 5-10Z" fill="#FFD54F" fill-opacity="0.3"/><path d="M10.3 11.5Q10.3 10 12 10Q13.8 10 13.8 11.3Q13.8 12.5 12 13Q10.3 13.5 10.3 14.8Q10.3 16 12 16Q13.8 16 13.8 14.6"/></svg>', name: 'Magnat odpadów', desc: 'Zarób łącznie 10 000$', stat: 'lifetimeEarned', target: 10000 },
+  { id: 'earn_500', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#A5D6A7" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="1.5" fill="#A5D6A7" fill-opacity="0.2"/><circle cx="12" cy="12" r="3"/></svg>', name: 'Pierwsze zarobki', desc: `Zarób łącznie 500${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 500 },
+  { id: 'earn_10000', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.5 2 6 6 5 10-.7 3-3 6-5 6s-4.3-3-5-6c-1-4 .5-8 5-10Z" fill="#FFD54F" fill-opacity="0.3"/><path d="M10.3 11.5Q10.3 10 12 10Q13.8 10 13.8 11.3Q13.8 12.5 12 13Q10.3 13.5 10.3 14.8Q10.3 16 12 16Q13.8 16 13.8 14.6"/></svg>', name: 'Magnat odpadów', desc: `Zarób łącznie 10 000${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 10000 },
   { id: 'shopper_10', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFE082" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2A2 2 0 0 0 9.35 17H18a2 2 0 0 0 1.95-1.57L21.5 8H6"/><circle cx="10" cy="20.5" r="1.3" fill="#FFE082" stroke="none"/><circle cx="18" cy="20.5" r="1.3" fill="#FFE082" stroke="none"/></svg>', name: 'Zakupoholik', desc: 'Kup 10 ulepszeń', stat: 'upgradesBought', target: 10 },
   { id: 'first_planet', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81D4FA" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5c4 3 5 8 3 13H9c-2-5-1-10 3-13Z" fill="#81D4FA" fill-opacity="0.3"/><path d="M9 15.5 6.5 19M15 15.5l2.5 3.5M10 15.5V20M14 15.5V20"/><circle cx="12" cy="9.5" r="1.6" fill="#81D4FA" stroke="none"/></svg>', name: 'Odlot', desc: 'Ukończ pierwszą planetę', stat: 'planetsCompleted', target: 1 },
   { id: 'planets_3', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#B39DDB" stroke-width="1.8"><circle cx="9" cy="12" r="4.5" fill="#B39DDB" fill-opacity="0.25"/><ellipse cx="9" cy="12" rx="7.5" ry="2.4" transform="rotate(-18 9 12)"/><path d="M18 5 18.6 6.6 20.2 7.2 18.6 7.8 18 9.4 17.4 7.8 15.8 7.2 17.4 6.6Z" fill="#B39DDB" stroke="none"/><path d="M20 15 20.4 16 21.4 16.4 20.4 16.8 20 17.8 19.6 16.8 18.6 16.4 19.6 16Z" fill="#B39DDB" stroke="none"/></svg>', name: 'Podróżnik', desc: 'Ukończ 3 planety', stat: 'planetsCompleted', target: 3 },
@@ -623,7 +635,7 @@ const PLANET_MODIFIERS = [
     id: 'soft_landing',
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#90CAF9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9a7 7 0 0 1 14 0" fill="#90CAF9" fill-opacity="0.2"/><path d="M5 9 3 12M19 9l2 3M9 9l1 6M15 9l-1 6"/><path d="M8 15h8l-1.5 5h-5Z" fill="#90CAF9" fill-opacity="0.25"/></svg>',
     name: 'Miękkie Lądowanie',
-    desc: '+150$ gotówki na start tej planety',
+    desc: `+150${ECONOMY_CREDIT_ICON_SVG} gotówki na start tej planety`,
     cashBonus: 150
   }
 ];
@@ -912,8 +924,13 @@ class EconomyManager {
     }
 
     const comboSuffix = this.comboStacks > 0 ? ` x${this.comboStacks + 1}` : '';
+    // Bez symbolu waluty - to czysty canvas (fillText, patrz gamefeel.js),
+    // nie DOM, więc nie da się tu wstawić ECONOMY_CREDIT_ICON_SVG (ui.js) jak w
+    // reszcie gry. Ikona popupu i tak jest zajęta przez 'flame' (combo),
+    // a złoty/pomarańczowy kolor (color niżej) + kontekst (leci w górę z
+    // miejsca sprzedaży) wystarczą, żeby czytać to jako pieniądze.
     Bus.publish(Events.FX_POPUP, {
-      text: `+$${paidOut}${comboSuffix}`,
+      text: `+${paidOut}${comboSuffix}`,
       // Płomień rysowany PROCEDURALNIE nad popupem (patrz _drawPopupIcon w
       // gamefeel.js) zamiast dawnego 🔥 wtopionego w text - tylko gdy combo
       // faktycznie trwa (poziom 0 = zwykła sprzedaż, bez ikony).
@@ -1788,7 +1805,7 @@ class EconomyManager {
    * @returns {{elapsedSeconds:number, reward:number}|null} null, gdy za
    *   krótko offline, za mało realnej gry w tym przebiegu, albo tempo
    *   sprzedaży wynosi 0 (świeży gracz, jeszcze nic nie sprzedał) - nie ma
-   *   na czym oprzeć nagrody, więc lepiej nic nie pokazać niż "+0$".
+   *   na czym oprzeć nagrody, więc lepiej nic nie pokazać niż "+0".
    */
   computeOfflineReward(elapsedMs) {
     const elapsedSeconds = Math.floor((elapsedMs || 0) / 1000);

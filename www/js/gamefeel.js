@@ -219,7 +219,7 @@ class GameFeel {
    * wywołującego) - zastępuje dawne emoji wtopione wprost w string tekstu
    * (⚠️ ostrzeżenie, 💢 utracono, ✅ gotowe, 🔥 combo). Woła się TYLKO gdy
    * popup faktycznie ma icon (patrz _spawnPopup) - reszta (większość
-   * popupów w grze, np. zwykłe "+50$") nadal nie rysuje nic ponad tekstem.
+   * popupów w grze, np. zwykłe "+50") nadal nie rysuje nic ponad tekstem.
    */
   _drawPopupIcon(ctx, iconKey, color) {
     const s = 8;

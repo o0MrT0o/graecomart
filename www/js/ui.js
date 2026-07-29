@@ -75,6 +75,16 @@ const CHECK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 
 // template literały (wszystkie miejsca użycia i tak trafiają do innerHTML,
 // nie textContent).
 const CORE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" fill="#81D4FA" stroke="none"><path d="M13 2 4 14h6l-1 8 9-12h-6Z"/></svg>';
+// Symbol głównej waluty (pieniądze) - Tomek: "zamieńmy dolar na coś
+// bardziej pasującego do gry... sci-fi/kosmici". Zastępuje "$" używane
+// dotąd JAKO TEKST wewnątrz dziesiątek stringów w całej grze ("180$",
+// "+50$", "za 200$" itd.) - sześciokątny "czip energetyczny" z wydrążonym
+// świecącym rdzeniem pośrodku (fill-rule evenodd), złoty jak reszta
+// oznaczeń pieniędzy (--ui-gold), ten sam duch co CORE_ICON_SVG wyżej
+// (osobna waluta, inny kształt/kolor - błyskawica dla Rdzeni, sześciokąt
+// dla pieniędzy). WSTAWIANY JAKO SUFIKS (`${amount}${CREDIT_ICON_SVG}`),
+// nie prefiks jak CORE_ICON_SVG - dokładnie tam, gdzie dotąd stało "$".
+const CREDIT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px" fill="#FFD54F" stroke="none"><path fill-rule="evenodd" d="M21 12 16.5 19.79 7.5 19.79 3 12 7.5 4.21 16.5 4.21Z M14.2 12A2.2 2.2 0 1 1 9.8 12A2.2 2.2 0 1 1 14.2 12Z"/></svg>';
 const LOCK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
 const UNLOCK_ICON_SVG = '<span class="ui-icon ui-icon--unlocked" aria-hidden="true"></span>';
 const SPEAKER_ICON_SVG = '<span class="ui-icon ui-icon--audio-on" aria-hidden="true"></span>';
@@ -171,7 +181,12 @@ class UIButton extends UIComponent {
     this.label = label;
     if (this.el) {
       const labelEl = this.el.querySelector('.ui-btn__label');
-      if (labelEl) labelEl.textContent = label;
+      // innerHTML (nie textContent) - etykiety podmieniane w locie mogą
+      // zawierać CREDIT_ICON_SVG (np. OfflineRewardModal._watchAdAndClaim
+      // przywraca "x2 (+X[ikona])" po nieudanej reklamie) - oba wołające
+      // miejsca w projekcie przekazują tylko wewnętrzne, bezpieczne teksty,
+      // nigdy dane od użytkownika.
+      if (labelEl) labelEl.innerHTML = label;
     }
   }
 
@@ -253,7 +268,7 @@ class MoneyDisplay extends UIComponent {
     this.el.innerHTML = `
       <span class="ui-money__icon" aria-hidden="true">${MONEY_ICON_SVG}</span>
       <div class="ui-money__content">
-        <span class="ui-money__value">$0</span>
+        <span class="ui-money__value">0</span>
       </div>
     `;
     this.valueEl = this.el.querySelector('.ui-money__value');
@@ -291,7 +306,10 @@ class MoneyDisplay extends UIComponent {
 
   _updateText() {
     if (this.valueEl) {
-      this.valueEl.textContent = `$${Math.floor(this.displayValue).toLocaleString('pl-PL')}`;
+      // Bez ikony waluty tutaj (w przeciwieństwie do reszty gry) - ta sama
+      // pigułka ma już .ui-money__icon (woreczek z monetami) po lewej,
+      // druga ikonka obok samej liczby byłaby zbędnym powtórzeniem.
+      this.valueEl.textContent = Math.floor(this.displayValue).toLocaleString('pl-PL');
     }
   }
 
@@ -397,7 +415,7 @@ class ChallengeDisplay extends UIComponent {
     this.textEl.innerHTML = challenge.claimed
       ? `Wyzwanie odebrane ${CHECK_ICON_SVG}`
       : claimable
-        ? `Odbierz +${challenge.reward}$!`
+        ? `Odbierz +${challenge.reward}${CREDIT_ICON_SVG}!`
         : `${challenge.label} (${challenge.progress}/${challenge.target})`;
 
     if (this.fillEl) {
@@ -414,7 +432,7 @@ const NEXT_UNLOCK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0
  * Pasek "co dalej" - pokazuje postęp łącznego zarobku do NASTĘPNEGO
  * progresywnego odblokowania (nowej strefy/maszyny). Bezpośrednia
  * odpowiedź na "martwo, nie wiem po co gram" - gracz zawsze widzi
- * konkretny, bliski cel ("jeszcze 140$ do Pieca") zamiast grać w próżnię.
+ * konkretny, bliski cel ("jeszcze 140 do Pieca") zamiast grać w próżnię.
  * Reużywa klasy .ui-stack* (jak ChallengeDisplay) - zero nowego CSS.
  * Chowa się całkiem, gdy wszystko odblokowane (nie ma już "co dalej").
  */
@@ -449,7 +467,11 @@ class UnlockProgressDisplay extends UIComponent {
 
     const pct = next.threshold > 0 ? Math.min(100, (next.current / next.threshold) * 100) : 0;
     if (this.textEl) {
-      this.textEl.textContent = `${next.name} — jeszcze ${Math.ceil(next.remaining)}$`;
+      // innerHTML (nie textContent) - CREDIT_ICON_SVG wymaga renderowania
+      // jako znacznik, nie surowy tekst (ten sam powód co ChallengeDisplay
+      // wyżej). next.name to wewnętrzna nazwa strefy/maszyny, nie dane
+      // użytkownika, więc bezpieczne do wstawienia bez sanityzacji.
+      this.textEl.innerHTML = `${next.name} — jeszcze ${Math.ceil(next.remaining)}${CREDIT_ICON_SVG}`;
     }
     if (this.fillEl) {
       this.fillEl.style.width = `${pct}%`;
@@ -621,7 +643,7 @@ class ShopPanel {
       actionEl.appendChild(badge);
     } else {
       const btn = new UIButton({
-        label: `$${item.cost}`,
+        label: `${item.cost}${CREDIT_ICON_SVG}`,
         variant: canBuy ? 'accent' : 'ghost',
         disabled: !canBuy,
         title: canBuy ? 'Kup ulepszenie' : 'Za mało pieniędzy',
@@ -782,20 +804,20 @@ class OfflineRewardModal {
       card.innerHTML = `
         <div class="ui-shop-item__info">
           <span class="ui-shop-item__name">Byłeś offline ${this._formatDuration(this.data.elapsedSeconds)}</span>
-          <span class="ui-shop-item__desc">Twoja ekonomia pracowała w tle. Zarobek: <strong style="color:#FFD700">+${this.data.reward}$</strong></span>
+          <span class="ui-shop-item__desc">Twoja ekonomia pracowała w tle. Zarobek: <strong style="color:#FFD700">+${this.data.reward}${CREDIT_ICON_SVG}</strong></span>
         </div>
       `;
       const actions = document.createElement('div');
       actions.style.cssText = 'display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;';
 
       const claimBtn = new UIButton({
-        label: `Odbierz +${this.data.reward}$`,
+        label: `Odbierz +${this.data.reward}${CREDIT_ICON_SVG}`,
         variant: 'accent',
         onClick: () => this._claim(false)
       });
       this._adBtn = new UIButton({
         icon: OFFLINE_PLAY_ICON_SVG,
-        label: `x2 (+${this.data.reward * 2}$)`,
+        label: `x2 (+${this.data.reward * 2}${CREDIT_ICON_SVG})`,
         variant: 'ghost',
         onClick: () => this._watchAdAndClaim()
       });
@@ -852,7 +874,7 @@ class OfflineRewardModal {
       // - przywracamy przycisk do normalnego stanu, zeby gracz mogl sprobowac ponownie.
       if (btn) {
         btn.setDisabled(false);
-        btn.setLabel(`x2 (+${this.data.reward * 2}$)`);
+        btn.setLabel(`x2 (+${this.data.reward * 2}${CREDIT_ICON_SVG})`);
       }
     });
   }
@@ -1956,7 +1978,7 @@ class UIManager {
     // nawet jeśli strzelą w tej samej klatce co konstrukcja.
     this._onDailyLogin = (d) => {
       const coreText = d.coreBonus > 0 ? ` + ${CORE_ICON_SVG}${d.coreBonus} Rdzeni!` : '';
-      this.notifications.show(`Dzień ${d.streak} z rzędu! +${d.moneyReward}$${coreText}`, {
+      this.notifications.show(`Dzień ${d.streak} z rzędu! +${d.moneyReward}${CREDIT_ICON_SVG}${coreText}`, {
         type: 'success',
         icon: FLAME_ICON_SVG,
         duration: 4200
@@ -1967,7 +1989,7 @@ class UIManager {
     };
     this._onDailyChallengeClaimed = (d) => {
       this._syncMoney(true);
-      this.notifications.show(`Wyzwanie odebrane! +${d.reward}$`, { type: 'success', icon: CHECK_ICON_SVG, duration: 2600 });
+      this.notifications.show(`Wyzwanie odebrane! +${d.reward}${CREDIT_ICON_SVG}`, { type: 'success', icon: CHECK_ICON_SVG, duration: 2600 });
     };
 
     this._buildDOM();
