@@ -105,14 +105,24 @@ const SWAMP_TEXTURE_SRC = 'assets/swamp.png';
 // z góry na wprost (nie w 3/4 jak beczka), ale ten sam "billboard" sposób
 // stawiania płaskiej grafiki pionowo już i tak używają tree/bush/rock -
 // żadna z tych dekoracji naprawdę nie jest renderowana "z lotu ptaka".
-const DECOR_TYPES = ['tree', 'bush', 'rock', 'shrub', 'crate', 'sign'];
+// grass_tuft/fern (Strefa A) - Kenney Foliage Sprites (CC0), oryginalnie
+// białe/tintowalne sylwetki (jak .ui-icon w ui.js) - ale zamiast maski CSS w
+// locie, tu wstępnie potintowane OFFLINE (skrypt Python, gradient
+// hi->mid->lo tymi samymi trzema odcieniami zieleni co canopy tree.png:
+// #8FB01B/#769413/#5A700E) i zapisane jako gotowe PNG, bo pozostałe typy
+// sprite'owe (tree/bush/rock/shrub/crate/sign) też są "martwymi" bitmapami w
+// natywnym kolorze, nie tintowanymi w locie - runtime tinting (source-atop,
+// jak _getTintedFx w machines.js) byłby tu nową, niepotrzebną infrastrukturą.
+const DECOR_TYPES = ['tree', 'bush', 'rock', 'shrub', 'crate', 'sign', 'grass_tuft', 'fern'];
 const DECOR_SRC = {
   tree: 'assets/decor/tree.png',
   bush: 'assets/decor/bush.png',
   rock: 'assets/decor/rock.png',
   shrub: 'assets/decor/shrub.png',
   crate: 'assets/decor/crate.png',
-  sign: 'assets/decor/sign.png'
+  sign: 'assets/decor/sign.png',
+  grass_tuft: 'assets/decor/grass_tuft.png',
+  fern: 'assets/decor/fern.png'
 };
 const DECOR_PROCEDURAL_TYPES = ['flower', 'puddle'];
 // Ile dekoracji rozrzucamy łącznie po całej mapie. Podniesione z 55 - przy
@@ -151,7 +161,11 @@ const DECOR_TYPE_SCALE = {
   // kamień, tabliczka trochę smuklej (węższy słupek, nie chcemy kwadratowej
   // bryły).
   crate: 0.85,
-  sign: 0.95
+  sign: 0.95,
+  // Niskie naziemne akcenty (Strefa A) - mniejsze niż shrub (0.65), żeby nie
+  // konkurowały z krzewinką o "wagę", tylko wypełniały puste kępki trawy.
+  grass_tuft: 0.55,
+  fern: 0.6
 };
 // Stały "seed" losowania rozrzutu - te same dekoracje w tym samym miejscu
 // za każdym wczytaniem strony (nie generujemy losowo od nowa co reload).
@@ -163,7 +177,7 @@ const DECOR_SEED = 20260711;
 // dzięki temu podmuch wygląda jak fala PRZECHODZĄCA przez mapę, a nie jak
 // niezależne drganie każdej rośliny z osobna. Kwiat (procedural) ma tę samą
 // falę wbudowaną bezpośrednio w _drawFlowerDecor.
-const DECOR_SWAY_TYPES = ['tree', 'bush', 'shrub'];
+const DECOR_SWAY_TYPES = ['tree', 'bush', 'shrub', 'grass_tuft', 'fern'];
 const DECOR_SWAY_AMPLITUDE = 0.035;
 const DECOR_SWAY_SPEED = 1.1;
 
@@ -1282,7 +1296,7 @@ class Game {
     // drobne akcenty koloru/detalu powinny być częstsze niż rzadkie drzewo,
     // ale rzadsze niż podstawowa trawa/krzak danej strefy.
     const zoneTypes = {
-      A: ['tree', 'bush', 'shrub', 'flower', 'flower'],
+      A: ['tree', 'bush', 'shrub', 'flower', 'flower', 'grass_tuft', 'grass_tuft', 'fern'],
       B: ['shrub', 'rock', 'puddle'],
       C: ['rock', 'rock', 'crate', 'sign'],
       D: ['crystal', 'crystal', 'rock']

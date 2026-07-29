@@ -31,8 +31,20 @@
 
 const AUDIO_SRC = {
   pickup: 'assets/audio/pickup.mp3',
-  machine_feed: 'assets/audio/machine_feed.mp3',
-  machine_complete: 'assets/audio/machine_complete.mp3',
+  // machine_feed/machine_complete/hazard PODMIENIONE na Kenney Sci-Fi Sounds
+  // (Tomek: "sci fi sound") - gra jest o kosmitach/statku, generyczne
+  // kliknięcia/brzęki nie pasowały tematycznie:
+  //   machine_feed     - computerNoise_000 - krótki, cichy "bip" konsoli,
+  //                       pasuje do częstego zdarzenia (surowiec wrzucony do
+  //                       maszyny, kilka razy na sekundę przy aktywnej grze).
+  //   machine_complete - doorOpen_000 - syczący odgłos otwieranej śluzy/luku -
+  //                       czyta się jako "produkt gotowy, klapa się otwiera"
+  //                       lepiej niż zwykły dzwonek.
+  //   hazard            - forceField_000 - elektryczny warkot bariery
+  //                       energetycznej, czyta się jako "niebezpieczne pole"
+  //                       dużo bardziej sci-fi niż generyczny alarm.
+  machine_feed: 'assets/audio/machine_feed.ogg',
+  machine_complete: 'assets/audio/machine_complete.ogg',
   coin: 'assets/audio/coin.mp3',
   purchase: 'assets/audio/purchase.mp3',
   // Tomek wgrał do repo pełne paczki Kenney (nie same PNG jak wcześniej -
@@ -44,7 +56,7 @@ const AUDIO_SRC = {
   // na 'sfx_shieldUp' z Space Shooter Remastered - "tarcza w górze" czyta się
   // dużo bardziej jako "moduł statku naprawiony/zasilony" niż ogólny jingle.
   ui_click: 'assets/audio/ui_click.ogg',
-  hazard: 'assets/audio/hazard.mp3',
+  hazard: 'assets/audio/hazard.ogg',
   module_complete: 'assets/audio/module_complete.ogg',
   victory: 'assets/audio/victory.mp3',
   // NOWE klucze (uzupełniają zdarzenia, które wcześniej nie miały ŻADNEGO
