@@ -1709,25 +1709,69 @@ class Game {
   }
 
   /**
+   * Tonuje prawdziwą teksturę światła (fx_light_glow.png, Kenney "Light
+   * Masks" CC0 - patrz sprites.js) na dowolny kolor, tą samą techniką
+   * "source-atop" co GameFeel._getTintedGlow (gamefeel.js) i tint skinów
+   * gracza (player.js) - własna kopia zgodnie z konwencją "brak
+   * współdzielonych utili" w tym projekcie. Cache'owana per DOKŁADNY string
+   * koloru, więc każdy unikalny kolor liczy się raz, nie co klatkę.
+   */
+  _getTintedCrystalGlow(color) {
+    this._crystalGlowCache = this._crystalGlowCache || {};
+    if (this._crystalGlowCache[color]) return this._crystalGlowCache[color];
+    const img = window.spriteLoader && window.spriteLoader.get('fx_light_glow');
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const tctx = canvas.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    tctx.globalCompositeOperation = 'source-atop';
+    tctx.fillStyle = color;
+    tctx.fillRect(0, 0, w, h);
+    this._crystalGlowCache[color] = canvas;
+    return canvas;
+  }
+
+  /**
    * Kępka kryształów Strefy D (Kryształowa Grań) - kilka ostrych, przeźro-
    * czystych "iglic" różnej wysokości sterczących z ziemi, plus subtelny
-   * pulsujący blask (ta sama filozofia co pulsujący pierścień kałuży -
-   * _drawPuddleDecor - żywe tło zamiast martwej naklejki). KSZTAŁT upieczony
-   * RAZ (patrz _bakeCrystalDecorTexture) - tutaj tylko przesunięcie gotowej
-   * tekstury + osobno rysowany, animowany blask u podstawy.
+   * pulsujący blask u podstawy (ta sama filozofia co pulsujący pierścień
+   * kałuży - _drawPuddleDecor - żywe tło zamiast martwej naklejki). Blask
+   * to teraz prawdziwa miękka teksturka światła (Kenney Light Masks,
+   * _getTintedCrystalGlow) zamiast płaskiej elipsy jednego koloru - pulsuje
+   * jednocześnie przezroczystością I skalą (rdzeń "oddycha"), rysowana pod
+   * spodem PRZEZ 'lighter' (addytywnie), żeby faktycznie czytała się jako
+   * światło, nie jako naklejona plama. KSZTAŁT kryształów upieczony RAZ
+   * (patrz _bakeCrystalDecorTexture) - tutaj tylko przesunięcie gotowej
+   * tekstury + osobno rysowany, animowany blask.
    */
   _drawCrystalDecor(ctx, d, nowSec) {
     if (!d.texture) return;
     const scale = d.scale * (DECOR_TYPE_SCALE.crystal || 1);
     const pulse = 0.5 + 0.5 * Math.sin(nowSec * 1.8 + d.seed * Math.PI * 2);
 
-    ctx.save();
-    ctx.globalAlpha = 0.55 + pulse * 0.35;
-    ctx.fillStyle = '#B39DDB';
-    ctx.beginPath();
-    ctx.ellipse(d.x, d.y, 10 * scale, 4 * scale, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    const glow = this._getTintedCrystalGlow('#B39DDB');
+    if (glow) {
+      const r = 22 * scale * (0.85 + pulse * 0.25);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.35 + pulse * 0.35;
+      ctx.drawImage(glow, d.x - r, d.y - r * 0.65, r * 2, r * 1.3);
+      ctx.restore();
+    } else {
+      // Fallback (tekstura jeszcze niewczytana) - dawna płaska elipsa,
+      // żeby kryształ nigdy nie został kompletnie bez podstawy blasku.
+      ctx.save();
+      ctx.globalAlpha = 0.55 + pulse * 0.35;
+      ctx.fillStyle = '#B39DDB';
+      ctx.beginPath();
+      ctx.ellipse(d.x, d.y, 10 * scale, 4 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
 
     ctx.drawImage(d.texture, d.x - d.textureAnchorX, d.y - d.textureAnchorY);
   }

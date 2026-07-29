@@ -73,7 +73,15 @@ const SPRITE_PATH_CANDIDATES = {
   // Particle Pack), więc kilka sztuk uniesionych nad plamą czyta się jako
   // spójny, rysunkowy dym, nie inny styl wklejony obok.
   fx_soot: ['assets/effects/fx_soot.png'],
-  fx_smoke_puff: ['assets/effects/fx_smoke_puff.png']
+  fx_smoke_puff: ['assets/effects/fx_smoke_puff.png'],
+  // Kenney "Light Masks" (CC0) - circle_c.png, konwersja z opaque-black+szara
+  // jasność (oryginalny format paczki, myślany pod blend "screen"/"lighter")
+  // na przezroczysty ALPHA-mask (biały, jasność źródła = alfa) offline w
+  // Pythonie - ta sama forma co fx_glow (Particle Pack), więc ten sam
+  // tint-przez-source-atop działa bez zmian. Zamienia płaski pulsujący
+  // ellipse pod kępkami kryształów Strefy D (game.js _drawCrystalDecor) na
+  // prawdziwą, miękką poświatę z jaśniejszym rdzeniem.
+  fx_light_glow: ['assets/effects/fx_light_glow.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd
