@@ -35,7 +35,21 @@ const SPRITE_PATH_CANDIDATES = {
   // _bakeTintedCanvas) zamiast rysowanych ręcznie radialnych gradientów.
   fx_glow: ['assets/effects/fx_glow.png'],
   fx_flare: ['assets/effects/fx_flare.png'],
-  fx_spark: ['assets/effects/fx_spark.png']
+  fx_spark: ['assets/effects/fx_spark.png'],
+  // Prawdziwe bryły z Kenney "Space Shooter Extension" (CC0) - NOWE ciała
+  // Reaktora/Kompresora/Pieca Plazmowego (machines.js, druga wersja Fazy
+  // kosmicznego reskinu - zamiast składania własnego "panelu" z kwadratu,
+  // każda maszyna dostaje osobną, gotową bryłę stacji kosmicznej,
+  // przefarbowywaną per maszyna przez _getRecoloredSprite):
+  //   sci_module - moduł satelitarny (spaceStation_017) - Reaktor
+  //   sci_press  - "klepsydra" dwóch zbiegających się płyt (spaceStation_012) - Kompresor
+  //   sci_dome   - kopuła/pod (spaceStation_029) - Piec Plazmowy
+  //   sci_core   - świecąca kula w pierścieniu (spaceBuilding_009) - wspólny
+  //                akcent "rdzenia" osadzany na wszystkich trzech
+  machine_sci_module: ['assets/machines/sci_module.png'],
+  machine_sci_press: ['assets/machines/sci_press.png'],
+  machine_sci_dome: ['assets/machines/sci_dome.png'],
+  machine_sci_core: ['assets/machines/sci_core.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd

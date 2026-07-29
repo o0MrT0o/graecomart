@@ -704,6 +704,101 @@ class MachineManager {
   }
 
   /**
+   * Przekolorowuje PRAWDZIWY sprite Kenney (assets/machines/sci_panel.png -
+   * korpus "Sci-Fi RTS/Space Shooter Extension", i sci_core.png - świecący
+   * rdzeń) na kolor akcentu maszyny, obracając odcień (hue) piksel po
+   * pikselu w HSL - zamiast rysować korpus/rdzeń ręcznie jak w poprzedniej
+   * wersji reskinu, TERAZ to prawdziwa grafika z paczki, tylko przefarbowana
+   * na zielono/fioletowo/czerwono dla każdej maszyny. Piksele o niskiej
+   * saturacji (rama, cień) są celowo POMIJANE (zostają neutralnie szare) -
+   * inaczej obrót odcienia farbowałby też metalową ramkę na dziwny odcień
+   * zamiast tylko właściwej, nasyconej powierzchni. Nie użyto ctx.filter
+   * (prostsze, ale barwi WSZYSTKO łącznie z ramką) - ta ręczna wersja była
+   * zweryfikowana wizualnie (patrz historia sesji) i cache'owana per
+   * (spriteKey, hueDeg, satMult, minSat), bo liczy się raz na maszynę, nie
+   * co klatkę.
+   *
+   * minSat MUSI być dobrany per sprite, nie jedna stała dla obu: metalowa
+   * rama sci_panel.png (tło ekranu, saturacja ~0.08-0.16) powinna się
+   * przefarbować RAZEM z resztą korpusu (niski próg), ale metalowy PIERŚCIEŃ
+   * wokół sci_core.png ma PRAWIE tę samą saturację (~0.16) co żywy
+   * pomarańczowy środek (~0.85) - niski próg farbował więc też pierścień na
+   * dziwny róż/fiolet zamiast zostawić go neutralnie szarym. Stąd wywołania
+   * dla rdzenia (patrz _drawRecycleMachine/_drawPressMachine/
+   * _drawFurnaceMachine) proszą o wyższy próg (~0.4), który łapie już tylko
+   * nasycony środek.
+   *
+   * overlayTint (opcjonalny [kolor, alpha]) - "klepsydra" Kompresora
+   * (sci_press.png) jest PRAWIE idealnie szara (saturacja bliska 0), więc
+   * obrót odcienia nie ma czego chwycić - d===0 dla piksela r=g=b oznacza
+   * matematycznie NIEOKREŚLONY odcień, żaden próg tego nie naprawi. Zamiast
+   * tego dokładamy jeden przebieg 'source-atop' (TA SAMA technika co
+   * _getTintedFx/player.js _bakeTintedCanvas - restrykcyjnie tylko tam,
+   * gdzie już jest jakaś alpha, więc przezroczyste tło NIE dostaje koloru)
+   * przy alpha<1, żeby oryginalne cieniowanie częściowo prześwitywało spod
+   * tinta zamiast robić się płaskim jednolitym kolorem.
+   */
+  _getRecoloredSprite(spriteKey, hueDeg, satMult, minSat = 0.08, overlayTint = null) {
+    this._fxRecolorCache = this._fxRecolorCache || {};
+    const cacheKey = `${spriteKey}|${hueDeg}|${satMult}|${minSat}|${overlayTint ? overlayTint.join(',') : ''}`;
+    if (this._fxRecolorCache[cacheKey]) return this._fxRecolorCache[cacheKey];
+    const img = window.spriteLoader && window.spriteLoader.get(spriteKey);
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const tctx = canvas.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    const imageData = tctx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    const hueShift = hueDeg / 360;
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3];
+      if (a === 0) continue;
+      const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const l = (max + min) / 2;
+      const d = max - min;
+      if (d === 0) continue;
+      let s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (s < minSat) continue;
+      let h2;
+      if (max === r) h2 = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h2 = ((b - r) / d + 2) / 6;
+      else h2 = ((r - g) / d + 4) / 6;
+      h2 = (h2 + hueShift) % 1;
+      if (h2 < 0) h2 += 1;
+      s = Math.min(1, s * satMult);
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      const hue2rgb = (t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      data[i] = Math.round(hue2rgb(h2 + 1 / 3) * 255);
+      data[i + 1] = Math.round(hue2rgb(h2) * 255);
+      data[i + 2] = Math.round(hue2rgb(h2 - 1 / 3) * 255);
+    }
+    tctx.putImageData(imageData, 0, 0);
+    if (overlayTint) {
+      const [color, alpha] = overlayTint;
+      tctx.globalCompositeOperation = 'source-atop';
+      tctx.globalAlpha = alpha;
+      tctx.fillStyle = color;
+      tctx.fillRect(0, 0, w, h);
+      tctx.globalAlpha = 1;
+      tctx.globalCompositeOperation = 'source-over';
+    }
+    this._fxRecolorCache[cacheKey] = canvas;
+    return canvas;
+  }
+
+  /**
    * Wspólny motyw "kosmicznej poświaty" pod maszyną - prawdziwa, miękka
    * teksturka blasku (fx_glow, Kenney Particle Pack CC0) tonowana na kolor
    * akcentu maszyny, zamiast ręcznie rysowanego radialnego gradientu. Jeden
@@ -797,15 +892,16 @@ class MachineManager {
 
   /**
    * Reaktor Recyklingowy (dawniej Recykler, assets/machines/recycle.png) -
-   * pierwsza z trzech maszyn "Fazy kosmicznego reskinu" (obok Kompresora
-   * Grawitonowego i Pieca Plazmowego niżej). Ten sam szkielet co Oczyszczalnia/
-   * Szlifiernia (lej -> korpus -> okienko -> panel -> przenośnik -> nóżki,
-   * liczony od MACHINE_PROC_UNIT), ale okienko to okrągły "iluminator" ze
-   * spiralą wciąganych w środek okruchów śmieci (zamiast bulgoczącej kadzi/
-   * wirującej tarczy) - motyw "rozkładu materii" pasujący do recyklingu.
-   * Poświata + orbitujący pierścień (_drawCosmicGlow/_drawCosmicRing) to
-   * wspólny akcent łączący wszystkie maszyny w jeden, spójnie "kosmiczny"
-   * język wizualny.
+   * pierwsza z trzech maszyn "Fazy kosmicznego reskinu, wersja 2". Zamiast
+   * składania własnego korpusu z prymitywów (poprzednia wersja - hopper/
+   * korpus/okienko rysowane ręcznie), bryła to teraz CAŁA, gotowa stacja
+   * kosmiczna z Kenney "Space Shooter Extension" (spaceStation_017,
+   * assets/machines/sci_module.png, CC0) - moduł satelitarny z panelami
+   * "słonecznymi" (przefarbowanymi tu na zielono) i centralnym hubem, na
+   * który nakładany jest świecący rdzeń (sci_core.png). Własny, stożkowaty
+   * czubek modułu pełni rolę leja - osobny, rysowany ręcznie hopper nie jest
+   * już potrzebny. Poświata + orbitujący pierścień (_drawCosmicGlow/
+   * _drawCosmicRing) to wspólny akcent łączący wszystkie maszyny reskinu.
    */
   _drawRecycleMachine(ctx, m, isActive) {
     const U = MACHINE_PROC_UNIT;
@@ -821,141 +917,57 @@ class MachineManager {
     this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.28);
     this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.66, U * 0.2, 'rgba(168, 255, 158, 0.55)', 0.0007, 6);
 
-    // --- Lej u góry (ten sam trapez co u sąsiadów), z kawałkami śmieci/
-    // papieru czekającymi na wsyp zamiast szkła/kryształu. ---
-    const hopW = U * 0.62, hopNeck = U * 0.24;
-    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.34;
-    ctx.fillStyle = hull;
-    ctx.beginPath();
-    ctx.moveTo(cx - hopW / 2, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx - hopNeck / 2, hopBot);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = hullDark;
-    ctx.beginPath();
-    ctx.moveTo(cx + hopW * 0.16, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx + hopNeck * 0.1, hopBot);
-    ctx.closePath();
-    ctx.fill();
-    ['#8D6E63', '#BCAAA4'].forEach((col, i) => {
-      ctx.fillStyle = col;
-      const gx = cx + (i === 0 ? -U * 0.14 : U * 0.1);
-      const gy = hopTop - U * 0.03;
-      ctx.fillRect(gx - U * 0.045, gy - U * 0.08, U * 0.09, U * 0.11);
-    });
-
-    // --- Korpus: zaokrąglony prostokąt, gunmetal, jaśniejsza lewa / ciemniejsza
-    // prawa strona (ten sam prosty trik co u sąsiadów), z cienką neonową
-    // obwódką w kolorze akcentu - to ta linia daje wrażenie "poszycia statku"
-    // zamiast zwykłej skrzynki. ---
-    const bw = U * 0.78, bh = U * 0.72;
-    const bx = cx - bw / 2, by = cy - U * 0.34;
-    ctx.fillStyle = hull;
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.fill();
-    ctx.save();
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.clip();
-    ctx.fillStyle = hullDark;
-    ctx.fillRect(bx + bw * 0.62, by, bw * 0.38, bh);
-    ctx.restore();
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = 0.85;
-    ctx.shadowColor = accent;
-    ctx.shadowBlur = 9;
-    this._traceRoundedRect(ctx, bx + 1, by + 1, bw - 2, bh - 2, U * 0.06);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
-
-    // --- Cienkie poziome rowki poszycia - "płytowany" pancerz zamiast
-    // gładkiej skrzynki, ten sam detal na wszystkich trzech maszynach reskinu. ---
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-    ctx.lineWidth = 1;
-    [0.28, 0.56].forEach((t) => {
-      ctx.beginPath();
-      ctx.moveTo(bx + bw * 0.06, by + bh * t);
-      ctx.lineTo(bx + bw * 0.94, by + bh * t);
-      ctx.stroke();
-    });
-
-    // --- Iluminator: okrągłe okienko ze spiralą okruchów wciąganych do
-    // środka (rozkład materii), zamiast prostokątnego okna sąsiadów - żeby
-    // ta maszyna czytała się jako "kapsuła", nie skrzynka. ---
-    const winCx = cx - bw * 0.06, winCy = by + bh * 0.4, winR = Math.min(bw, bh) * 0.28;
-    ctx.fillStyle = '#152018';
-    ctx.beginPath();
-    ctx.arc(winCx, winCy, winR + 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = hullDark;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(winCx, winCy, winR, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.fillStyle = '#152018';
-    ctx.fillRect(winCx - winR, winCy - winR, winR * 2, winR * 2);
-    for (let i = 0; i < 4; i++) {
-      const t = ((now * 0.0006 + i * 0.25) % 1);
-      const a = t * Math.PI * 6 + i;
-      const r = winR * (1 - t) * 0.9;
-      ctx.globalAlpha = 0.85 * t;
-      ctx.fillStyle = i % 2 === 0 ? accentGlow : accent;
-      ctx.fillRect(winCx + Math.cos(a) * r - 2, winCy + Math.sin(a) * r - 2, 4, 4);
-    }
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = accentGlow;
-    ctx.beginPath();
-    ctx.arc(winCx, winCy, winR * 0.16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    this._drawGlassHighlight(ctx, winCx, winCy, winR);
-
-    // --- Panel z kolorowymi kwadracikami - ten sam detal co u sąsiadów. ---
-    const px0 = bx + bw * 0.72, py0 = by + bh * 0.2, ps = U * 0.055;
-    [['#E8574B', 0], ['#F2C14E', 1], ['#63C267', 2]].forEach(([col, i]) => {
-      ctx.fillStyle = col;
-      ctx.fillRect(px0, py0 + i * ps * 1.7, ps, ps);
-    });
-
-    // --- Antenka na dachu z pulsującym światłem + rządek migających lampek
-    // wzdłuż górnej krawędzi korpusu - drobne sci-fi akcenty, każdy z
-    // przesuniętą fazą, żeby nie migały unisono jak jedna zepsuta dioda. ---
-    ctx.strokeStyle = hullDark;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(cx + bw * 0.22, by);
-    ctx.lineTo(cx + bw * 0.22, by - U * 0.12);
-    ctx.stroke();
-    const tipFlare = this._getTintedFx('fx_flare', accentGlow);
-    ctx.shadowColor = accentGlow;
-    ctx.shadowBlur = 6;
-    ctx.globalAlpha = 0.55 + 0.45 * Math.sin(now * 0.006);
-    ctx.fillStyle = accentGlow;
-    ctx.beginPath();
-    ctx.arc(cx + bw * 0.22, by - U * 0.12, 3, 0, Math.PI * 2);
-    ctx.fill();
-    if (tipFlare) {
-      const fs = U * 0.16;
-      ctx.drawImage(tipFlare, cx + bw * 0.22 - fs / 2, by - U * 0.12 - fs / 2, fs, fs);
-    }
-    [-0.32, -0.14].forEach((t, i) => {
-      ctx.globalAlpha = 0.4 + 0.6 * Math.max(0, Math.sin(now * 0.005 + i * 2.1));
-      ctx.beginPath();
-      ctx.arc(cx + bw * t, by + bh * 0.08, 2, 0, Math.PI * 2);
+    // --- Moduł: PRAWDZIWA bryła Kenney (sci_module.png, proporcje źródła
+    // 344x577) przefarbowana na zielono, przeskalowana tak, by całość mieściła
+    // się w tej samej "działce" co reszta maszyn (~U wysokości). ---
+    const modH = U * 1.25;
+    const modW = modH * (344 / 577);
+    const modTop = cy - U * 0.7;
+    const modLeft = cx - modW / 2;
+    const moduleSprite = this._getRecoloredSprite('machine_sci_module', -69, 1.7);
+    if (moduleSprite) {
+      ctx.drawImage(moduleSprite, modLeft, modTop, modW, modH);
+    } else {
+      ctx.fillStyle = hull;
+      this._traceRoundedRect(ctx, modLeft, modTop, modW, modH, U * 0.1);
       ctx.fill();
-    });
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
+    }
 
-    // --- Przenośnik po prawej + gotowy plastik (jak u sąsiadów). ---
-    const beltY = cy + U * 0.2, beltX = cx + bw * 0.42, beltW = U * 0.34, beltH = U * 0.1;
+    // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana na zielono,
+    // osadzona na hubie modułu (tam, gdzie łączą się panele "słoneczne") -
+    // z delikatnym "oddychaniem" skalą, żeby było widać że maszyna żyje. ---
+    const hubCx = cx, hubCy = modTop + modH * 0.335;
+    const breath = 1 + 0.05 * Math.sin(now * 0.004);
+    const coreR = modW * 0.24 * breath;
+    const coreSprite = this._getRecoloredSprite('machine_sci_core', 106, 1.25, 0.4);
+    if (coreSprite) {
+      ctx.drawImage(coreSprite, hubCx - coreR, hubCy - coreR, coreR * 2, coreR * 2);
+    } else {
+      ctx.fillStyle = accentGlow;
+      ctx.beginPath();
+      ctx.arc(hubCx, hubCy, coreR * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Okruchy śmieci wciągane spiralnie w rdzeń (rozkład materii) - kilka
+    // realnych iskierek (fx_flare) zamiast rysowanych ręcznie kwadracików.
+    const flareBit = this._getTintedFx('fx_flare', accentGlow);
+    if (flareBit) {
+      for (let i = 0; i < 3; i++) {
+        const t = ((now * 0.0006 + i * 0.3) % 1);
+        const a = t * Math.PI * 6 + i;
+        const r = coreR * (1 - t) * 1.3;
+        const bitSize = coreR * 0.3 * t;
+        ctx.globalAlpha = 0.9 * t;
+        ctx.drawImage(flareBit, hubCx + Math.cos(a) * r - bitSize / 2, hubCy + Math.sin(a) * r - bitSize / 2, bitSize, bitSize);
+      }
+      ctx.globalAlpha = 1;
+    }
+    this._drawGlassHighlight(ctx, hubCx, hubCy, coreR);
+
+    // --- Przenośnik z boku + gotowy plastik (jak u sąsiadów - jedyny
+    // pozostały rysowany ręcznie element, bo żadna bryła w paczkach nie
+    // odgrywa roli "wyjścia produktu"). ---
+    const beltY = cy + U * 0.42, beltX = cx + modW * 0.32, beltW = U * 0.34, beltH = U * 0.1;
     ctx.fillStyle = hull;
     this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
     ctx.fill();
@@ -969,27 +981,17 @@ class MachineManager {
     const ox = beltX + beltW * 0.55, oy = beltY - beltH * 0.75;
     this._traceRoundedRect(ctx, ox - U * 0.045, oy - U * 0.045, U * 0.09, U * 0.09, U * 0.02);
     ctx.fill();
-
-    // --- Nóżki: skośne podpory zamiast prostych klocków - bardziej
-    // "lądownik" niż zwykła skrzynia na nóżkach. ---
-    ctx.fillStyle = hullDark;
-    [-bw * 0.3, bw * 0.22].forEach((dx) => {
-      ctx.beginPath();
-      ctx.moveTo(cx + dx, by + bh);
-      ctx.lineTo(cx + dx + U * 0.08, by + bh);
-      ctx.lineTo(cx + dx + U * 0.1, by + bh + U * 0.07);
-      ctx.lineTo(cx + dx - U * 0.02, by + bh + U * 0.07);
-      ctx.closePath();
-      ctx.fill();
-    });
   }
 
   /**
    * Kompresor Grawitonowy (dawniej Prasa, assets/machines/press.png) - druga
-   * z trzech maszyn "Fazy kosmicznego reskinu". Ten sam szkielet co sąsiedzi,
-   * ale okienko to dwie płyty ściskające się pulsującą wiązką energii między
-   * nimi (zamiast bulgoczącej kadzi/spirali) - motyw "kompresji polem
-   * grawitacyjnym" zamiast mechanicznego tłoka.
+   * z trzech maszyn "Fazy kosmicznego reskinu, wersja 2". Bryła to teraz
+   * prawdziwa "klepsydra" z Kenney "Space Shooter Extension"
+   * (spaceStation_012, assets/machines/sci_press.png, CC0) - dwie płyty
+   * zbiegające się ku wspólnemu punktowi w środku, więc kształt SAM w sobie
+   * czyta się jako "kompresja", bez potrzeby animowania ręcznie rysowanych
+   * płyt jak w poprzedniej wersji. Rdzeń (sci_core.png) siedzi w punkcie
+   * zbiegu i "oddycha" skalą Y w rytm ściskania.
    */
   _drawPressMachine(ctx, m, isActive) {
     const U = MACHINE_PROC_UNIT;
@@ -1005,9 +1007,11 @@ class MachineManager {
     this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.28);
     this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.66, U * 0.2, 'rgba(225, 190, 231, 0.55)', -0.0005, 5);
 
-    // --- Lej u góry, z plastikowymi kawałkami czekającymi na wsyp. ---
-    const hopW = U * 0.62, hopNeck = U * 0.24;
-    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.34;
+    // --- Lej u góry, z plastikowymi kawałkami czekającymi na wsyp - jedyny
+    // pozostały rysowany ręcznie element (żadna bryła w paczkach nie pełni
+    // roli "wsypu surowca"). ---
+    const hopW = U * 0.5, hopNeck = U * 0.2;
+    const hopTop = cy - U * 0.66, hopBot = cy - U * 0.44;
     ctx.fillStyle = hull;
     ctx.beginPath();
     ctx.moveTo(cx - hopW / 2, hopTop);
@@ -1025,104 +1029,50 @@ class MachineManager {
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = '#42A5F5';
-    const gx = cx, gy = hopTop - U * 0.02;
-    this._traceRoundedRect(ctx, gx - U * 0.06, gy - U * 0.06, U * 0.12, U * 0.1, U * 0.02);
+    this._traceRoundedRect(ctx, cx - U * 0.05, hopTop - U * 0.1, U * 0.1, U * 0.08, U * 0.02);
     ctx.fill();
 
-    // --- Korpus, ta sama geometria co sąsiedzi, fioletowa neonowa obwódka. ---
-    const bw = U * 0.78, bh = U * 0.72;
-    const bx = cx - bw / 2, by = cy - U * 0.34;
-    ctx.fillStyle = hull;
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.fill();
-    ctx.save();
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.clip();
-    ctx.fillStyle = hullDark;
-    ctx.fillRect(bx + bw * 0.62, by, bw * 0.38, bh);
-    ctx.restore();
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = 0.85;
-    ctx.shadowColor = accent;
-    ctx.shadowBlur = 9;
-    this._traceRoundedRect(ctx, bx + 1, by + 1, bw - 2, bh - 2, U * 0.06);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
-
-    // --- Cienkie poziome rowki poszycia - ten sam detal co u Reaktora
-    // Recyklingowego, żeby obie maszyny czytały się jako część tej samej floty. ---
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-    ctx.lineWidth = 1;
-    [0.28, 0.56].forEach((t) => {
-      ctx.beginPath();
-      ctx.moveTo(bx + bw * 0.06, by + bh * t);
-      ctx.lineTo(bx + bw * 0.94, by + bh * t);
-      ctx.stroke();
-    });
-
-    // --- Okienko: dwie płyty grawitonowe ściskające się, z wiązką energii
-    // między nimi (jaśniejszą, gdy płyty najbliżej siebie). ---
-    const ww = bw * 0.5, wh = bh * 0.42;
-    const wx = cx - ww / 2 - bw * 0.06, wy = by + bh * 0.16;
-    ctx.fillStyle = '#241B2E';
-    this._traceRoundedRect(ctx, wx - 2, wy - 2, ww + 4, wh + 4, 4);
-    ctx.fill();
-    ctx.save();
-    this._traceRoundedRect(ctx, wx, wy, ww, wh, 3);
-    ctx.clip();
-    ctx.fillStyle = '#241B2E';
-    ctx.fillRect(wx, wy, ww, wh);
-    const pulse = (Math.sin(now * 0.003) + 1) / 2; // 0..1
-    const gap = wh * (0.12 + 0.3 * pulse);
-    const plateH = (wh - gap) / 2;
-    ctx.fillStyle = hullDark;
-    ctx.fillRect(wx, wy, ww, plateH);
-    ctx.fillRect(wx, wy + wh - plateH, ww, plateH);
-    ctx.globalAlpha = 0.4 + 0.6 * (1 - pulse);
-    ctx.fillStyle = accentGlow;
-    ctx.fillRect(wx, wy + plateH, ww, gap);
-    ctx.globalAlpha = 1;
-    ctx.restore();
-    // Ukośny "połysk szyby" na wierzchu okienka - prostokątny odpowiednik
-    // _drawGlassHighlight (tamten zakłada okrągłe okno, tu okno prostokątne).
-    ctx.save();
-    this._traceRoundedRect(ctx, wx, wy, ww, wh, 3);
-    ctx.clip();
-    ctx.globalAlpha = 0.22;
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = ww * 0.16;
-    ctx.beginPath();
-    ctx.moveTo(wx - ww * 0.1, wy + wh * 0.1);
-    ctx.lineTo(wx + ww * 0.5, wy - wh * 0.15);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    ctx.restore();
-
-    // --- Panel z kolorowymi kwadracikami. ---
-    const px0 = bx + bw * 0.72, py0 = by + bh * 0.2, ps = U * 0.055;
-    [['#E8574B', 0], ['#F2C14E', 1], ['#63C267', 2]].forEach(([col, i]) => {
-      ctx.fillStyle = col;
-      ctx.fillRect(px0, py0 + i * ps * 1.7, ps, ps);
-    });
-
-    // --- Rządek migających lampek wzdłuż górnej krawędzi - ten sam detal co
-    // u Reaktora Recyklingowego, przesunięta faza. ---
-    ctx.shadowColor = accentGlow;
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = accentGlow;
-    [-0.32, -0.14].forEach((t, i) => {
-      ctx.globalAlpha = 0.4 + 0.6 * Math.max(0, Math.sin(now * 0.005 + i * 2.1 + 1));
-      ctx.beginPath();
-      ctx.arc(cx + bw * t, by + bh * 0.08, 2, 0, Math.PI * 2);
+    // --- Klepsydra: PRAWDZIWA bryła Kenney (sci_press.png) przefarbowana na
+    // fioletowo - dwie płyty zbiegające się w środku, gdzie siedzi rdzeń. ---
+    const pressW = U * 0.95;
+    const pressH = pressW * (88 / 96);
+    const pressTop = cy - U * 0.42;
+    const pressLeft = cx - pressW / 2;
+    const pressSprite = this._getRecoloredSprite('machine_sci_press', 100, 1.7, 0.08, [accent, 0.55]);
+    if (pressSprite) {
+      ctx.drawImage(pressSprite, pressLeft, pressTop, pressW, pressH);
+    } else {
+      ctx.fillStyle = hull;
+      this._traceRoundedRect(ctx, pressLeft, pressTop, pressW, pressH, U * 0.1);
       ctx.fill();
-    });
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
+    }
+
+    // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana na fioletowo,
+    // ściskana rytmicznie w pionie (skala Y) w punkcie zbiegu płyt - motyw
+    // "kompresji polem grawitacyjnym" przeniesiony na animację skali
+    // prawdziwej grafiki, zamiast animowanej zawartości ręcznie rysowanego
+    // okienka. ---
+    const winCx = cx, winCy = pressTop + pressH * 0.5;
+    const squeeze = 0.8 + 0.2 * Math.abs(Math.sin(now * 0.0025));
+    const winR = pressW * 0.22;
+    const coreSprite = this._getRecoloredSprite('machine_sci_core', 275, 1.25, 0.4);
+    if (coreSprite) {
+      ctx.save();
+      ctx.translate(winCx, winCy);
+      ctx.scale(1, squeeze);
+      ctx.drawImage(coreSprite, -winR, -winR, winR * 2, winR * 2);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = accentGlow;
+      ctx.beginPath();
+      ctx.arc(winCx, winCy, winR * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    this._drawGlassHighlight(ctx, winCx, winCy, winR);
 
     // --- Dwa emitery po bokach leja z iskrzącym łukiem między nimi -
-    // wizualne źródło "pola grawitonowego" napędzającego kompresję. ---
+    // wizualne źródło "pola grawitonowego" napędzającego kompresję (jedyny
+    // pozostały ręcznie animowany akcent poza rdzeniem). ---
     const emY = hopTop - U * 0.04;
     const emL = cx - hopW / 2 - U * 0.03, emR = cx + hopW / 2 + U * 0.03;
     ctx.fillStyle = hullDark;
@@ -1153,7 +1103,7 @@ class MachineManager {
     }
 
     // --- Przenośnik po prawej + gotowy produkt. ---
-    const beltY = cy + U * 0.2, beltX = cx + bw * 0.42, beltW = U * 0.34, beltH = U * 0.1;
+    const beltY = cy + U * 0.38, beltX = cx + pressW * 0.36, beltW = U * 0.34, beltH = U * 0.1;
     ctx.fillStyle = hull;
     this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
     ctx.fill();
@@ -1167,25 +1117,16 @@ class MachineManager {
     const ox = beltX + beltW * 0.55, oy = beltY - beltH * 0.75;
     this._traceRoundedRect(ctx, ox - U * 0.045, oy - U * 0.045, U * 0.09, U * 0.09, U * 0.02);
     ctx.fill();
-
-    // --- Nóżki: skośne podpory, ten sam detal co Reaktor Recyklingowy. ---
-    ctx.fillStyle = hullDark;
-    [-bw * 0.3, bw * 0.22].forEach((dx) => {
-      ctx.beginPath();
-      ctx.moveTo(cx + dx, by + bh);
-      ctx.lineTo(cx + dx + U * 0.08, by + bh);
-      ctx.lineTo(cx + dx + U * 0.1, by + bh + U * 0.07);
-      ctx.lineTo(cx + dx - U * 0.02, by + bh + U * 0.07);
-      ctx.closePath();
-      ctx.fill();
-    });
   }
 
   /**
    * Piec Plazmowy (dawniej Piec hutniczy, assets/machines/piechutniczy.png) -
-   * trzecia z maszyn "Fazy kosmicznego reskinu". Okienko to sferyczny rdzeń
-   * plazmy z orbitującymi iskrami (mini-słońce w komorze), zamiast kadzi z
-   * metalem/szkłem - motyw "stapiania energią" zamiast zwykłego ognia.
+   * trzecia z maszyn "Fazy kosmicznego reskinu, wersja 2". Bryła to teraz
+   * prawdziwa kopuła/pod z Kenney "Space Shooter Extension"
+   * (spaceStation_029, assets/machines/sci_dome.png, CC0) - osadzona na
+   * niewielkim, rysowanym ręcznie postumencie, z rdzeniem (sci_core.png,
+   * natywny pomarańcz bliski akcentowi pieca) widocznym w jej "ustach" jak
+   * mini-słońce w komorze plazmy.
    */
   _drawFurnaceMachine(ctx, m, isActive) {
     const U = MACHINE_PROC_UNIT;
@@ -1201,9 +1142,10 @@ class MachineManager {
     this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.3);
     this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.68, U * 0.22, 'rgba(255, 171, 145, 0.55)', 0.0006, 7);
 
-    // --- Lej u góry, z bryłkami metalu czekającymi na wsyp. ---
-    const hopW = U * 0.62, hopNeck = U * 0.24;
-    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.34;
+    // --- Lej u góry, z bryłkami metalu czekającymi na wsyp - jedyny
+    // pozostały rysowany ręcznie element ponad kopułą. ---
+    const hopW = U * 0.4, hopNeck = U * 0.16;
+    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.46;
     ctx.fillStyle = hull;
     ctx.beginPath();
     ctx.moveTo(cx - hopW / 2, hopTop);
@@ -1220,109 +1162,58 @@ class MachineManager {
     ctx.lineTo(cx + hopNeck * 0.1, hopBot);
     ctx.closePath();
     ctx.fill();
-    ['#90A4AE', '#8ED8E8'].forEach((col, i) => {
-      ctx.fillStyle = col;
-      const gx = cx + (i === 0 ? -U * 0.12 : U * 0.1);
-      const gy = hopTop - U * 0.03;
-      ctx.beginPath();
-      ctx.arc(gx, gy, U * 0.05, 0, Math.PI * 2);
-      ctx.fill();
-    });
 
-    // --- Korpus, ta sama geometria co sąsiedzi, czerwono-pomarańczowa
-    // neonowa obwódka + żeberka wentylacyjne (piec grzeje mocniej niż
-    // reszta, więc trochę więcej "przemysłowego" detalu). ---
-    const bw = U * 0.78, bh = U * 0.72;
-    const bx = cx - bw / 2, by = cy - U * 0.34;
-    ctx.fillStyle = hull;
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.fill();
-    ctx.save();
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.clip();
-    ctx.fillStyle = hullDark;
-    ctx.fillRect(bx + bw * 0.62, by, bw * 0.38, bh);
-    ctx.restore();
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = 0.85;
-    ctx.shadowColor = accent;
-    ctx.shadowBlur = 9;
-    this._traceRoundedRect(ctx, bx + 1, by + 1, bw - 2, bh - 2, U * 0.06);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
-
-    // --- Cienkie poziome rowki poszycia - ten sam detal co u pozostałych
-    // dwóch maszyn reskinu. ---
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-    ctx.lineWidth = 1;
-    [0.28, 0.56].forEach((t) => {
-      ctx.beginPath();
-      ctx.moveTo(bx + bw * 0.06, by + bh * t);
-      ctx.lineTo(bx + bw * 0.94, by + bh * t);
-      ctx.stroke();
-    });
-
-    // --- Okienko: sferyczna komora plazmy z pulsującym rdzeniem i dwiema
-    // orbitującymi iskrami - mini-słońce w środku maszyny. ---
-    const winCx = cx - bw * 0.06, winCy = by + bh * 0.4, winR = Math.min(bw, bh) * 0.28;
-    ctx.fillStyle = '#2A1518';
-    ctx.beginPath();
-    ctx.arc(winCx, winCy, winR + 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = hullDark;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(winCx, winCy, winR, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.fillStyle = '#2A1518';
-    ctx.fillRect(winCx - winR, winCy - winR, winR * 2, winR * 2);
-    const coreR = winR * (0.42 + 0.08 * Math.sin(now * 0.005));
-    const coreGrad = ctx.createRadialGradient(winCx, winCy, 0, winCx, winCy, coreR);
-    coreGrad.addColorStop(0, '#FFF3E0');
-    coreGrad.addColorStop(0.5, accentGlow);
-    coreGrad.addColorStop(1, accent);
-    ctx.fillStyle = coreGrad;
-    ctx.beginPath();
-    ctx.arc(winCx, winCy, coreR, 0, Math.PI * 2);
-    ctx.fill();
-    for (let i = 0; i < 2; i++) {
-      const a = now * 0.003 * (i === 0 ? 1 : -1.3) + i * Math.PI;
-      const r = winR * 0.75;
-      ctx.fillStyle = '#FFE0B2';
-      ctx.beginPath();
-      ctx.arc(winCx + Math.cos(a) * r, winCy + Math.sin(a) * r * 0.6, 2.2, 0, Math.PI * 2);
+    // --- Kopuła: PRAWDZIWA bryła Kenney (sci_dome.png) - jej naturalny
+    // srebrny odcień zostaje (dome nie potrzebuje przefarbowania, kontrastuje
+    // ładnie z pomarańczem rdzenia w środku), osadzona na postumencie. ---
+    const domeW = U * 1.05;
+    const domeH = domeW * (116 / 248);
+    const domeTop = cy - U * 0.3;
+    const domeLeft = cx - domeW / 2;
+    const domeSprite = window.spriteLoader && window.spriteLoader.get('machine_sci_dome');
+    if (domeSprite && domeSprite.complete && domeSprite.naturalWidth) {
+      ctx.drawImage(domeSprite, domeLeft, domeTop, domeW, domeH);
+    } else {
+      ctx.fillStyle = hull;
+      this._traceRoundedRect(ctx, domeLeft, domeTop, domeW, domeH, U * 0.1);
       ctx.fill();
     }
-    ctx.restore();
+    // Postument pod kopułą.
+    const pedW = domeW * 0.55, pedH = U * 0.16;
+    ctx.fillStyle = hullDark;
+    this._traceRoundedRect(ctx, cx - pedW / 2, domeTop + domeH - U * 0.04, pedW, pedH, U * 0.03);
+    ctx.fill();
+
+    // --- Rdzeń: PRAWDZIWY sprite Kenney (sci_core.png) - jego natywny
+    // pomarańcz leży już blisko akcentu pieca, więc obrót odcienia jest
+    // subtelny - pulsujący promień (mini-słońce) widoczny w "ustach" kopuły
+    // + dwie orbitujące iskry (prawdziwa teksturka fx_flare). ---
+    const winCx = cx, winCy = domeTop + domeH * 0.82;
+    const pulse2 = 1 + 0.08 * Math.sin(now * 0.005);
+    const winR = domeW * 0.19 * pulse2;
+    const coreSprite = this._getRecoloredSprite('machine_sci_core', -16, 1.1, 0.4);
+    if (coreSprite) {
+      ctx.drawImage(coreSprite, winCx - winR, winCy - winR, winR * 2, winR * 2);
+    } else {
+      ctx.fillStyle = accentGlow;
+      ctx.beginPath();
+      ctx.arc(winCx, winCy, winR * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const orbitSpark = this._getTintedFx('fx_flare', '#FFE0B2');
+    if (orbitSpark) {
+      const sparkSize = winR * 0.42;
+      for (let i = 0; i < 2; i++) {
+        const a = now * 0.003 * (i === 0 ? 1 : -1.3) + i * Math.PI;
+        const r = winR * 0.9;
+        const sx = winCx + Math.cos(a) * r, sy = winCy + Math.sin(a) * r * 0.5;
+        ctx.drawImage(orbitSpark, sx - sparkSize / 2, sy - sparkSize / 2, sparkSize, sparkSize);
+      }
+    }
     this._drawGlassHighlight(ctx, winCx, winCy, winR);
 
-    // --- Panel z kolorowymi kwadracikami. ---
-    const px0 = bx + bw * 0.72, py0 = by + bh * 0.2, ps = U * 0.055;
-    [['#E8574B', 0], ['#F2C14E', 1], ['#63C267', 2]].forEach(([col, i]) => {
-      ctx.fillStyle = col;
-      ctx.fillRect(px0, py0 + i * ps * 1.7, ps, ps);
-    });
-
-    // --- Rządek migających lampek wzdłuż górnej krawędzi - ten sam detal co
-    // u pozostałych dwóch maszyn reskinu, kolejna przesunięta faza. ---
-    ctx.shadowColor = accentGlow;
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = accentGlow;
-    [-0.32, -0.14].forEach((t, i) => {
-      ctx.globalAlpha = 0.4 + 0.6 * Math.max(0, Math.sin(now * 0.005 + i * 2.1 + 3.4));
-      ctx.beginPath();
-      ctx.arc(cx + bw * t, by + bh * 0.08, 2, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
-
     // --- Przenośnik po prawej + gotowy stop. ---
-    const beltY = cy + U * 0.2, beltX = cx + bw * 0.42, beltW = U * 0.34, beltH = U * 0.1;
+    const beltY = cy + U * 0.28, beltX = cx + domeW * 0.32, beltW = U * 0.34, beltH = U * 0.1;
     ctx.fillStyle = hull;
     this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
     ctx.fill();
@@ -1336,19 +1227,6 @@ class MachineManager {
     const ox = beltX + beltW * 0.55, oy = beltY - beltH * 0.75;
     this._traceRoundedRect(ctx, ox - U * 0.05, oy - U * 0.035, U * 0.1, U * 0.07, U * 0.015);
     ctx.fill();
-
-    // --- Nóżki: skośne podpory, ten sam detal co pozostałe dwie maszyny
-    // reskinu. ---
-    ctx.fillStyle = hullDark;
-    [-bw * 0.3, bw * 0.22].forEach((dx) => {
-      ctx.beginPath();
-      ctx.moveTo(cx + dx, by + bh);
-      ctx.lineTo(cx + dx + U * 0.08, by + bh);
-      ctx.lineTo(cx + dx + U * 0.1, by + bh + U * 0.07);
-      ctx.lineTo(cx + dx - U * 0.02, by + bh + U * 0.07);
-      ctx.closePath();
-      ctx.fill();
-    });
   }
 
   /**
