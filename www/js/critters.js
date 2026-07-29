@@ -27,7 +27,13 @@ const CRITTER_WORLD_HEIGHT = 2000;
 const CRITTER_ZONE_C_TOP_RATIO = 0.32;
 const CRITTER_ZONE_B_RIGHT_RATIO = 0.62;
 
-const CRITTER_COUNTS = { butterfly: 6, firefly: 7, crow: 3 };
+// UFO (jedyne stworzenie NIE zamknięte w jednej strefie - "gość" przelatujący
+// nad całą mapą) roams PEŁNEJ szerokości świata (GAME_WORLD_WIDTH w game.js),
+// nie samego "rdzenia" A/B/C jak reszta - własna kopia zgodnie z konwencją.
+const CRITTER_UFO_WORLD_WIDTH = 1750;
+const CRITTER_UFO_WORLD_HEIGHT = 2000;
+
+const CRITTER_COUNTS = { butterfly: 6, firefly: 7, crow: 3, ufo: 1 };
 const BUTTERFLY_COLORS = ['#F48FB1', '#FFCC80', '#CE93D8', '#81D4FA', '#FFF176'];
 
 // BUGFIX (przycinanie na telefonie): _drawFirefly tworzyła NOWY
@@ -85,6 +91,15 @@ class CrittersManager {
         Math.random() * CRITTER_WORLD_WIDTH,
         Math.random() * zc));
     }
+    // Cała mapa (bez podziału na strefy) - UFO, "gość" przelatujący ponad
+    // wszystkim, w tym Strefą D (Kryształowa Grań), której reszta stworzeń
+    // w ogóle nie odwiedza (żadne z powyższych spawnów nie sięga poza
+    // CRITTER_WORLD_WIDTH=1400).
+    for (let i = 0; i < CRITTER_COUNTS.ufo; i++) {
+      this.critters.push(this._spawn('ufo',
+        Math.random() * CRITTER_UFO_WORLD_WIDTH,
+        Math.random() * CRITTER_UFO_WORLD_HEIGHT));
+    }
   }
 
   _spawn(kind, x, y) {
@@ -116,13 +131,26 @@ class CrittersManager {
         size: 2 + Math.random() * 1.2
       };
     }
-    // crow - lot szerokimi łukami, wolniejsze skręty (turnSeed skalowany niżej).
+    if (kind === 'crow') {
+      // Lot szerokimi łukami, wolniejsze skręty (turnSeed skalowany niżej).
+      return {
+        ...base,
+        speed: 30 + Math.random() * 18,
+        wanderRadius: 220 + Math.random() * 140,
+        flapSpeed: 2.2 + Math.random() * 0.8,
+        size: 8 + Math.random() * 3
+      };
+    }
+    // ufo - bardzo wolny, spokojny dryf (wanderRadius obejmuje praktycznie
+    // całą mapę, więc w praktyce prawie nigdy nie "zawraca do domu" - po
+    // prostu leniwie przemierza całość). flapPhase tu NIE macha skrzydłami
+    // (brak ich), tylko steruje powolnym pionowym "bobbingiem" w _drawUfo.
     return {
       ...base,
-      speed: 30 + Math.random() * 18,
-      wanderRadius: 220 + Math.random() * 140,
-      flapSpeed: 2.2 + Math.random() * 0.8,
-      size: 8 + Math.random() * 3
+      speed: 14 + Math.random() * 6,
+      wanderRadius: 700,
+      flapSpeed: 0.6 + Math.random() * 0.2,
+      size: 1
     };
   }
 
@@ -132,8 +160,12 @@ class CrittersManager {
 
     this.critters.forEach((c) => {
       // Losowy dryf kierunku - amplituda różna per gatunek (motyl fruwa
-      // erratycznie, wrona leci szerokimi, spokojnymi łukami).
-      const jitter = c.kind === 'butterfly' ? 2.4 : c.kind === 'crow' ? 0.5 : 1.1;
+      // erratycznie, wrona leci szerokimi, spokojnymi łukami, UFO dryfuje
+      // niemal po linii prostej - "spokojny gość", nie żywe stworzenie).
+      const jitter = c.kind === 'butterfly' ? 2.4
+        : c.kind === 'crow' ? 0.5
+        : c.kind === 'ufo' ? 0.2
+        : 1.1;
       c.angle += (Math.sin(this._time * 0.7 + c.turnSeed) * jitter) * sec;
 
       // Miękkie zawracanie do domu, gdy oddali się za bardzo - im dalej za
@@ -170,6 +202,7 @@ class CrittersManager {
 
       if (c.kind === 'butterfly') this._drawButterfly(ctx, c);
       else if (c.kind === 'firefly') this._drawFirefly(ctx, c);
+      else if (c.kind === 'ufo') this._drawUfo(ctx, c);
       else this._drawCrow(ctx, c);
     });
   }
@@ -290,6 +323,48 @@ class CrittersManager {
     ctx.quadraticCurveTo(s * 0.4, s * 0.32, s, tipY);
     ctx.stroke();
 
+    ctx.restore();
+  }
+
+  /**
+   * JEDYNE stworzenie rysowane prawdziwym sprite'em (shipGreen.png, Kenney
+   * "Alien UFO Pack" CC0) zamiast kształtu Canvasa - reszta critters.js jest
+   * proceduralna (patrz nagłówek pliku), ale Tomek poprosił konkretnie o TĘ
+   * grafikę ("dodaj tę ufo"). Cień-elipsa na "ziemi" (bez transformacji,
+   * niezależnie od bobbingu statku nad nim) sprzedaje wysokość lotu - ten sam
+   * trik co cienie dekoracji sprite'owych w game.js (_drawDecorations).
+   * Delikatny pionowy bobbing (sin z flapPhase) + bardzo lekkie przechylenie
+   * w stronę ruchu (nie pełny obrót do c.angle, bo grafika NIE jest
+   * czystym widokiem z góry - przechylenie ma tylko sugerować manewrowanie,
+   * nie łamać czytelności kształtu).
+   */
+  _drawUfo(ctx, c) {
+    const bob = Math.sin(c.flapPhase) * 4;
+    const w = 46;
+    const h = w * (68 / 124);
+
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = 'rgba(10, 15, 10, 0.9)';
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y + h * 0.9, w * 0.32, w * 0.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    const img = window.spriteLoader && window.spriteLoader.get('critter_ufo');
+    ctx.save();
+    ctx.translate(c.x, c.y + bob);
+    ctx.rotate(Math.cos(c.angle) * 0.08);
+    if (img && img.complete && img.naturalWidth) {
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    } else {
+      // Sprite jeszcze niewczytany (rzadki, jednorazowy stan tuż po starcie
+      // gry) - prosty zielony spodek zamiast pustego miejsca.
+      ctx.fillStyle = '#66BB6A';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, w * 0.45, h * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 

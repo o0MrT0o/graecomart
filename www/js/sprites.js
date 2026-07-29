@@ -81,7 +81,13 @@ const SPRITE_PATH_CANDIDATES = {
   // tint-przez-source-atop działa bez zmian. Zamienia płaski pulsujący
   // ellipse pod kępkami kryształów Strefy D (game.js _drawCrystalDecor) na
   // prawdziwą, miękką poświatę z jaśniejszym rdzeniem.
-  fx_light_glow: ['assets/effects/fx_light_glow.png']
+  fx_light_glow: ['assets/effects/fx_light_glow.png'],
+  // Wędrujące UFO (critters.js, ambient - Tomek: "dodaj tę ufo") - jedyny
+  // NIE-proceduralny "critter" w grze (motyle/świetliki/wrony to kształty
+  // Canvasa) - prawdziwa bryła spodka z Kenney "Alien UFO Pack" (CC0),
+  // zielona (odróżnialna od niebieskiego gracza i czerwono-biało-fioletowego
+  // Rozbitego Statku - czyta się jako "inny, obcy statek", nie duplikat).
+  critter_ufo: ['assets/critters/ufo.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd
