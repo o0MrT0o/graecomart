@@ -327,27 +327,35 @@ class CrittersManager {
   }
 
   /**
-   * JEDYNE stworzenie rysowane prawdziwym sprite'em (shipGreen.png, Kenney
-   * "Alien UFO Pack" CC0) zamiast kształtu Canvasa - reszta critters.js jest
-   * proceduralna (patrz nagłówek pliku), ale Tomek poprosił konkretnie o TĘ
-   * grafikę ("dodaj tę ufo"). Cień-elipsa na "ziemi" (bez transformacji,
-   * niezależnie od bobbingu statku nad nim) sprzedaje wysokość lotu - ten sam
-   * trik co cienie dekoracji sprite'owych w game.js (_drawDecorations).
-   * Delikatny pionowy bobbing (sin z flapPhase) + bardzo lekkie przechylenie
-   * w stronę ruchu (nie pełny obrót do c.angle, bo grafika NIE jest
-   * czystym widokiem z góry - przechylenie ma tylko sugerować manewrowanie,
-   * nie łamać czytelności kształtu).
+   * JEDYNE stworzenie rysowane prawdziwym sprite'em (shipGreen_manned.png,
+   * Kenney "Alien UFO Pack" CC0) zamiast kształtu Canvasa - reszta
+   * critters.js jest proceduralna (patrz nagłówek pliku), ale Tomek poprosił
+   * konkretnie o TĘ grafikę ("dodaj tę ufo"/"dodaj na górę ten klosz") -
+   * "_manned" to WŁAŚNIE wariant z przezroczystym kloszem/kokpitem i obcym
+   * widocznym w środku (zamiast gołego spodka bez klosza z pierwszej wersji).
+   * Mniejszy niż pierwsza wersja (w=46->30, Tomek: "niech będzie mniejsze").
+   * Cień-elipsa na "ziemi" (bez transformacji, niezależnie od bobbingu statku
+   * nad nim) sprzedaje wysokość lotu - ten sam trik co cienie dekoracji
+   * sprite'owych w game.js (_drawDecorations). Delikatny pionowy bobbing (sin
+   * z flapPhase) + bardzo lekkie przechylenie w stronę ruchu (nie pełny obrót
+   * do c.angle, bo grafika NIE jest czystym widokiem z góry - przechylenie ma
+   * tylko sugerować manewrowanie, nie łamać czytelności kształtu).
    */
   _drawUfo(ctx, c) {
     const bob = Math.sin(c.flapPhase) * 4;
-    const w = 46;
-    const h = w * (68 / 124);
+    const w = 30;
+    const h = w * (123 / 124);
 
+    // BUGFIX: h*0.9 było dobrane pod STARY, spłaszczony sprite (68/124 -
+    // spodek bez klosza). "_manned" jest prawie kwadratowy (klosz + kokpit
+    // zajmują górną połowę), więc dolna krawędź spodka wypada bliżej
+    // h*0.48 (tuż przy dolnej krawędzi obrazka), NIE h*0.9 - to drugie
+    // rzucałoby cień daleko pod statkiem, w oderwaniu od niego.
     ctx.save();
     ctx.globalAlpha = 0.35;
     ctx.fillStyle = 'rgba(10, 15, 10, 0.9)';
     ctx.beginPath();
-    ctx.ellipse(c.x, c.y + h * 0.9, w * 0.32, w * 0.1, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.x, c.y + h * 0.48, w * 0.32, w * 0.1, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
