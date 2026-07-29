@@ -91,20 +91,30 @@ const SWAMP_TEXTURE_SRC = 'assets/swamp.png';
 
 // Dekoracje - czysto wizualne, nieinteraktywne obiekty rozrzucone po mapie.
 // Dwie kategorie:
-//  - SPRITE'OWE (CC0, Kenney RPG pack) - tree/bush/rock/shrub, wczytywane
-//    jako obrazki (patrz _decorImages w konstruktorze).
-//  - PROCEDURALNE (flower/puddle/barrel) - żadnego pliku PNG w projekcie,
-//    rysowane wprost Canvasem (patrz _drawProceduralDecor niżej) - ten sam
-//    duch co ItemRenderer._drawIngot (items.js) dla stopu bez sprite'a:
-//    prosty, rozpoznawalny kształt zamiast pustego miejsca albo emoji.
-const DECOR_TYPES = ['tree', 'bush', 'rock', 'shrub'];
+//  - SPRITE'OWE (CC0, Kenney RPG pack + Platformer Pack Remastered dla
+//    crate/sign) - tree/bush/rock/shrub/crate/sign, wczytywane jako obrazki
+//    (patrz _decorImages w konstruktorze).
+//  - PROCEDURALNE (flower/puddle) - żadnego pliku PNG w projekcie, rysowane
+//    wprost Canvasem (patrz _drawProceduralDecor niżej) - ten sam duch co
+//    ItemRenderer._drawIngot (items.js) dla stopu bez sprite'a: prosty,
+//    rozpoznawalny kształt zamiast pustego miejsca albo emoji.
+// crate/sign zastąpiły dawny procedural 'barrel' (Strefa C, industrialna) -
+// ręcznie rysowana beczka (gradient + żółto-czarny pas) wyglądała jak
+// "sprzed reskinu" obok prawdziwych sprite'ów reszty dekoracji. boxCrate_
+// double.png/sign.png (Kenney Platformer Pack Remastered, CC0) są rysowane
+// z góry na wprost (nie w 3/4 jak beczka), ale ten sam "billboard" sposób
+// stawiania płaskiej grafiki pionowo już i tak używają tree/bush/rock -
+// żadna z tych dekoracji naprawdę nie jest renderowana "z lotu ptaka".
+const DECOR_TYPES = ['tree', 'bush', 'rock', 'shrub', 'crate', 'sign'];
 const DECOR_SRC = {
   tree: 'assets/decor/tree.png',
   bush: 'assets/decor/bush.png',
   rock: 'assets/decor/rock.png',
-  shrub: 'assets/decor/shrub.png'
+  shrub: 'assets/decor/shrub.png',
+  crate: 'assets/decor/crate.png',
+  sign: 'assets/decor/sign.png'
 };
-const DECOR_PROCEDURAL_TYPES = ['flower', 'puddle', 'barrel'];
+const DECOR_PROCEDURAL_TYPES = ['flower', 'puddle'];
 // Ile dekoracji rozrzucamy łącznie po całej mapie. Podniesione z 55 - przy
 // świecie 1400x2000 to zostawiało spore puste połacie ("nudna, pusta mapa").
 // 175, było 140 - poszerzenie mapy pod Strefę D (GAME_WORLD_WIDTH) podniosło
@@ -135,8 +145,13 @@ const DECOR_TYPE_SCALE = {
   // przy _drawFlowerDecor).
   flower: 1,
   puddle: 1.6,
-  barrel: 0.9,
-  crystal: 1.1
+  crystal: 1.1,
+  // Oba źródłowo 128x128 (kwadrat) - skala dobrana wizualnie względem
+  // sąsiadów w Strefie C: skrzynia ma czytać się jako podobnej "wagi" co
+  // kamień, tabliczka trochę smuklej (węższy słupek, nie chcemy kwadratowej
+  // bryły).
+  crate: 0.85,
+  sign: 0.95
 };
 // Stały "seed" losowania rozrzutu - te same dekoracje w tym samym miejscu
 // za każdym wczytaniem strony (nie generujemy losowo od nowa co reload).
@@ -316,7 +331,7 @@ class Game {
     readyPromises.push(this._grass.ready, this._ash.ready, this._swamp.ready);
 
     // Strefa D (Kryształowa Grań) - BRAK pliku PNG w projekcie (jak
-    // flower/puddle/barrel niżej), więc tekstura terenu jest upieczona
+    // flower/puddle niżej), więc tekstura terenu jest upieczona
     // proceduralnie NA MIEJSCU (synchronicznie, zero Promise/wczytywania -
     // to zwykły canvas, nie <img>), tym samym wzorcem co pozostałe trzy
     // (pattern do CanvasPattern via createPattern, patrz _fillZoneRegion).
@@ -786,7 +801,7 @@ class Game {
    * Tekstura terenu Strefy D (Kryształowa Grań) - proceduralny kafelek
    * (ciemny, fioletowawy grunt z rozrzuconymi drobnymi kryształkami-rombami
    * + pęknięciami), bo w projekcie nie ma na to gotowego PNG (jak
-   * flower/puddle/barrel w dekoracjach). Deterministyczny PRNG (mulberry32,
+   * flower/puddle w dekoracjach). Deterministyczny PRNG (mulberry32,
    * ten sam co dekoracje/chmury) - kafelek wygląda identycznie za każdym
    * wczytaniem strony, nie miga losowo. Zwraca ten sam kształt co
    * _loadTexture() ({pattern}), więc _fillZoneRegion() używa go bez zmian.
@@ -974,10 +989,9 @@ class Game {
    *     nigdy nie kołysze się razem ze sprite'em nad nim (patrz
    *     DECOR_SWAY_TYPES), więc wygląda identycznie na każdej klatce
    *     niezależnie od typu/tego czy sprite nad nim się porusza.
-   *   - sam sprite 'rock' (JEDYNY typ sprite'owy spoza DECOR_SWAY_TYPES) i
-   *     cała dekoracja 'barrel' (już wcześniej upieczona do WŁASNEJ, osobnej
-   *     tekstury w _bakeBarrelTexture - tu tylko przenosimy gotowy wynik na
-   *     wspólne tło, więc _drawDecorations() nie musi jej już wcale dotykać).
+   *   - sam sprite 'rock'/'crate'/'sign' (JEDYNE typy sprite'owe spoza
+   *     DECOR_SWAY_TYPES - nic w nich się nie kołysze, więc bezpiecznie
+   *     rysować je RAZ tutaj zamiast co klatkę w _drawDecorations).
    *
    * BUGFIX (przycinanie/lag, "za mała gra żeby tak zacinało"): profil CPU
    * (Chrome DevTools Profiler, symulacja słabego telefonu przez CPU
@@ -994,11 +1008,7 @@ class Game {
    */
   _bakeStaticDecorations(wctx) {
     this._decorations.forEach((d) => {
-      if (d.type === 'barrel') {
-        if (d.texture) wctx.drawImage(d.texture, d.x - d.textureAnchorX, d.y - d.textureAnchorY);
-        return;
-      }
-      if (!DECOR_TYPES.includes(d.type)) return; // tylko sprite'owe (tree/bush/rock/shrub) mają tu osobny cień
+      if (!DECOR_TYPES.includes(d.type)) return; // tylko sprite'owe (tree/bush/rock/shrub/crate/sign) mają tu osobny cień
 
       const img = this._decorImages[d.type];
       if (!img || !img.complete || !img.naturalWidth) return;
@@ -1014,7 +1024,11 @@ class Game {
       wctx.ellipse(d.x, d.y, w * 0.42, Math.max(3, h * 0.14), 0, 0, Math.PI * 2);
       wctx.fill();
 
-      if (d.type === 'rock') {
+      // Reszta sprite'owych typów (rock/crate/sign) - jedyne poza tree/bush/
+      // shrub, które NIE kołyszą się na wietrze (DECOR_SWAY_TYPES), więc ich
+      // sylwetkę bezpiecznie piec RAZ razem z cieniem zamiast rysować co
+      // klatkę w _drawDecorations.
+      if (d.type === 'rock' || d.type === 'crate' || d.type === 'sign') {
         const groundOffset = h * (DECOR_GROUND_OFFSET[d.type] || 0);
         wctx.drawImage(img, d.x - w / 2, d.y - h + groundOffset, w, h);
       }
@@ -1263,14 +1277,14 @@ class Game {
     const topH = this.worldHeight * GAME_ZONE_C_TOP_RATIO;
     const rightX = GAME_ZONE_CORE_WIDTH * GAME_ZONE_B_RIGHT_RATIO;
     const dLeftX = GAME_ZONE_CORE_WIDTH;
-    // 'flower'/'puddle'/'barrel'/'crystal' powtórzone w listach - najprostszy
+    // 'flower'/'puddle'/'crystal' powtórzone w listach - najprostszy
     // sposób na podbicie ich szansy wylosowania bez pełnego systemu wag: te
     // drobne akcenty koloru/detalu powinny być częstsze niż rzadkie drzewo,
     // ale rzadsze niż podstawowa trawa/krzak danej strefy.
     const zoneTypes = {
       A: ['tree', 'bush', 'shrub', 'flower', 'flower'],
       B: ['shrub', 'rock', 'puddle'],
-      C: ['rock', 'rock', 'barrel'],
+      C: ['rock', 'rock', 'crate', 'sign'],
       D: ['crystal', 'crystal', 'rock']
     };
 
@@ -1298,24 +1312,23 @@ class Game {
       const type = options[Math.floor(rand() * options.length)];
 
       // seed: losowa, ale STAŁA (raz wygenerowana) wartość 0..1 - typy
-      // proceduralne (flower/puddle/barrel) czytają ją do wyboru wariantu
-      // koloru/fazy animacji, żeby każdy egzemplarz wyglądał inaczej, ale
-      // identycznie za każdym odświeżeniem (ta sama filozofia co DECOR_SEED).
+      // proceduralne (flower/puddle) czytają ją do wyboru wariantu koloru/
+      // fazy animacji, żeby każdy egzemplarz wyglądał inaczej, ale identycznie
+      // za każdym odświeżeniem (ta sama filozofia co DECOR_SEED).
       const item = { x: px, y: py, type, scale: 0.75 + rand() * 0.65, seed: rand() };
 
-      // BUGFIX (przycinanie na telefonie): _drawFlowerDecor/_drawPuddleDecor/
-      // _drawBarrelDecor odbudowywały swój kształt OD ZERA co klatkę - dla
-      // kwiatka to ~50 osobnych fill()/stroke() (3 kwiatuszki × 5 płatków +
-      // łodyżki + środki), a kałuża/beczka tworzyły NOWY gradient co klatkę
-      // (jedna z droższych operacji Canvas) - dla każdej widocznej dekoracji
-      // naraz, 60 razy/s. Dokładnie ten sam błąd co przy chmurach (patrz
+      // BUGFIX (przycinanie na telefonie): _drawFlowerDecor/_drawPuddleDecor
+      // odbudowywały swój kształt OD ZERA co klatkę - dla kwiatka to ~50
+      // osobnych fill()/stroke() (3 kwiatuszki × 5 płatków + łodyżki +
+      // środki), a kałuża tworzyła NOWY gradient co klatkę (jedna z droższych
+      // operacji Canvas) - dla każdej widocznej dekoracji naraz, 60 razy/s.
+      // Dokładnie ten sam błąd co przy chmurach (patrz
       // _bakeCloudTexture) - kształt każdej dekoracji jest stały (scale/seed
       // ustalone RAZ tutaj), więc pieczemy go RAZ TERAZ do małego canvasu;
       // draw() później tylko go przesuwa (i ewentualnie obraca/przyciemnia
       // dla animacji - patrz _drawFlowerDecor/_drawPuddleDecor).
       if (type === 'flower') this._bakeFlowerTexture(item);
       else if (type === 'puddle') this._bakePuddleTexture(item);
-      else if (type === 'barrel') this._bakeBarrelTexture(item);
       else if (type === 'crystal') this._bakeCrystalDecorTexture(item);
 
       list.push(item);
@@ -1442,7 +1455,7 @@ class Game {
    *
    * Gdy tło świata jest już upieczone (this._worldBackgroundBaked - patrz
    * _bakeWorldBackground/_bakeStaticDecorations), CAŁA statyczna część
-   * (cienie sprite'ów, 'rock', 'barrel') już tam siedzi na stałe - tutaj
+   * (cienie sprite'ów, 'rock'/'crate'/'sign') już tam siedzi na stałe - tutaj
    * zostaje tylko to, co FAKTYCZNIE się porusza (kołysanie tree/bush/shrub,
    * puls kałuży/kryształu, kwiat). Dopóki bake nie zdążył się wykonać
    * (krótkie okno na starcie, i tak schowane pod ekranem ładowania - patrz
@@ -1459,7 +1472,7 @@ class Game {
       if (d.y < camY - margin || d.y > camY + viewH + margin) return;
 
       // W pełni statyczne - już wypalone w tle, patrz komentarz wyżej.
-      if (staticBaked && (d.type === 'rock' || d.type === 'barrel')) return;
+      if (staticBaked && (d.type === 'rock' || d.type === 'crate' || d.type === 'sign')) return;
 
       if (DECOR_PROCEDURAL_TYPES.includes(d.type)) {
         this._drawProceduralDecor(ctx, d, nowSec);
@@ -1512,14 +1525,13 @@ class Game {
 
   /**
    * Rozdziela typy dekoracji BEZ pliku PNG do ich dedykowanych rysowaczy.
-   * Same kształty upieczone RAZ (patrz _bakeFlowerTexture/_bakePuddleTexture/
-   * _bakeBarrelTexture, wołane z _generateDecorations) - tutaj tylko animacja
-   * i pozycjonowanie gotowej tekstury, zero przeliczania geometrii co klatkę.
+   * Same kształty upieczone RAZ (patrz _bakeFlowerTexture/_bakePuddleTexture,
+   * wołane z _generateDecorations) - tutaj tylko animacja i pozycjonowanie
+   * gotowej tekstury, zero przeliczania geometrii co klatkę.
    */
   _drawProceduralDecor(ctx, d, nowSec) {
     if (d.type === 'flower') this._drawFlowerDecor(ctx, d, nowSec);
     else if (d.type === 'puddle') this._drawPuddleDecor(ctx, d, nowSec);
-    else if (d.type === 'barrel') this._drawBarrelDecor(ctx, d);
     else if (d.type === 'crystal') this._drawCrystalDecor(ctx, d, nowSec);
   }
 
@@ -1683,77 +1695,6 @@ class Game {
   }
 
   /**
-   * Zardzewiała beczka z pasem hazard (Strefa C) - w pełni statyczna (brak
-   * animacji), więc CAŁOŚĆ upieczona RAZ do d.texture (patrz
-   * _bakeBarrelTexture) - to jest już tylko jedno drawImage().
-   */
-  _drawBarrelDecor(ctx, d) {
-    if (!d.texture) return;
-    ctx.drawImage(d.texture, d.x - d.textureAnchorX, d.y - d.textureAnchorY);
-  }
-
-  /** Piecze RAZ całą beczkę (cień + korpus z gradientem + pas hazard +
-   * obręcz) - proceduralna bryła w tym samym duchu co
-   * MachineManager._drawHull (pionowy gradient blachy). */
-  _bakeBarrelTexture(d) {
-    const scale = d.scale * (DECOR_TYPE_SCALE.barrel || 1);
-    const w = 15 * scale;
-    const h = 20 * scale;
-    const pad = 6;
-    const texW = Math.ceil(w * 1.3 + pad * 2);
-    const texH = Math.ceil(h + w * 0.4 + pad * 2);
-    const anchorX = texW / 2;
-    const anchorY = texH - pad - h * 0.16; // dół cienia blisko dolnej krawędzi
-
-    const canvas = document.createElement('canvas');
-    canvas.width = texW;
-    canvas.height = texH;
-    const tctx = canvas.getContext('2d');
-    const x = anchorX;
-    const y = anchorY;
-
-    tctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    tctx.beginPath();
-    tctx.ellipse(x, y, w * 0.6, h * 0.16, 0, 0, Math.PI * 2);
-    tctx.fill();
-
-    const grad = tctx.createLinearGradient(x - w / 2, 0, x + w / 2, 0);
-    grad.addColorStop(0, '#6B3A1E');
-    grad.addColorStop(0.5, '#B5652F');
-    grad.addColorStop(1, '#8D4E2A');
-    tctx.fillStyle = grad;
-    tctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
-    tctx.lineWidth = 1;
-    tctx.beginPath();
-    if (typeof tctx.roundRect === 'function') {
-      tctx.roundRect(x - w / 2, y - h, w, h, w * 0.2);
-    } else {
-      tctx.rect(x - w / 2, y - h, w, h);
-    }
-    tctx.fill();
-    tctx.stroke();
-
-    const stripeY = y - h * 0.58;
-    const stripeH = h * 0.14;
-    tctx.fillStyle = '#FFCA28';
-    tctx.fillRect(x - w / 2, stripeY, w, stripeH);
-    tctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    for (let i = -2; i <= 2; i += 2) {
-      tctx.fillRect(x + i * (w / 6), stripeY, w / 8, stripeH);
-    }
-
-    tctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-    tctx.lineWidth = 1.5;
-    tctx.beginPath();
-    tctx.ellipse(x, y - h, w / 2, w * 0.18, 0, 0, Math.PI * 2);
-    tctx.stroke();
-
-    d.texture = canvas;
-    d.textureAnchorX = anchorX;
-    d.textureAnchorY = anchorY;
-  }
-
-  /**
    * Kępka kryształów Strefy D (Kryształowa Grań) - kilka ostrych, przeźro-
    * czystych "iglic" różnej wysokości sterczących z ziemi, plus subtelny
    * pulsujący blask (ta sama filozofia co pulsujący pierścień kałuży -
@@ -1779,7 +1720,7 @@ class Game {
 
   /** Piecze RAZ kępkę 3 kryształowych iglic (cień + gradient fioletu/błękitu
    * + jasna krawędź "szkła") - proceduralna bryła w tym samym duchu co
-   * _bakeBarrelTexture wyżej. */
+   * MachineManager._drawHull (pionowy gradient blachy, machines.js). */
   _bakeCrystalDecorTexture(d) {
     const scale = d.scale * (DECOR_TYPE_SCALE.crystal || 1);
     const pad = 8;
@@ -1822,8 +1763,8 @@ class Game {
       // BUGFIX ("kryształy nie pasują do reszty"): brakowało CIEMNEGO obrysu
       // - jedyna krawędź była JASNA (rgba(255,255,255,0.5)), więc kształt
       // "pływał" bez zakotwiczenia, w przeciwieństwie do KAŻDEJ innej
-      // dekoracji w grze (beczka/kwiatek/kałuża - wszystkie mają ciemny,
-      // definiujący kontur, patrz _bakeBarrelTexture/_bakeFlowerTexture).
+      // proceduralnej dekoracji w grze (kwiatek/kałuża - obie mają ciemny,
+      // definiujący kontur, patrz _bakeFlowerTexture/_bakePuddleTexture).
       // Ciemny obrys teraz PIERWSZY (definiuje sylwetkę), jasna "szklana"
       // krawędź osobno, jako DODATKOWY detal na wierzchu.
       tctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
