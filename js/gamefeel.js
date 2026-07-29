@@ -119,15 +119,51 @@ class GameFeel {
     });
   }
 
+  /**
+   * Tonuje prawdziwą, miękką teksturkę blasku (fx_glow.png, Kenney Particle
+   * Pack CC0 - ta sama grafika co poświata pod maszynami, machines.js
+   * _drawCosmicGlow) na dowolny kolor cząsteczki, techniką "source-atop"
+   * (jak tint skinów gracza w player.js) - zamiast płaskiego wypełnionego
+   * kółka. Cache'owany per DOKŁADNY string koloru (hex ALBO rgba - obojętne,
+   * oba są poprawnym fillStyle), więc każdy unikalny kolor liczy się raz,
+   * nie co klatkę/cząsteczkę. Własna kopia (nie import z machines.js) zgodnie
+   * z konwencją "brak współdzielonych utili" w tym projekcie.
+   */
+  _getTintedGlow(color) {
+    this._glowCache = this._glowCache || {};
+    if (this._glowCache[color]) return this._glowCache[color];
+    const img = window.spriteLoader && window.spriteLoader.get('fx_glow');
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const size = img.naturalWidth;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const tctx = canvas.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    tctx.globalCompositeOperation = 'source-atop';
+    tctx.fillStyle = color;
+    tctx.fillRect(0, 0, size, size);
+    this._glowCache[color] = canvas;
+    return canvas;
+  }
+
   draw(ctxBg, ctx, ctxUI) {
     const target = ctx;
 
     this.particles.forEach((p) => {
       const alpha = Math.max(0, p.life / p.maxLife);
-      target.fillStyle = ItemRenderer.withAlpha(p.color, alpha * 0.85);
-      target.beginPath();
-      target.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
-      target.fill();
+      const glow = this._getTintedGlow(p.color);
+      if (glow) {
+        const r = p.size * alpha * 2.1;
+        target.globalAlpha = alpha * 0.9;
+        target.drawImage(glow, p.x - r, p.y - r, r * 2, r * 2);
+        target.globalAlpha = 1;
+      } else {
+        target.fillStyle = ItemRenderer.withAlpha(p.color, alpha * 0.85);
+        target.beginPath();
+        target.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+        target.fill();
+      }
     });
 
     this.shockwaves.forEach((s) => {
