@@ -417,10 +417,23 @@ class TradingPost {
       this._drawCreditGlyph(ctx, priceX + glyphR, rowY, glyphR, '#FFD54F');
       ctx.fillText(`${row.price}`, priceX + glyphR * 2 + 4, rowY);
 
-      const arrow = row.trend === 'up' ? '▲' : row.trend === 'down' ? '▼' : '►';
-      ctx.fillStyle = row.trend === 'up' ? '#66BB6A' : row.trend === 'down' ? '#EF5350' : 'rgba(255,255,255,0.4)';
-      ctx.textAlign = 'right';
-      ctx.fillText(arrow, screenX + screenW - 6, rowY);
+      // BYŁ Unicode glif (▲/▼/►) rysowany fillText'em - teraz prawdziwa
+      // sylwetka Kenney (trend_up/trend_down/trend_flat, patrz sprites.js),
+      // tonowana na ten sam kolor co dawniej. Fallback na stary glif, gdyby
+      // sprite jeszcze się nie wczytał (ten sam duch co reszta tinted-sprite
+      // helperów w projekcie).
+      const trendKey = row.trend === 'up' ? 'trend_up' : row.trend === 'down' ? 'trend_down' : 'trend_flat';
+      const trendColor = row.trend === 'up' ? '#66BB6A' : row.trend === 'down' ? '#EF5350' : 'rgba(255,255,255,0.4)';
+      const arrowImg = this._getTintedTrendArrow(trendKey, trendColor);
+      if (arrowImg) {
+        const arrowSize = priceFontSize * 0.85;
+        ctx.drawImage(arrowImg, screenX + screenW - 6 - arrowSize, rowY - arrowSize / 2, arrowSize, arrowSize);
+      } else {
+        const arrow = row.trend === 'up' ? '▲' : row.trend === 'down' ? '▼' : '►';
+        ctx.fillStyle = trendColor;
+        ctx.textAlign = 'right';
+        ctx.fillText(arrow, screenX + screenW - 6, rowY);
+      }
     });
 
     // Markiza (daszek) NAD korpusem - główny element, który wypełnia pustkę
@@ -608,6 +621,35 @@ class TradingPost {
     ctx.closePath();
     ctx.fill('evenodd');
     ctx.restore();
+  }
+
+  /**
+   * Tonuje prawdziwą strzałkę trendu (trend_up/trend_down/trend_flat,
+   * Kenney "Game Icons" CC0 - patrz sprites.js) na dowolny kolor, tą samą
+   * techniką "source-atop" co Game._getTintedCrystalGlow (game.js) i
+   * GameFeel._getTintedGlow (gamefeel.js) - własna kopia zgodnie z
+   * konwencją "brak współdzielonych utili". Cache'owana per klucz+kolor
+   * (trzy strzałki x dwa kolory realnie występujące - up=zielony,
+   * down=czerwony - to najwyżej kilka wpisów, nie eksploduje).
+   */
+  _getTintedTrendArrow(key, color) {
+    this._trendArrowCache = this._trendArrowCache || {};
+    const cacheKey = `${key}|${color}`;
+    if (this._trendArrowCache[cacheKey]) return this._trendArrowCache[cacheKey];
+    const img = window.spriteLoader && window.spriteLoader.get(key);
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const tctx = canvas.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    tctx.globalCompositeOperation = 'source-atop';
+    tctx.fillStyle = color;
+    tctx.fillRect(0, 0, w, h);
+    this._trendArrowCache[cacheKey] = canvas;
+    return canvas;
   }
 
   /** Ten sam fallback co MachineManager._traceRoundedRect (machines.js). */

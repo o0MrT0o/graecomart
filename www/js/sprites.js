@@ -87,7 +87,16 @@ const SPRITE_PATH_CANDIDATES = {
   // Canvasa) - prawdziwa bryła spodka z Kenney "Alien UFO Pack" (CC0),
   // zielona (odróżnialna od niebieskiego gracza i czerwono-biało-fioletowego
   // Rozbitego Statku - czyta się jako "inny, obcy statek", nie duplikat).
-  critter_ufo: ['assets/critters/ufo.png']
+  critter_ufo: ['assets/critters/ufo.png'],
+  // Strzałka trendu cen na Terminalu Handlowym (market.js) - BYŁ Unicode
+  // glif rysowany wprost fillText'em (▲/▼/►), teraz prawdziwa sylwetka
+  // Kenney "Game Icons" (ta sama fala co Sklep/Menu - Tomek: "1" po "co
+  // dalej robimy" -> Targowisko). Trzy osobne pliki (nie jeden obracany
+  // ctx.rotate) - "flat"/"right" to WŁASNY kształt (chevron w prawo), nie
+  // 90°-obrót "up", więc rotacja dałaby wizualnie inny (gorszy) trójkąt.
+  trend_up: ['assets/ui/icons/up.png'],
+  trend_down: ['assets/ui/icons/down.png'],
+  trend_flat: ['assets/ui/icons/right.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd
