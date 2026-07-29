@@ -88,9 +88,14 @@ const SHIP_WINDOW_H_FRAC = 0.36;
 // czas tym samym jednolitym kokpitem od pierwszego do ostatniego modułu.
 const SHIP_WINDOW_GLOW_COLOR = '#7CFFD4';
 // Stała pozycja plamy uszkodzenia (ułamek hw/hh od środka) - CELOWO nie
-// losowa, żeby nie "skakała" między odświeżeniami strony. Dolne prawe
-// skrzydło - z dala od etykiety (góra) i kokpitu (środek-dół).
-const SHIP_DAMAGE_DX = 0.55;
+// losowa, żeby nie "skakała" między odświeżeniami strony. BYŁO DX:0.55
+// (dolne prawe skrzydło, z dala od kokpitu) - Tomek: "ten dym co jest na
+// statku niech będzie w centralnej części z tymi iskrami nie z boku".
+// DX:0 wyśrodkowuje dym/sadzę/iskry poziomo (to o to poprosił - "nie z
+// boku"), DY zostaje - dym/sadza teraz nakłada się częściowo na kokpit,
+// ale to czyta się dramatycznie ("uszkodzenie centralnego rdzenia/kokpitu"),
+// nie jak błąd.
+const SHIP_DAMAGE_DX = 0;
 const SHIP_DAMAGE_DY = 0.5;
 // Co ile ms z uszkodzenia leci odrobina dymu - tylko dopóki statek nie jest
 // naprawiony (this._won == false). Po naprawie plama + dym znikają.
