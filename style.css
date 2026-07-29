@@ -625,26 +625,34 @@ canvas {
     letter-spacing: 0.01em;
 }
 
+/* Kenney UI Pack, czerwony okrągły przycisk (assets/ui/btn_close_*.png,
+   64x64, stały format - bez border-image/9-slice, bo rozmiar zawsze
+   32x32) zamiast płaskiego półprzezroczystego kółka. Ta sama para
+   raised/pressed co .ui-btn (patrz wyżej) dla tego samego "fizycznego"
+   wciśnięcia. Biały X (CLOSE_ICON_SVG, stroke="currentColor") zostaje
+   bez zmian nad teksturą. */
 .ui-shop-sheet__close {
     width: 32px;
     height: 32px;
     border-radius: 50%;
     border: none;
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--ui-text);
+    background-image: url('assets/ui/btn_close_raised.png');
+    background-size: 100% 100%;
+    color: #fff;
     font-size: 0.9rem;
     line-height: 1;
     cursor: pointer;
-    transition: background 0.2s, transform 0.15s;
+    transition: filter 0.2s, transform 0.08s;
     pointer-events: auto;
 }
 
 .ui-shop-sheet__close:hover {
-    background: rgba(255, 255, 255, 0.16);
+    filter: brightness(1.1);
 }
 
 .ui-shop-sheet__close:active {
-    transform: scale(0.92);
+    background-image: url('assets/ui/btn_close_pressed.png');
+    transform: translateY(2px);
 }
 
 .ui-shop-sheet__body {
@@ -1057,66 +1065,89 @@ canvas {
    Buttons
    ========================================================================== */
 
+/* Prawdziwe tekstury Kenney "UI Pack" (CC0, assets/ui/) zamiast płaskich
+   gradientów CSS - każdy wariant ma DWA obrazki: "raised" (wypukły, z
+   fazowaną krawędzią u dołu - button_rectangle_depth_gradient) na stan
+   spoczynkowy i "pressed" (płaski, bez fazy - button_rectangle_gradient)
+   na :active, więc wciśnięcie faktycznie wygląda jak fizyczne
+   spłaszczenie przycisku, nie tylko przeskalowanie. border-image (9-slice)
+   zamiast background-image - naroża/faza skalują się bez rozciągania,
+   środek rozciąga się na dowolną szerokość etykiety. Wartości slice/width
+   dobrane wizualnie w Playwright (patrz scratchpad btn_test.html) pod
+   natywną teksturkę 192x64.
+   Kolory = semantyka zachowana z poprzedniej wersji: primary (kup/potwierdź)
+   zielony, accent (stać cię/CTA) żółty, ghost (nie stać cię/drugorzędny)
+   szary, fab (Sklep/Statek/Menu) niebieski jako neutralny kolor nawigacji. */
 .ui-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
     padding: 8px 14px;
-    border: none;
+    border-style: solid;
+    border-color: transparent;
+    border-width: 9px 9px 12px 9px;
+    border-image-slice: 20 24 26 20 fill;
+    border-image-width: 9px 9px 12px 9px;
+    border-image-repeat: stretch;
     border-radius: 10px;
     font-family: inherit;
     font-size: 0.82rem;
     font-weight: 700;
     cursor: pointer;
-    transition: transform 0.15s ease, background 0.2s, box-shadow 0.2s, opacity 0.2s;
+    transition: transform 0.08s ease, filter 0.2s, opacity 0.2s;
     pointer-events: auto;
     white-space: nowrap;
 }
 
-.ui-btn:active:not(:disabled) {
-    transform: scale(0.96);
-}
-
-.ui-btn--primary {
-    background: linear-gradient(135deg, var(--ui-accent), #43a047);
-    color: #0d1a12;
-    box-shadow: 0 4px 12px rgba(102, 187, 106, 0.35);
-}
-
-.ui-btn--primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, var(--ui-accent-hover), #4caf50);
-}
-
-.ui-btn--accent {
-    background: linear-gradient(135deg, var(--ui-gold), #ffb300);
-    color: #1a1400;
-    box-shadow: 0 4px 12px rgba(255, 179, 0, 0.3);
-}
-
-.ui-btn--accent:hover:not(:disabled) {
+.ui-btn:hover:not(:disabled) {
     filter: brightness(1.08);
 }
 
+.ui-btn:active:not(:disabled) {
+    transform: translateY(3px);
+    filter: none;
+}
+
+.ui-btn--primary {
+    border-image-source: url('assets/ui/btn_green_raised.png');
+    color: #0d1a12;
+}
+
+.ui-btn--primary:active:not(:disabled) {
+    border-image-source: url('assets/ui/btn_green_pressed.png');
+}
+
+.ui-btn--accent {
+    border-image-source: url('assets/ui/btn_yellow_raised.png');
+    color: #1a1400;
+}
+
+.ui-btn--accent:active:not(:disabled) {
+    border-image-source: url('assets/ui/btn_yellow_pressed.png');
+}
+
 .ui-btn--ghost {
-    background: rgba(255, 255, 255, 0.08);
+    border-image-source: url('assets/ui/btn_grey_raised.png');
     color: var(--ui-text-muted);
-    border: 1px solid var(--ui-border);
+}
+
+.ui-btn--ghost:active:not(:disabled) {
+    border-image-source: url('assets/ui/btn_grey_pressed.png');
 }
 
 .ui-btn--fab {
     padding: 12px 18px;
-    border-radius: 999px;
-    background: var(--ui-bg-solid);
-    border: 1px solid var(--ui-border);
-    color: var(--ui-text);
-    box-shadow: var(--ui-shadow);
+    border-width: 11px 11px 15px 11px;
+    border-image-width: 11px 11px 15px 11px;
+    border-image-source: url('assets/ui/btn_blue_raised.png');
+    color: #062634;
     font-size: 0.9rem;
 }
 
-.ui-btn--fab:hover {
-    background: rgba(30, 44, 38, 0.95);
-    transform: translateY(-2px);
+.ui-btn--fab:active:not(:disabled) {
+    border-image-source: url('assets/ui/btn_blue_pressed.png');
+    transform: translateY(4px);
 }
 
 .ui-btn--disabled,
@@ -1124,6 +1155,7 @@ canvas {
     opacity: 0.45;
     cursor: not-allowed;
     transform: none !important;
+    filter: none !important;
 }
 
 .ui-btn__icon {
