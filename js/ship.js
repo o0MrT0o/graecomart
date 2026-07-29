@@ -649,26 +649,74 @@ class Ship {
   }
 
   /**
-   * Plama sadzy w miejscu uszkodzenia - stała pozycja (SHIP_DAMAGE_DX/DY),
-   * żeby nie "skakała" między odświeżeniami. Znika, gdy statek jest
-   * naprawiony (this._won) - patrz draw(). Prostsza niż dawna postrzępiona
-   * wyrwa w kadłubie (ten miał sam kadłub jako tło, teraz jest pod nią
-   * prawdziwy, szczegółowy sprite rakiety, więc duża czarna dziura
-   * wyglądałaby jak wycięta z obrazka - stąd miękka, półprzezroczysta plama).
+   * Tonuje fx_soot.png (Kenney Particle Pack, miękka nieregularna plama -
+   * ta sama teksturka co "smoke_01") na prawie czarno - ten sam wzorzec co
+   * _getWindowGlow, osobna, dużo prostsza kopia (jeden kolor, cache'owany
+   * raz) zgodnie z konwencją "brak współdzielonych utili".
+   */
+  _getSootStain() {
+    if (this._sootCanvas) return this._sootCanvas;
+    const img = window.spriteLoader && window.spriteLoader.get('fx_soot');
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const size = img.naturalWidth;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const tctx = canvas.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    tctx.globalCompositeOperation = 'source-atop';
+    tctx.fillStyle = '#15130F';
+    tctx.fillRect(0, 0, size, size);
+    this._sootCanvas = canvas;
+    return canvas;
+  }
+
+  /**
+   * Uszkodzenie w stałym miejscu (SHIP_DAMAGE_DX/DY, żeby nie "skakało"
+   * między odświeżeniami) - PRAWDZIWA, nieregularna plama sadzy (fx_soot,
+   * przyciemniona) osadzona na kadłubie, plus dwie małe kreskówkowe chmurki
+   * dymu (fx_smoke_puff, Kenney "Space Shooter Extension" - ten sam płaski
+   * styl co statek/maszyny, w przeciwieństwie do malarskiej plamy sadzy pod
+   * spodem) leniwie "oddychające" (skala/alpha) tuż nad nią - stały, czytelny
+   * sygnał "to jest wrak", niezależny od periodycznych kłębów dymu z
+   * update() (te lecą i znikają co SHIP_SMOKE_INTERVAL_MS, więc same w
+   * sobie nie dawały WIDOCZNEGO "cały czas dymi się" wrażenia). Znika, gdy
+   * statek jest naprawiony (this._won) - patrz draw().
    */
   _drawDamageScorch(ctx, hw, hh) {
     const dx = hw * SHIP_DAMAGE_DX, dy = hh * SHIP_DAMAGE_DY;
+    const now = performance.now();
+
+    const soot = this._getSootStain();
     ctx.save();
-    ctx.globalAlpha = 0.55;
-    ctx.fillStyle = '#0E0F11';
-    ctx.beginPath();
-    ctx.ellipse(dx, dy, hw * 0.22, hh * 0.09, 0.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 0.35;
-    ctx.beginPath();
-    ctx.ellipse(dx - hw * 0.05, dy - hh * 0.03, hw * 0.12, hh * 0.05, 0.4, 0, Math.PI * 2);
-    ctx.fill();
+    if (soot) {
+      const sr = hw * 0.26;
+      ctx.globalAlpha = 0.8;
+      ctx.drawImage(soot, dx - sr, dy - sr, sr * 2, sr * 2);
+    } else {
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = '#0E0F11';
+      ctx.beginPath();
+      ctx.ellipse(dx, dy, hw * 0.22, hh * 0.09, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
+
+    const puff = window.spriteLoader && window.spriteLoader.get('fx_smoke_puff');
+    if (puff && puff.complete && puff.naturalWidth) {
+      const puffs = [
+        { ox: -hw * 0.03, oy: -hh * 0.14, size: hw * 0.16, phase: 0 },
+        { ox: hw * 0.09, oy: -hh * 0.22, size: hw * 0.12, phase: 2.4 }
+      ];
+      puffs.forEach((p) => {
+        const breathe = 0.5 + 0.5 * Math.sin(now * 0.0012 + p.phase);
+        ctx.save();
+        ctx.globalAlpha = 0.5 + breathe * 0.35;
+        const s = p.size * (0.9 + breathe * 0.25);
+        ctx.drawImage(puff, dx + p.ox - s / 2, dy + p.oy - breathe * hh * 0.05 - s / 2, s, s);
+        ctx.restore();
+      });
+    }
   }
 
   /** Świat = kadłub + rotacja -0.06 statku, do wysyłania cząsteczek dymu

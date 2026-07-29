@@ -64,7 +64,16 @@ const SPRITE_PATH_CANDIDATES = {
   // do dwóch poprzednich, TA bryła zostaje w NATYWNYCH kolorach (czerwono-
   // biało-fioletowa) - dostał wyraźną pochwałę wyglądu, więc żadnego
   // przefarbowywania.
-  ship_fighter: ['assets/ship_fighter.png']
+  ship_fighter: ['assets/ship_fighter.png'],
+  // Uszkodzenie statku (ship.js, _drawDamageScorch) - fx_soot to miękka
+  // plama (Particle Pack smoke_01, tonowana na ciemno-szaro) osadzona NA
+  // kadłubie, fx_smoke_puff to mała kreskówkowa chmurka dymu (Kenney "Space
+  // Shooter Extension", spaceEffects_009) - TEN SAM płaski styl co reszta
+  // statku/maszyn (w przeciwieństwie do miękkich, malarskich teksturek
+  // Particle Pack), więc kilka sztuk uniesionych nad plamą czyta się jako
+  // spójny, rysunkowy dym, nie inny styl wklejony obok.
+  fx_soot: ['assets/effects/fx_soot.png'],
+  fx_smoke_puff: ['assets/effects/fx_smoke_puff.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd
