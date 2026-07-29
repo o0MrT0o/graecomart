@@ -52,7 +52,15 @@ const GEAR_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 2
 // osobnym <text> (uniknięcie zderzenia kolorów - obie części tym samym
 // currentColor by się zlały).
 const PAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" fill-rule="evenodd"><path d="M12 2.3a9.3 9.3 0 1 0 0.001 18.601A9.3 9.3 0 0 0 12 2.3ZM9.6 8.2c0-1.1 1-1.9 2.5-1.9 1.1 0 1.9.4 2.5 1L13.5 8.6c-.4-.4-.9-.6-1.5-.6-.6 0-1 .3-1 .7 0 .5.5.7 1.5 1 1.5.5 2.6 1.1 2.6 2.6 0 1.3-1 2.1-2.4 2.3v1.1h-1.4v-1.1c-1.2-.1-2.1-.6-2.7-1.3l1.1-1.1c.5.5 1.2.8 1.9.8.7 0 1.1-.3 1.1-.7 0-.5-.4-.7-1.6-1-1.4-.4-2.5-1-2.5-2.6Z"/></svg>';
-const TROPHY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#FFD54F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0Z" fill="#FFD54F" fill-opacity="0.25"/><path d="M7 5H4a3 3 0 0 0 3 5M17 5h3a3 3 0 0 1-3 5"/><path d="M12 14v3M9 20.5h6M9.5 20.5c0-2 .8-2.6 2.5-3.5 1.7.9 2.5 1.5 2.5 3.5"/></svg>';
+// TROPHY/WRENCH/UNLOCK/SPEAKER/RECYCLE_RESET/INFO (niżej) - PODMIENIONE z
+// ręcznie rysowanych SVG na prawdziwe sylwetki z Kenney "Game Icons" (CC0),
+// ta sama paczka co przyciski (style.css .ui-btn/.ui-icon). Technika: CSS
+// mask (patrz .ui-icon w style.css) zamiast fill="currentColor" na <svg> -
+// PNG-sylwetka jako maska na tle background-color:currentColor, więc nadal
+// automatycznie dopasowuje kolor do kontekstu (biały tytuł panelu,
+// przyciemniony tekst wiersza Menu). Same stałe (span zamiast svg) -
+// WSZYSTKIE miejsca wołające ${TROPHY_ICON_SVG} itd. zostają bez zmian.
+const TROPHY_ICON_SVG = '<span class="ui-icon ui-icon--trophy" aria-hidden="true"></span>';
 const CLOSE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5 19 19M19 5 5 19"/></svg>';
 const CHECK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9.5 18 20 6"/></svg>';
 // Symbol waluty Rdzeni (Rdzenie/Cores) - zastępuje ⚡ używane dotąd JAKO
@@ -61,15 +69,15 @@ const CHECK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 
 // nie textContent).
 const CORE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" fill="#81D4FA" stroke="none"><path d="M13 2 4 14h6l-1 8 9-12h-6Z"/></svg>';
 const LOCK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
-const UNLOCK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#81D4FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 7.4-2.1"/></svg>';
-const SPEAKER_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#B0BEC5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4Z" fill="#B0BEC5" fill-opacity="0.3"/><path d="M15.5 9a3.5 3.5 0 0 1 0 6M18 6.5a7 7 0 0 1 0 11"/></svg>';
+const UNLOCK_ICON_SVG = '<span class="ui-icon ui-icon--unlocked" aria-hidden="true"></span>';
+const SPEAKER_ICON_SVG = '<span class="ui-icon ui-icon--audio-on" aria-hidden="true"></span>';
 const CHART_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#90CAF9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M9.5 20V4M15 20v-7M20 20V8"/></svg>';
 const BOOK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#CE93D8" stroke-width="1.8" stroke-linejoin="round"><path d="M12 6c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-13c-3-.5-6 0-8 1.5Z" fill="#CE93D8" fill-opacity="0.2"/><path d="M12 6v13"/></svg>';
-const RECYCLE_RESET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#EF9A9A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.9-5.4"/><path d="M20 3v5h-5"/><path d="M20 12a8 8 0 0 1-13.9 5.4"/><path d="M4 21v-5h5"/></svg>';
-const INFO_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#90A4AE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle cx="12" cy="8" r="0.2" fill="#90A4AE"/></svg>';
+const RECYCLE_RESET_ICON_SVG = '<span class="ui-icon ui-icon--reset" aria-hidden="true"></span>';
+const INFO_ICON_SVG = '<span class="ui-icon ui-icon--information" aria-hidden="true"></span>';
 const SPARKLE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#CE93D8" stroke="none"><path d="M12 2 13.8 9.2 21 11 13.8 12.8 12 20 10.2 12.8 3 11 10.2 9.2Z"/></svg>';
 const PARTY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round"><path d="M4 20 9 9l6 6Z" fill="#FFD54F" fill-opacity="0.3"/><path d="M15 4v2M19 6l-1.4 1.4M21 10h-2M18 15l-2-2"/></svg>';
-const WRENCH_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B0BEC5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 4.5a4.5 4.5 0 0 0-5.9 5L4 15l2 2 5.5-5.6a4.5 4.5 0 0 0 5-5.9l-2.9 2.9-2-2Z"/></svg>';
+const WRENCH_ICON_SVG = '<span class="ui-icon ui-icon--wrench" aria-hidden="true"></span>';
 const PLANET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B39DDB" stroke-width="1.8"><circle cx="11" cy="12" r="6" fill="#B39DDB" fill-opacity="0.25"/><ellipse cx="11" cy="12" rx="10" ry="3.2" transform="rotate(-18 11 12)"/></svg>';
 const FLAME_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF7043" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c1 1 1.5 2.3 1.5 3.5A4.5 4.5 0 0 1 12 18a5.5 5.5 0 0 1-5.5-5.5C6.5 8 9 6 12 2Z"/></svg>';
 const SHIRT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#90CAF9" stroke-width="1.8" stroke-linejoin="round"><path d="M8 3 4 6l2 3 2-1.2V21h8V7.8L18 9l2-3-4-3-2 2h-4Z" fill="#90CAF9" fill-opacity="0.2"/></svg>';

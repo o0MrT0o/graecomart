@@ -1210,6 +1210,45 @@ canvas {
 }
 
 /* ==========================================================================
+   Ikony (Kenney Game Icons, CC0)
+   ========================================================================== */
+
+/* Trophy/wrench/unlocked/information/audioOn/return (SettingsPanel,
+   PrestigePanel, powiadomienia - ui.js) PODMIENIONE z ręcznie rysowanych
+   SVG (różne grubości kreski/proporcje) na prawdziwe, jednolite sylwetki z
+   Kenney "Game Icons" - ta sama paczka co przeciski (font/mask
+   niepotrzebny, ale ten sam duch co border-image przycisków: prawdziwy
+   asset zamiast rysowanego ręcznie kształtu). CSS mask (nie <img>) - jedna
+   szara/biała sylwetka PNG jako maska na tle background-color:currentColor,
+   dokładnie ta sama sztuczka co dziedziczenie koloru przez fill="currentColor"
+   w starych inline-SVG (ikona automatycznie dopasowuje kolor do kontekstu:
+   biały tytuł panelu, przyciemniony tekst wiersza Menu itd.) - stąd
+   ZEROWE zmiany w miejscach WOŁAJĄCYCH te stałe (nadal ${TROPHY_ICON_SVG}
+   itd.), zmienia się tylko WARTOŚĆ stałej w ui.js (span zamiast svg).
+   Rozmiar 1em (dopasowuje się do otaczającego tekstu) zamiast dawnych
+   sztywnych px z atrybutów width/height SVG. */
+.ui-icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    vertical-align: -0.15em;
+}
+
+.ui-icon--trophy { -webkit-mask-image: url('assets/ui/icons/trophy.png'); mask-image: url('assets/ui/icons/trophy.png'); }
+.ui-icon--wrench { -webkit-mask-image: url('assets/ui/icons/wrench.png'); mask-image: url('assets/ui/icons/wrench.png'); }
+.ui-icon--unlocked { -webkit-mask-image: url('assets/ui/icons/unlocked.png'); mask-image: url('assets/ui/icons/unlocked.png'); }
+.ui-icon--information { -webkit-mask-image: url('assets/ui/icons/information.png'); mask-image: url('assets/ui/icons/information.png'); }
+.ui-icon--audio-on { -webkit-mask-image: url('assets/ui/icons/audio-on.png'); mask-image: url('assets/ui/icons/audio-on.png'); }
+.ui-icon--reset { -webkit-mask-image: url('assets/ui/icons/return.png'); mask-image: url('assets/ui/icons/return.png'); }
+
+/* ==========================================================================
    Tooltip
    ========================================================================== */
 
