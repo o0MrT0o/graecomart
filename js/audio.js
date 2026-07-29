@@ -66,16 +66,36 @@ const AUDIO_SRC = {
   footstep1: 'assets/audio/footstep1.mp3',
   footstep2: 'assets/audio/footstep2.mp3',
   footstep3: 'assets/audio/footstep3.mp3',
-  // Kroki per NAWIERZCHNIA - osobno wyrenderowane pliki (patrz
-  // AUDIO_STEP_FILES niżej), po 2 warianty na podłoże.
-  step_grass0: 'assets/audio/step_grass0.wav',
-  step_grass1: 'assets/audio/step_grass1.wav',
-  step_swamp0: 'assets/audio/step_swamp0.wav',
-  step_swamp1: 'assets/audio/step_swamp1.wav',
-  step_ash0: 'assets/audio/step_ash0.wav',
-  step_ash1: 'assets/audio/step_ash1.wav',
-  step_crystal0: 'assets/audio/step_crystal0.wav',
-  step_crystal1: 'assets/audio/step_crystal1.wav'
+  // Kroki per NAWIERZCHNIA - dotąd własna synteza wyrenderowana do .wav
+  // (patrz komentarz przy AUDIO_STEP_SURFACE niżej - synteza ZOSTAJE jako
+  // awaryjna ścieżka), teraz prawdziwe nagrania z Kenney "Impact Sounds"
+  // (Tomek: "podmień kroki na prawdziwe, dopasuj do regionu"), po 3
+  // warianty na podłoże zamiast 2 - mniej słyszalne powtórzenie przy
+  // szybkim marszu. Dobór per strefa (żadna z 5 dostępnych faktur w paczce
+  // nie nazywa się dosłownie "bagno" ani "kryształ", więc dopasowanie po
+  // BRZMIENIU, nie po nazwie pliku):
+  //   A trawa    - footstep_grass - jedyne dokładne 1:1 trafienie.
+  //   B bagno    - footstep_carpet - najbardziej stłumiona/miękka z
+  //                dostępnych (bez chrzęstu, bez dzwonienia) - najbliższy
+  //                odpowiednik dawnego "mokrego mlaśnięcia" (concrete/wood/
+  //                snow wszystkie brzmią zbyt twardo/sucho na bagno).
+  //   C popiół   - footstep_snow - chrzęszcząca faktura śniegu czyta się
+  //                bliżej "chrzęstu kruszywa" niż twarde concrete/wood.
+  //   D kryształ - impactGlass_light (NIE footstep_*) - szklany, jasny
+  //                impakt pasuje do "szklanego, dzwoniącego stąpnięcia"
+  //                dużo lepiej niż jakikolwiek footstep w tej paczce.
+  step_grass0: 'assets/audio/step_grass0.ogg',
+  step_grass1: 'assets/audio/step_grass1.ogg',
+  step_grass2: 'assets/audio/step_grass2.ogg',
+  step_swamp0: 'assets/audio/step_swamp0.ogg',
+  step_swamp1: 'assets/audio/step_swamp1.ogg',
+  step_swamp2: 'assets/audio/step_swamp2.ogg',
+  step_ash0: 'assets/audio/step_ash0.ogg',
+  step_ash1: 'assets/audio/step_ash1.ogg',
+  step_ash2: 'assets/audio/step_ash2.ogg',
+  step_crystal0: 'assets/audio/step_crystal0.ogg',
+  step_crystal1: 'assets/audio/step_crystal1.ogg',
+  step_crystal2: 'assets/audio/step_crystal2.ogg'
 };
 
 // Głośność per dźwięk (0..1). Częste/drobne (pickup, feed, kroki) wyraźnie
@@ -156,18 +176,19 @@ const AUDIO_STEP_SURFACE = {
 // próbki (0.14), żeby kroki nie zaczęły nagle dominować nad resztą gry.
 const AUDIO_STEP_VOLUME = 0.16;
 
-// Gotowe PLIKI kroków per strefa (=nawierzchnia). Wyrenderowane z tej samej
-// syntezy co AUDIO_STEP_SURFACE wyżej, ale zapisane jako .wav - dzięki temu
-// nie trzeba liczyć DSP przy każdym kroku (2-3 razy na sekundę na telefonie)
-// ani zależeć od Web Audio. Po 2 warianty na podłoże, wybierane naprzemiennie,
-// żeby kolejne kroki nie brzmiały identycznie.
+// Gotowe PLIKI kroków per strefa (=nawierzchnia) - prawdziwe nagrania
+// (Kenney "Impact Sounds", patrz AUDIO_SRC), nie trzeba liczyć DSP przy
+// każdym kroku (2-3 razy na sekundę na telefonie) ani zależeć od Web Audio.
+// Po 3 warianty na podłoże (było 2), wybierane po kolei (patrz
+// _playSurfaceFile - footstepIndex % keys.length), żeby kolejne kroki nie
+// brzmiały identycznie nawet przy dłuższym marszu w jedną stronę.
 // Synteza w _playSynthFootstep zostaje jako awaryjna ścieżka, gdyby któryś
 // plik się nie wczytał.
 const AUDIO_STEP_FILES = {
-  A: ['step_grass0', 'step_grass1'],
-  B: ['step_swamp0', 'step_swamp1'],
-  C: ['step_ash0', 'step_ash1'],
-  D: ['step_crystal0', 'step_crystal1']
+  A: ['step_grass0', 'step_grass1', 'step_grass2'],
+  B: ['step_swamp0', 'step_swamp1', 'step_swamp2'],
+  C: ['step_ash0', 'step_ash1', 'step_ash2'],
+  D: ['step_crystal0', 'step_crystal1', 'step_crystal2']
 };
 // Głośność plików kroków (te same proporcje między nawierzchniami co miała
 // synteza - patrz vol w AUDIO_STEP_SURFACE; poziom bazowy jak reszta efektów).
