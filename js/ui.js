@@ -25,9 +25,33 @@ const STACK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 
 // część z nich (np. CORE_ICON_SVG, CLOSE_ICON_SVG) pojawia się dziesiątki
 // razy w tym pliku, więc jedna stała + wstawienie w template stringu jest
 // jedynym sensownym podejściem.
-const CART_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#FFE082" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2A2 2 0 0 0 9.35 17H18a2 2 0 0 0 1.95-1.57L21.5 8H6"/><circle cx="10" cy="20.5" r="1.3" fill="#FFE082" stroke="none"/><circle cx="18" cy="20.5" r="1.3" fill="#FFE082" stroke="none"/></svg>';
-const ROCKET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#81D4FA" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5c4 3 5 8 3 13H9c-2-5-1-10 3-13Z" fill="#81D4FA" fill-opacity="0.3"/><path d="M9 15.5 6.5 19M15 15.5l2.5 3.5M10 15.5V20M14 15.5V20" /><circle cx="12" cy="9.5" r="1.6" fill="#81D4FA" stroke="none"/></svg>';
-const GEAR_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#E0E0E0" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5 13.4 5.7 16 5 16.7 7.6 19.3 8.3 18.6 10.9 20.8 12.3 19.1 14.4 20 17 17.4 17.6 16.9 20.3 14.2 19.7 12.6 21.8 10.5 20.2 8 21 7.1 18.5 4.5 18.7 4 16 5.6 14 3.9 12 5.7 9.5 3.6 8.6 4.4 6 2.1 5.6 2.6 3 5.2 2.6 5.9 0 8 1.4 6 -0.7 8.1 1.4 10.7 0 13"/><circle cx="12" cy="12" r="3.2"/></svg>';
+// Sklep/Menu/Statek (fab) + Wpłać/Leć dalej (accent) - PRZEROBIONE razem z
+// przyciskami na Kenney UI Pack (patrz style.css .ui-btn). Dawne cienkie
+// 2px-kreskowe ikonki (każda we własnym odcieniu - żółty koszyk, szary
+// tryb, cyjanowa rakieta) ginęły na grubych, płaskocieniowanych
+// przyciskach Kenney - "sklejone obok", nie "część tego samego przycisku".
+// Teraz: SOLIDNE wypełnione sylwetki, fill="currentColor" (dziedziczy
+// kolor tekstu przycisku - #062634 na fab/niebieskim, #1a1400 na accent/
+// żółtym - Tomek: "żeby wszystko pasowało do siebie z przycisków i
+// ikon"), okienka/otwory (rakieta, tryb, moneta) wycięte przez
+// fill-rule="evenodd" zamiast malowane na sztywno kolorem tła - dzięki
+// temu ta sama ikona wygląda poprawnie na KAŻDYM tle (niebieski fab,
+// żółty accent, biały tytuł panelu Statku, złota plakietka "ZE STATKU"),
+// bez osobnej wersji na każdy kontekst. Zębatka GEAR_ICON_SVG była
+// dodatkowo błędna geometrycznie (przypadkowe współrzędne, "1.4 6 -0.7
+// 8.1" - ujemna wartość w środku listy punktów) - wygenerowana od nowa
+// trygonometrycznie (8 zębów, promień zewn./wewn. 9.6/7.1 + okrągły
+// otwór na środku).
+const CART_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2 3a1 1 0 0 0 0 2h1.2l.35 1.4 2.1 8.4A2.5 2.5 0 0 0 8 16.7h8.6A2.5 2.5 0 0 0 19 14.8L21 8.4A1 1 0 0 0 20 7H5.75l-.4-1.6A1 1 0 0 0 4.4 4.6L4.3 4.2A1 1 0 0 0 3.3 3H3Z"/><circle cx="8.5" cy="19.5" r="1.6"/><circle cx="16.5" cy="19.5" r="1.6"/></svg>';
+const ROCKET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path fill-rule="evenodd" d="M12 2c3.5 2.8 4.6 7.3 3 12.2H9C7.4 9.3 8.5 4.8 12 2ZM13.7 9A1.7 1.7 0 1 1 10.3 9A1.7 1.7 0 1 1 13.7 9Z"/><path d="M9 14.5 6.4 17.8 7.4 18.4 9.8 15.7Z"/><path d="M15 14.5 17.6 17.8 16.6 18.4 14.2 15.7Z"/><path d="M10 15v4.3l2 1.7 2-1.7V15Z"/></svg>';
+const GEAR_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" fill-rule="evenodd"><path d="M18.98 10.72 21.44 10.28 21.44 13.72 18.98 13.28 17.84 16.04 19.9 17.46 17.46 19.9 16.04 17.84 13.28 18.98 13.72 21.44 10.28 21.44 10.72 18.98 7.96 17.84 6.54 19.9 4.1 17.46 6.16 16.04 5.02 13.28 2.56 13.72 2.56 10.28 5.02 10.72 6.16 7.96 4.1 6.54 6.54 4.1 7.96 6.16 10.72 5.02 10.28 2.56 13.72 2.56 13.28 5.02 16.04 6.16 17.46 4.1 19.9 6.54 17.84 7.96ZM15 12A3 3 0 1 0 9 12A3 3 0 1 0 15 12Z"/></svg>';
+// Osobna, uproszczona moneta TYLKO dla przycisku "Wpłać" (accent) -
+// odróżniona od MONEY_ICON_SVG (kolorowa moneta w HUD-zie, wyżej) bo ta
+// żyje wewnątrz żółtego przycisku Kenney i musi być monochromatyczna jak
+// pozostałe ikony-w-przyciskach; "$" wycięty evenodd zamiast namalowany
+// osobnym <text> (uniknięcie zderzenia kolorów - obie części tym samym
+// currentColor by się zlały).
+const PAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" fill-rule="evenodd"><path d="M12 2.3a9.3 9.3 0 1 0 0.001 18.601A9.3 9.3 0 0 0 12 2.3ZM9.6 8.2c0-1.1 1-1.9 2.5-1.9 1.1 0 1.9.4 2.5 1L13.5 8.6c-.4-.4-.9-.6-1.5-.6-.6 0-1 .3-1 .7 0 .5.5.7 1.5 1 1.5.5 2.6 1.1 2.6 2.6 0 1.3-1 2.1-2.4 2.3v1.1h-1.4v-1.1c-1.2-.1-2.1-.6-2.7-1.3l1.1-1.1c.5.5 1.2.8 1.9.8.7 0 1.1-.3 1.1-.7 0-.5-.4-.7-1.6-1-1.4-.4-2.5-1-2.5-2.6Z"/></svg>';
 const TROPHY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#FFD54F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0Z" fill="#FFD54F" fill-opacity="0.25"/><path d="M7 5H4a3 3 0 0 0 3 5M17 5h3a3 3 0 0 1-3 5"/><path d="M12 14v3M9 20.5h6M9.5 20.5c0-2 .8-2.6 2.5-3.5 1.7.9 2.5 1.5 2.5 3.5"/></svg>';
 const CLOSE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5 19 19M19 5 5 19"/></svg>';
 const CHECK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9.5 18 20 6"/></svg>';
@@ -630,7 +654,7 @@ class ShopPanel {
 // Ikony SVG zamiast emoji - ten sam duch co reszta nowych elementów UI w tej
 // turze (żaden nowy motyw emoji, skoro reszta gry świadomie z nich rezygnuje).
 const OFFLINE_MOON_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#FFD54F"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/></svg>';
-const OFFLINE_PLAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="#81D4FA"><path d="M8 5v14l11-7z"/></svg>';
+const OFFLINE_PLAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 
 /**
  * Modal powitalny "byłeś offline X" (Faza 5). Reużywa te same klasy CSS co
@@ -2053,7 +2077,7 @@ class UIManager {
     // niżej, przelicza world->screen przez window.game.cameraX/Y), żeby
     // przycisk pojawiał się tam, gdzie faktycznie dzieje się akcja.
     this.shipContributeBtn = new UIButton({
-      icon: MONEY_ICON_SVG,
+      icon: PAY_ICON_SVG,
       label: 'Wpłać',
       variant: 'accent',
       title: 'Przekaż pieniądze i surowce na bieżący moduł statku',
