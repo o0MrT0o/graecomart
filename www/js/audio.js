@@ -21,7 +21,7 @@
  * Zależności globalne (muszą być załadowane przed tym plikiem):
  *   - window.Bus / window.Events (m.in. ITEM_PICKUP, MACHINE_RECEIVED,
  *      MACHINE_OUTPUT, MONEY_COLLECTED, UPGRADE_BOUGHT, SHIP_MODULE_COMPLETED,
- *      GAME_WON, FOOTSTEP, ZONE_HAZARD_WARNING)
+ *      GAME_WON, FOOTSTEP, ZONE_HAZARD_WARNING, ACHIEVEMENT_UNLOCKED, ITEM_LOST)
  *
  * Użycie w main.js:
  *   window.audioManager = new AudioManager();
@@ -35,10 +35,33 @@ const AUDIO_SRC = {
   machine_complete: 'assets/audio/machine_complete.mp3',
   coin: 'assets/audio/coin.mp3',
   purchase: 'assets/audio/purchase.mp3',
-  ui_click: 'assets/audio/ui_click.mp3',
+  // Tomek wgrał do repo pełne paczki Kenney (nie same PNG jak wcześniej -
+  // "Sounds"/"Bonus" foldery wewnątrz kilku z nich mają gotowe efekty CC0).
+  // ui_click/module_complete PODMIENIONE (te same klucze, nowe pliki - zero
+  // zmian w miejscach wołających play()): ui_click na 'tap-a' z tego samego
+  // Kenney UI Pack, którego teksturami są już przyciski (style.css .ui-btn) -
+  // dźwięk i wygląd przycisków wreszcie z jednego zestawu. module_complete
+  // na 'sfx_shieldUp' z Space Shooter Remastered - "tarcza w górze" czyta się
+  // dużo bardziej jako "moduł statku naprawiony/zasilony" niż ogólny jingle.
+  ui_click: 'assets/audio/ui_click.ogg',
   hazard: 'assets/audio/hazard.mp3',
-  module_complete: 'assets/audio/module_complete.mp3',
+  module_complete: 'assets/audio/module_complete.ogg',
   victory: 'assets/audio/victory.mp3',
+  // NOWE klucze (uzupełniają zdarzenia, które wcześniej nie miały ŻADNEGO
+  // dźwięku - nie podmiana, tylko brakujący efekt):
+  //   ui_switch    - 'switch-a' (Kenney UI Pack) - WYŁĄCZNIE przycisk Dźwięk
+  //                  w Menu (patrz UIButton sound param, ui.js) - jedyny
+  //                  przycisk w grze będący faktycznym przełącznikiem.
+  //   achievement  - 'sfx_magic' (Kenney New Platformer Pack) -
+  //                  Events.ACHIEVEMENT_UNLOCKED nie miało wcześniej ŻADNEGO
+  //                  dźwięku (audio.js go nawet nie subskrybował).
+  //   item_lost    - 'sfx_lose' (Kenney Space Shooter Remastered) - utrata
+  //                  przedmiotu w strefie hazardu (Events.ITEM_LOST, nowy
+  //                  event - patrz player.js/eventbus.js) miała dotąd tylko
+  //                  wstrząs ekranu + popup, żadnego dźwięku.
+  ui_switch: 'assets/audio/ui_switch.ogg',
+  achievement: 'assets/audio/achievement.ogg',
+  item_lost: 'assets/audio/item_lost.ogg',
   footstep0: 'assets/audio/footstep0.mp3',
   footstep1: 'assets/audio/footstep1.mp3',
   footstep2: 'assets/audio/footstep2.mp3',
@@ -65,9 +88,12 @@ const AUDIO_VOLUME = {
   coin: 0.42,
   purchase: 0.48,
   ui_click: 0.35,
+  ui_switch: 0.4,
   hazard: 0.42,
   module_complete: 0.65,
   victory: 0.75,
+  achievement: 0.55,
+  item_lost: 0.4,
   footstep0: 0.14,
   footstep1: 0.14,
   footstep2: 0.14,
@@ -269,6 +295,8 @@ class AudioManager {
     // której _playFootstep dobiera brzmienie kroku.
     this._onFootstep = (data) => this._playFootstep(data);
     this._onZoneHazardWarning = () => this.play('hazard');
+    this._onAchievementUnlocked = () => this.play('achievement');
+    this._onItemLost = () => this.play('item_lost');
 
     Bus.subscribe(Events.ITEM_PICKUP, this._onItemPickup);
     Bus.subscribe(Events.MACHINE_RECEIVED, this._onMachineReceived);
@@ -279,6 +307,8 @@ class AudioManager {
     if (Events.GAME_WON) Bus.subscribe(Events.GAME_WON, this._onGameWon);
     if (Events.FOOTSTEP) Bus.subscribe(Events.FOOTSTEP, this._onFootstep);
     if (Events.ZONE_HAZARD_WARNING) Bus.subscribe(Events.ZONE_HAZARD_WARNING, this._onZoneHazardWarning);
+    if (Events.ACHIEVEMENT_UNLOCKED) Bus.subscribe(Events.ACHIEVEMENT_UNLOCKED, this._onAchievementUnlocked);
+    if (Events.ITEM_LOST) Bus.subscribe(Events.ITEM_LOST, this._onItemLost);
   }
 
   /**
@@ -707,6 +737,8 @@ class AudioManager {
     if (Events.GAME_WON) Bus.unsubscribe(Events.GAME_WON, this._onGameWon);
     if (Events.FOOTSTEP) Bus.unsubscribe(Events.FOOTSTEP, this._onFootstep);
     if (Events.ZONE_HAZARD_WARNING) Bus.unsubscribe(Events.ZONE_HAZARD_WARNING, this._onZoneHazardWarning);
+    if (Events.ACHIEVEMENT_UNLOCKED) Bus.unsubscribe(Events.ACHIEVEMENT_UNLOCKED, this._onAchievementUnlocked);
+    if (Events.ITEM_LOST) Bus.unsubscribe(Events.ITEM_LOST, this._onItemLost);
 
     this.stopMusic();
     if (this._audioCtx && typeof this._audioCtx.close === 'function') {

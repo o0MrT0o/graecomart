@@ -49,6 +49,12 @@ const Events = {
     FX_SHOCKWAVE:      'fx:shockwave',        // { x, y, color, maxRadius } - ekspandujący pierścień
     UNLOCK_GRANTED:    'progress:unlock',     // { id, kind, name } - nowo odblokowana strefa/maszyna
     ACHIEVEMENT_UNLOCKED: 'progress:achievement', // { id, name, icon, desc } - zdobyte osiągnięcie
+    // Utrata losowego przedmiotu ze stosu w niezabezpieczonej strefie hazardu
+    // (player.js) - publikowane OBOK istniejących FX_SHAKE/FX_PARTICLES/
+    // FX_POPUP w tym samym miejscu, wyłącznie żeby audio.js mogło zareagować
+    // dźwiękiem bez własnej wiedzy o mechanice hazardu (ten sam wzorzec co
+    // reszta subskrypcji AudioManagera).
+    ITEM_LOST:         'player:itemLost',       // { typeId }
 };
 
 if (typeof globalThis !== 'undefined') {

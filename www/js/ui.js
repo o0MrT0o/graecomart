@@ -105,7 +105,14 @@ class UIComponent {
 // --- Przycisk ---------------------------------------------------------------
 
 class UIButton extends UIComponent {
-  constructor({ label, icon, variant = 'primary', onClick, disabled = false, title = '' }) {
+  // sound - klucz w AudioManager (audio.js) grany PRZED onClick. Domyślnie
+  // 'ui_click' (zwykłe tapnięcie) - jedyny wyjątek to przycisk Dźwięk w Menu
+  // (SettingsPanel._buildSoundRow), który dostaje 'ui_switch' (osobny,
+  // wyraźnie "przełączający" dźwięk z Kenney UI Pack - ten sam pack co
+  // tekstury przycisków, patrz style.css .ui-btn) - w końcu to jedyny
+  // przycisk w grze, który faktycznie działa jak fizyczny przełącznik
+  // (włącz/wyłącz), nie jednorazowa akcja.
+  constructor({ label, icon, variant = 'primary', onClick, disabled = false, title = '', sound = 'ui_click' }) {
     super();
     this.label = label;
     this.icon = icon;
@@ -113,11 +120,12 @@ class UIButton extends UIComponent {
     this.onClick = onClick;
     this.disabled = disabled;
     this.title = title;
+    this.sound = sound;
     this._handler = (e) => {
       e.preventDefault();
       e.stopPropagation();
       if (!this.disabled && typeof this.onClick === 'function') {
-        if (window.audioManager) window.audioManager.play('ui_click');
+        if (window.audioManager) window.audioManager.play(this.sound);
         this.onClick(e);
       }
     };
@@ -1275,6 +1283,7 @@ class SettingsPanel {
     const btn = new UIButton({
       label: muted ? 'Włącz' : 'Wyłącz',
       variant: 'ghost',
+      sound: 'ui_switch',
       onClick: () => {
         if (!window.audioManager) return;
         window.audioManager.toggleMute();

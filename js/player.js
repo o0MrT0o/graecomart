@@ -705,6 +705,7 @@ class PlayerController {
       color: item.color || '#EF5350',
       count: 10
     });
+    if (Events.ITEM_LOST) Bus.publish(Events.ITEM_LOST, { typeId: item.typeId });
     Bus.publish(Events.FX_POPUP, {
       text: `Zgubiono: ${niceName}`,
       // X rysowany PROCEDURALNIE nad popupem (patrz _drawPopupIcon w
