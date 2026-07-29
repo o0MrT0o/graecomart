@@ -336,34 +336,98 @@ class TradingPost {
       ctx.fill();
     }
 
-    // Ekran - lekki puls (jaśniejszy) na chwilę po sprzedaży, teraz z
-    // wyraźną ramką/bezelem, żeby czytał się jako WYŚWIETLACZ, nie
-    // po prostu drugi kolorowy prostokąt na pierwszym.
+    // Ekran - Tomek: "wygląda teraz jak telewizor, miało być futurystycznie".
+    // Prosty czarny zaokrąglony prostokąt z cienką białą obwódką CZYTA SIĘ
+    // jako rama telewizora - dokładnie ten kształt. Teraz: ŚCIĘTE rogi
+    // (ośmiokątny "HUD panel", nie prostokąt - _traceChamferedRect),
+    // WARSTWOWA poświata za ramą zamiast pojedynczej linii (tania imitacja
+    // blur - kilka coraz większych/bledszych warstw, BEZ shadowBlur, patrz
+    // BUGFIX przy items.js/tu samo wyżej - jeden z najdroższych efektów
+    // Canvas), naroża-"celowniki" (4 krótkie kreski w rogach, klasyczny
+    // sci-fi HUD/viewfinder, nie rama) i delikatne skanlinie w tle ekranu
+    // (kilka poziomych pasków niskiej alfy) - razem czyta się jako
+    // holograficzny wyświetlacz danych, nie oprawiony telewizor.
     const screenPad = 12;
     const screenX = this.x - hw + screenPad;
     const screenY = this.y - hh + screenPad;
     const screenW = this.w - screenPad * 2;
     const screenH = this.h - screenPad * 2 - 22;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-    this._traceRoundedRect(ctx, screenX - 3, screenY - 3, screenW + 6, screenH + 6, 8);
-    ctx.fill();
-    const flashT = this._lastSaleFlash / 220;
-    ctx.fillStyle = `rgba(${Math.round(20 + 40 * flashT)}, ${Math.round(60 + 80 * flashT)}, ${Math.round(50 + 40 * flashT)}, 0.95)`;
-    this._traceRoundedRect(ctx, screenX, screenY, screenW, screenH, 6);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.lineWidth = 1;
-    this._traceRoundedRect(ctx, screenX, screenY, screenW, screenH, 6);
-    ctx.stroke();
+    const chamfer = 10;
+    const accent = this.inRange ? '#69F0AE' : '#4FBFA0';
 
-    // Mała dioda "zasilania" w rogu ekranu - żywszy detal, pulsuje wolno
-    // niezależnie od sprzedaży.
+    // Warstwowa poświata za ramą (3 warstwy, coraz większe i bledsze).
+    ctx.save();
+    for (let i = 3; i >= 1; i--) {
+      ctx.globalAlpha = 0.09 * i;
+      ctx.fillStyle = accent;
+      this._traceChamferedRect(ctx, screenX - 2 - i * 2, screenY - 2 - i * 2, screenW + 4 + i * 4, screenH + 4 + i * 4, chamfer + i * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Tło ekranu.
+    const flashT = this._lastSaleFlash / 220;
+    ctx.fillStyle = `rgba(${Math.round(14 + 40 * flashT)}, ${Math.round(30 + 80 * flashT)}, ${Math.round(34 + 40 * flashT)}, 0.95)`;
+    this._traceChamferedRect(ctx, screenX, screenY, screenW, screenH, chamfer);
+    ctx.fill();
+
+    // Skanlinie - subtelne poziome paski, czysto atmosferyczne (rysowane
+    // PRZED wierszami cennika, więc tekst zawsze zostaje w pełni czytelny
+    // na wierzchu, patrz TRADING_POST_MIN_FONT/MIN_ICON wyżej).
+    ctx.save();
+    ctx.beginPath();
+    this._traceChamferedRect(ctx, screenX, screenY, screenW, screenH, chamfer);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let sy = screenY + 4; sy < screenY + screenH; sy += 5) {
+      ctx.beginPath();
+      ctx.moveTo(screenX, sy);
+      ctx.lineTo(screenX + screenW, sy);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // BARDZO cienka, ledwo widoczna obwódka - tylko domyka kształt ekranu,
+    // CELOWO nie jest głównym akcentem (patrz dawna wersja: pełna, wyraźna
+    // ramka = dokładnie to, co czytało się jako "rama telewizora"). Główny
+    // akcent to naroża-celowniki niżej, wyraźnie jaśniejsze/grubsze niż ta
+    // linia, żeby oko łapało PRZERYWANY kontur (4 rogi), nie ciągłą ramę.
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.22;
+    ctx.lineWidth = 1;
+    this._traceChamferedRect(ctx, screenX, screenY, screenW, screenH, chamfer);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Naroża-celowniki (4x) - krótkie, WYRAŹNE kreski w kącie, klasyczny
+    // skrót "to jest cyfrowy interfejs" (jak celownik aparatu/HUD), nie
+    // oprawiony ekran. To one, nie obwódka wyżej, mają przyciągać oko.
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    const cl = 11;
+    [
+      [screenX, screenY, 1, 1],
+      [screenX + screenW, screenY, -1, 1],
+      [screenX, screenY + screenH, 1, -1],
+      [screenX + screenW, screenY + screenH, -1, -1]
+    ].forEach(([cx, cy, sx, sy]) => {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + cl * sy);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx + cl * sx, cy);
+      ctx.stroke();
+    });
+
+    // Mała dioda "zasilania" - żywszy detal, pulsuje wolno niezależnie od
+    // sprzedaży, przesunięta od rogu (tam teraz jest celownik).
     const ledPulse = 0.5 + 0.5 * Math.sin(performance.now() / 500);
     ctx.save();
     ctx.globalAlpha = 0.5 + 0.5 * ledPulse;
-    ctx.fillStyle = '#69F0AE';
+    ctx.fillStyle = accent;
     ctx.beginPath();
-    ctx.arc(screenX + screenW - 8, screenY + 8, 3, 0, Math.PI * 2);
+    ctx.arc(screenX + screenW - 16, screenY + 8, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
@@ -652,6 +716,27 @@ class TradingPost {
     tctx.fillRect(0, 0, w, h);
     this._trendArrowCache[cacheKey] = canvas;
     return canvas;
+  }
+
+  /**
+   * Prostokąt ze ŚCIĘTYMI (nie zaokrąglonymi) rogami - ośmiokątny "panel
+   * HUD", ten kształt sam w sobie czyta się jako cyfrowy interfejs, nie
+   * rama telewizora (patrz komentarz przy ekranie w draw()). `cut` to
+   * długość ścięcia na każdym rogu, MUSI być <= połowy krótszego boku,
+   * inaczej ścięcia by się nachodziły.
+   */
+  _traceChamferedRect(ctx, x, y, w, h, cut) {
+    const c = Math.min(cut, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + c, y);
+    ctx.lineTo(x + w - c, y);
+    ctx.lineTo(x + w, y + c);
+    ctx.lineTo(x + w, y + h - c);
+    ctx.lineTo(x + w - c, y + h);
+    ctx.lineTo(x + c, y + h);
+    ctx.lineTo(x, y + h - c);
+    ctx.lineTo(x, y + c);
+    ctx.closePath();
   }
 
   /** Ten sam fallback co MachineManager._traceRoundedRect (machines.js). */
