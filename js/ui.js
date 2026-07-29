@@ -11,17 +11,24 @@
 
 const UI_BREAKPOINT_NARROW = 640;
 
-// Ikony HUD - SVG, nie emoji. BUGFIX spójności: saldo/stos zostały na
-// emoji (💰/📦) przez cały czas, gdy reszta gry świadomie z nich rezygnowała
-// (ikony sklepu, etykiety maszyn, moduły statku, wyzwanie dnia, odkrycia) -
-// HUD dosłownie pokazywał obok siebie dwa różne języki wizualne.
-const MONEY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="9.5" fill="#FFCA28"/><circle cx="12" cy="12" r="9.5" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="1.2"/><circle cx="12" cy="12" r="6.8" fill="none" stroke="rgba(0,0,0,0.18)" stroke-width="1"/><path d="M12 6.6v10.8" stroke="#6D4C0F" stroke-width="1.5" stroke-linecap="round"/><path d="M14.6 9.2Q14.6 7.6 12 7.6Q9.4 7.6 9.4 9.5Q9.4 11 12 11.6Q14.6 12.2 14.6 13.9Q14.6 16 12 16Q9.4 16 9.4 14.4" fill="none" stroke="#6D4C0F" stroke-width="1.6" stroke-linecap="round"/></svg>';
-const STACK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#A5D6A7" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3 21 7.5 12 12 3 7.5Z" fill="rgba(165,214,167,0.25)"/><path d="M3 12 12 16.5 21 12"/><path d="M3 16.5 12 21 21 16.5"/></svg>';
+// Ikony HUD - Tomek: "ogarnij ikonę kasy i samą kasę... ikonę plecaka
+// też" - dawny hand-drawn kolorowy pieniążek (kółka+łuk "$") i konturowy
+// "diament" jako plecak nie pasowały już do reszty gry po przejściu na
+// prawdziwe assety Kenney. MONEY_ICON_SVG teraz woreczek z monetami
+// ("pouch", Kenney Board Game Icons) przez ten sam mechanizm .ui-icon co
+// ikony paneli (CSS mask + kolor z kontekstu - tu wymuszony na złoty przez
+// .ui-money__icon .ui-icon w style.css, żeby zostać przy ustalonym
+// kojarzeniu "pieniądze = złoto"). STACK_ICON_SVG to teraz prawdziwy
+// sprite plecaka (Kenney Generic Items, assets/ui/backpack.png) w
+// NATYWNYCH kolorach (zielony) zamiast maski - to osobna, kolorowa
+// ilustracja jak sprite'y maszyn/statku, nie jednokolorowa sylwetka.
+const MONEY_ICON_SVG = '<span class="ui-icon ui-icon--pouch" aria-hidden="true"></span>';
+const STACK_ICON_SVG = '<img class="ui-backpack-icon" src="assets/ui/backpack.png" alt="" aria-hidden="true">';
 
 // --- Biblioteka ikon UI (SVG, nie emoji) -------------------------------------
-// Reszta emoji w UI (nawigacja/panele/toasty/ustawienia) - ten sam powód i ten
-// sam styl co MONEY_ICON_SVG/STACK_ICON_SVG wyżej (viewBox 24x24, proste
-// kreski). Grupowane tutaj zamiast rozrzucone przy każdym miejscu użycia -
+// Reszta emoji w UI (nawigacja/panele/toasty/ustawienia) - ten sam powód co
+// MONEY_ICON_SVG/STACK_ICON_SVG wyżej, viewBox 24x24, proste kreski.
+// Grupowane tutaj zamiast rozrzucone przy każdym miejscu użycia -
 // część z nich (np. CORE_ICON_SVG, CLOSE_ICON_SVG) pojawia się dziesiątki
 // razy w tym pliku, więc jedna stała + wstawienie w template stringu jest
 // jedynym sensownym podejściem.
@@ -46,7 +53,7 @@ const CART_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 2
 const ROCKET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path fill-rule="evenodd" d="M12 2c3.5 2.8 4.6 7.3 3 12.2H9C7.4 9.3 8.5 4.8 12 2ZM13.7 9A1.7 1.7 0 1 1 10.3 9A1.7 1.7 0 1 1 13.7 9Z"/><path d="M9 14.5 6.4 17.8 7.4 18.4 9.8 15.7Z"/><path d="M15 14.5 17.6 17.8 16.6 18.4 14.2 15.7Z"/><path d="M10 15v4.3l2 1.7 2-1.7V15Z"/></svg>';
 const GEAR_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" fill-rule="evenodd"><path d="M18.98 10.72 21.44 10.28 21.44 13.72 18.98 13.28 17.84 16.04 19.9 17.46 17.46 19.9 16.04 17.84 13.28 18.98 13.72 21.44 10.28 21.44 10.72 18.98 7.96 17.84 6.54 19.9 4.1 17.46 6.16 16.04 5.02 13.28 2.56 13.72 2.56 10.28 5.02 10.72 6.16 7.96 4.1 6.54 6.54 4.1 7.96 6.16 10.72 5.02 10.28 2.56 13.72 2.56 13.28 5.02 16.04 6.16 17.46 4.1 19.9 6.54 17.84 7.96ZM15 12A3 3 0 1 0 9 12A3 3 0 1 0 15 12Z"/></svg>';
 // Osobna, uproszczona moneta TYLKO dla przycisku "Wpłać" (accent) -
-// odróżniona od MONEY_ICON_SVG (kolorowa moneta w HUD-zie, wyżej) bo ta
+// odróżniona od MONEY_ICON_SVG (woreczek z monetami w HUD-zie, wyżej) bo ta
 // żyje wewnątrz żółtego przycisku Kenney i musi być monochromatyczna jak
 // pozostałe ikony-w-przyciskach; "$" wycięty evenodd zamiast namalowany
 // osobnym <text> (uniknięcie zderzenia kolorów - obie części tym samym

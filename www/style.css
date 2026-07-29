@@ -324,6 +324,11 @@ canvas {
    Money & stack displays
    ========================================================================== */
 
+/* Ta sama ramka Kenney co arkusze (assets/ui/panel_dark.png, patrz
+   .ui-shop-sheet) - dotąd JEDYNE dwa elementy w stałym HUD-zie (widoczne
+   cały czas, nie tylko w otwartym panelu) wciąż płaskie CSS. Tomek:
+   "ogarnij... samą kasę żeby pasowała do gry" - teraz cały HUD i wszystkie
+   panele dzielą jedną rodzinę ramek zamiast dwóch stylów obok siebie. */
 .ui-money,
 .ui-stack {
     display: flex;
@@ -332,11 +337,12 @@ canvas {
     padding: 8px 14px;
     position: relative;
     overflow: hidden;
-    background: var(--ui-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--ui-border);
-    border-radius: var(--ui-radius-sm);
+    border-style: solid;
+    border-color: transparent;
+    border-width: 9px;
+    border-image-slice: 22 fill;
+    border-image-source: url('assets/ui/panel_dark.png');
+    border-image-repeat: stretch;
     box-shadow: var(--ui-shadow);
     pointer-events: auto;
     transition: transform var(--ui-transition), box-shadow var(--ui-transition);
@@ -353,6 +359,27 @@ canvas {
     align-items: center;
     line-height: 1;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* .ui-icon domyślnie bierze kolor z currentColor (dziedziczony tekst) -
+   tu wymuszony na złoty, żeby woreczek z monetami (MONEY_ICON_SVG)
+   trzymał się ustalonego skojarzenia "pieniądze = złoto" (patrz
+   .ui-money__value niżej), niezależnie od tego, jaki color odziedziczyłby
+   z .ui-money. */
+.ui-money__icon .ui-icon {
+    width: 1.3em;
+    height: 1.3em;
+    background-color: var(--ui-gold);
+}
+
+/* Prawdziwy sprite plecaka (Kenney Generic Items, NATYWNE kolory - nie
+   .ui-icon/mask jak reszta, to kolorowa ilustracja jak sprite'y maszyn/
+   statku, nie jednokolorowa sylwetka). */
+.ui-backpack-icon {
+    width: 22px;
+    height: auto;
+    display: block;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
 }
 
 .ui-money__content,
@@ -423,15 +450,22 @@ canvas {
     opacity: 0.9;
 }
 
+/* BUGFIX ("nie widać wszystkich zadań - tekst za długi"): było
+   white-space:nowrap + ellipsis - "Sprzedaj 20 przedmiotów (3/20)" w
+   wąskim pasku (.game-ui__goals ma ograniczoną szerokość, żeby nie
+   nachodzić na minimapę w rogu) regularnie obcinało się w połowie słowa.
+   Zamiast skracać same etykiety (economy.js) albo poszerzać pasek kosztem
+   minimapy, tekst po prostu zawija się do 2 linii - pasek rośnie o
+   kilkanaście px wysokości zamiast chować część treści. */
 .ui-goal__text {
     flex: 1;
     min-width: 0;
     font-size: 0.76rem;
     font-weight: 600;
+    line-height: 1.25;
     color: var(--ui-text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: break-word;
 }
 
 .ui-goal__bar {
@@ -1262,6 +1296,7 @@ canvas {
 .ui-icon--information { -webkit-mask-image: url('assets/ui/icons/information.png'); mask-image: url('assets/ui/icons/information.png'); }
 .ui-icon--audio-on { -webkit-mask-image: url('assets/ui/icons/audio-on.png'); mask-image: url('assets/ui/icons/audio-on.png'); }
 .ui-icon--reset { -webkit-mask-image: url('assets/ui/icons/return.png'); mask-image: url('assets/ui/icons/return.png'); }
+.ui-icon--pouch { -webkit-mask-image: url('assets/ui/icons/pouch.png'); mask-image: url('assets/ui/icons/pouch.png'); }
 
 /* ==========================================================================
    Tooltip
