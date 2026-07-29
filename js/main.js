@@ -66,11 +66,19 @@ function startGame() {
 
     game.registerModule(window.stackController);
     game.registerModule(window.itemManager);
-    game.registerModule(player);
+    // Maszyny/Terminal/Statek PRZED graczem (moduły rysują się w kolejności
+    // rejestracji, patrz game.js draw()) - Tomek: "postać niech wchodzi na
+    // to i na maszyny, a nie chowa się za nimi". Kolizja z tymi obiektami
+    // dopuszcza spory zakład (gracz może podejść blisko/częściowo nachodzić
+    // na sprite), więc bez tej kolejności gracz znikał POD nimi zamiast
+    // stać przed nimi. Brak pełnego sortowania po Y (byłoby "za" gdy gracz
+    // stoi wyżej, "przed" gdy niżej) - to prostsza, zawsze-na-wierzchu
+    // reguła, zgodna z tym, o co poproszono.
     game.registerModule(window.machineManager);
     game.registerModule(window.marketManager);
     game.registerModule(window.tradingPost);
     game.registerModule(window.ship);
+    game.registerModule(player);
 
     window.economyManager = new EconomyManager(game);
     // Faza 5: economyManager MUSI być zarejestrowany, żeby jego update()

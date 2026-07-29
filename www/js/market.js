@@ -305,10 +305,12 @@ class TradingPost {
     // przesuniętej grupie), żeby zawsze stał prosto na ziemi.
     this._drawPedestal(ctx, hw, hh);
 
-    // Cień korpusu.
+    // Cień korpusu - przesunięty niżej (hh+4 -> hh+16), żeby leżał POD
+    // teraz wyższym cokołem (_drawPedestal, botY: hh+12 -> hh+22), nie
+    // w połowie jego wysokości.
     ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
     ctx.beginPath();
-    ctx.ellipse(this.x, this.y + hh + 4, hw * 0.85, hh * 0.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(this.x, this.y + hh + 16, hw * 0.9, hh * 0.18, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Korpus terminala - Tomek: "ma to wyglądać jakby to był jakiś fragment
@@ -370,9 +372,11 @@ class TradingPost {
     this._traceChamferedRect(ctx, screenX, screenY, screenW, screenH, chamfer);
     ctx.fill();
 
-    // Skanlinie - subtelne poziome paski, czysto atmosferyczne (rysowane
-    // PRZED wierszami cennika, więc tekst zawsze zostaje w pełni czytelny
-    // na wierzchu, patrz TRADING_POST_MIN_FONT/MIN_ICON wyżej).
+    // Skanlinie (poziome) + siatka (pionowe, RZADSZA i słabsza niż pozioma -
+    // sama siatka bez dominującej osi wygląda jak kratka zeszytu, nie dane) -
+    // czysto atmosferyczne, rysowane PRZED wierszami cennika, więc tekst
+    // zawsze zostaje w pełni czytelny na wierzchu (patrz TRADING_POST_MIN_
+    // FONT/MIN_ICON wyżej).
     ctx.save();
     ctx.beginPath();
     this._traceChamferedRect(ctx, screenX, screenY, screenW, screenH, chamfer);
@@ -383,6 +387,13 @@ class TradingPost {
       ctx.beginPath();
       ctx.moveTo(screenX, sy);
       ctx.lineTo(screenX + screenW, sy);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    for (let sx = screenX + 22; sx < screenX + screenW; sx += 22) {
+      ctx.beginPath();
+      ctx.moveTo(sx, screenY);
+      ctx.lineTo(sx, screenY + screenH);
       ctx.stroke();
     }
     ctx.restore();
@@ -429,6 +440,24 @@ class TradingPost {
     ctx.arc(screenX + screenW - 16, screenY + 8, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+
+    // Rządek 3 malutkich diod diagnostycznych - asymetryczny detal (nie
+    // "kopia" diody zasilania po drugiej stronie), różne barwy jak
+    // prawdziwy panel diagnostyczny, nie grupa jednakowych kropek.
+    // Statyczne (bez pulsu) - dioda zasilania już "żyje", te mają czytać
+    // się jako spokojne "status OK". W REZERWOWYM pasie POD wierszami
+    // cennika (screenH liczone z -22, patrz wyżej), nie na samym ekranie -
+    // tam nachodziłyby na ikonę ostatniego wiersza (lewa krawędź, patrz
+    // iconX niżej).
+    const diagColors = ['#69F0AE', '#FFD54F', 'rgba(255,255,255,0.35)'];
+    diagColors.forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      ctx.arc(screenX + 9 + i * 8, screenY + screenH + 11, 2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
 
     // Wiersze cen: prawdziwa grafika przedmiotu (sprite/ingot zamiast emoji -
     // ItemRenderer._drawSpriteOrLabel, items.js), cena, strzałka trendu.
@@ -528,7 +557,7 @@ class TradingPost {
     const topW = hw * 1.15;
     const botW = hw * 1.55;
     const topY = hh * 0.42;
-    const botY = hh + 12;
+    const botY = hh + 22; // podniesione z hh+12 - więcej widocznego pasa na detale niżej
 
     ctx.save();
     ctx.translate(this.x, this.y);
@@ -548,17 +577,42 @@ class TradingPost {
     ctx.fill();
     ctx.stroke();
 
+    // Reszta detali TYLKO w widocznym pasie (od hh w dół) - powyżej hh
+    // cokół jest i tak zasłonięty sprite'em korpusu, rysowanym PO cokole
+    // (patrz draw()), więc cokolwiek narysowane wyżej nigdy się nie pokaże.
+    const visW = hw + (botW - hw) * ((hh + 3 - topY) / (botY - topY)); // szerokość cokołu na wysokości paska świateł
+
     // Wąski pasek światła TUŻ POD korpusem - ten sam akcent co dioda/
-    // poświata ekranu, spaja podstawę wizualnie z resztą urządzenia zamiast
-    // zostawiać ją "martwym" klockiem metalu. BUGFIX: górna część cokołu
-    // (topY do hh) jest i tak zasłonięta przez sprite korpusu rysowany
-    // PO cokole (patrz draw()) - pasek musi siedzieć PONIŻEJ hh (dolna
-    // krawędź korpusu), inaczej byłby narysowany, ale nigdy niewidoczny.
+    // poświata ekranu, spaja podstawę wizualnie z resztą urządzenia.
     const accent = this.inRange ? '#69F0AE' : '#4FBFA0';
     ctx.globalAlpha = this.inRange ? 0.7 : 0.4;
     ctx.fillStyle = accent;
-    ctx.fillRect(-hw * 0.85, hh + 3, hw * 1.7, 2);
+    ctx.fillRect(-visW, hh + 3, visW * 2, 2);
     ctx.globalAlpha = 1;
+
+    // Wcięty rowek (seam) - ciemna kreska w połowie widocznego pasa, dzieli
+    // cokół na "górny kołnierz" i "podstawę", ten sam przemysłowy detal co
+    // żeberka wentylacyjne maszyn (machines.js).
+    const seamY = hh + 12;
+    const seamW = hw + (botW - hw) * ((seamY - topY) / (botY - topY));
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-seamW, seamY);
+    ctx.lineTo(seamW, seamY);
+    ctx.stroke();
+
+    // Nity wzdłuż dolnej krawędzi - drobny, ale rozpoznawalny "przemysłowy"
+    // akcent, ten sam duch co śruby na kadłubie Rozbitego Statku (ship.js).
+    const rivetY = botY - 5;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    for (let i = -3; i <= 3; i++) {
+      if (i === 0) continue;
+      const rx = (botW - 6) * (i / 3.5);
+      ctx.beginPath();
+      ctx.arc(rx, rivetY, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }
