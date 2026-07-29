@@ -137,18 +137,30 @@ class UIButton extends UIComponent {
   // tekstury przycisków, patrz style.css .ui-btn) - w końcu to jedyny
   // przycisk w grze, który faktycznie działa jak fizyczny przełącznik
   // (włącz/wyłącz), nie jednorazowa akcja.
-  constructor({ label, icon, variant = 'primary', onClick, disabled = false, title = '', sound = 'ui_click' }) {
+  // denied - WYGLĄDA jak disabled (ta sama klasa CSS .ui-btn--disabled), ale
+  // W ODRÓŻNIENIU od disabled NIE ustawia natywnego <button disabled> -
+  // przeglądarka w ogóle nie emituje eventu 'click' na natywnie wyłączonym
+  // przycisku, więc "za mało pieniędzy/Rdzeni" (Tomek: "dźwięki UI/error
+  // feedback") potrzebuje przycisku, który DALEJ reaguje na tap, tylko zamiast
+  // onClick gra dźwięk odmowy (audio.js 'error') i nic nie robi. disabled
+  // zostaje bez zmian dla przypadków prawdziwie nieinteraktywnych (reszta gry).
+  constructor({ label, icon, variant = 'primary', onClick, disabled = false, denied = false, title = '', sound = 'ui_click' }) {
     super();
     this.label = label;
     this.icon = icon;
     this.variant = variant;
     this.onClick = onClick;
     this.disabled = disabled;
+    this.denied = denied;
     this.title = title;
     this.sound = sound;
     this._handler = (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (this.denied) {
+        if (window.audioManager) window.audioManager.play('error');
+        return;
+      }
       if (!this.disabled && typeof this.onClick === 'function') {
         if (window.audioManager) window.audioManager.play(this.sound);
         this.onClick(e);
@@ -164,6 +176,7 @@ class UIButton extends UIComponent {
     this.el.innerHTML = `${this.icon ? `<span class="ui-btn__icon">${this.icon}</span>` : ''}<span class="ui-btn__label">${this.label}</span>`;
     this.el.addEventListener('click', this._handler);
     this.setDisabled(this.disabled);
+    if (this.denied) this.el.classList.add('ui-btn--disabled');
     return this.el;
   }
 
@@ -645,7 +658,7 @@ class ShopPanel {
       const btn = new UIButton({
         label: `${item.cost}${CREDIT_ICON_SVG}`,
         variant: canBuy ? 'accent' : 'ghost',
-        disabled: !canBuy,
+        denied: !canBuy,
         title: canBuy ? 'Kup ulepszenie' : 'Za mało pieniędzy',
         onClick: () => {
           // Ulepszenia maszyn mają WŁASNĄ metodę zakupu (kupuje się je per
@@ -1121,7 +1134,7 @@ class PrestigePanel {
       const btn = new UIButton({
         label: `${CORE_ICON_SVG}${item.cost}`,
         variant: canBuy ? 'accent' : 'ghost',
-        disabled: !canBuy,
+        denied: !canBuy,
         title: canBuy ? 'Kup trwałe ulepszenie' : 'Za mało Rdzeni',
         onClick: () => {
           if (this.economyManager.buyCoreUpgrade(item.id)) {
@@ -1702,7 +1715,7 @@ class SkinsPanel {
       const btn = new UIButton({
         label: `${CORE_ICON_SVG}${s.cost}`,
         variant: canBuy ? 'accent' : 'ghost',
-        disabled: !canBuy,
+        denied: !canBuy,
         title: canBuy ? 'Kup skin' : 'Za mało Rdzeni',
         onClick: () => {
           if (this.economyManager.buySkin(s.id)) this.refresh();

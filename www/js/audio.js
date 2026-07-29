@@ -74,6 +74,14 @@ const AUDIO_SRC = {
   ui_switch: 'assets/audio/ui_switch.ogg',
   achievement: 'assets/audio/achievement.ogg',
   item_lost: 'assets/audio/item_lost.ogg',
+  // Dźwięk odmowy - "za mało pieniędzy/Rdzeni" na przyciskach kupna w sklepie
+  // (Tomek: "dźwięki UI/error feedback"). Wcześniej kliknięcie takiego
+  // przycisku było KOMPLETNIE ciche (patrz UIButton `denied` w ui.js -
+  // natywny <button disabled> w ogóle nie emituje eventu 'click', więc do
+  // teraz gracz nie miał ŻADNEGO sygnału poza samym wyglądem przycisku).
+  // lowDown (Kenney "Digital Audio") - krótki, opadający ton, jednoznacznie
+  // czytany jako "nie" w odróżnieniu od jasnego/rosnącego 'purchase'.
+  error: 'assets/audio/error.ogg',
   footstep0: 'assets/audio/footstep0.mp3',
   footstep1: 'assets/audio/footstep1.mp3',
   footstep2: 'assets/audio/footstep2.mp3',
@@ -126,6 +134,10 @@ const AUDIO_VOLUME = {
   victory: 0.75,
   achievement: 0.55,
   item_lost: 0.4,
+  // Wyraźnie głośniejszy niż ui_click (0.35) - to jedyny dźwięk w interfejsie,
+  // który MUSI się przebić i zostać zauważony przy pierwszym "nie stać cię",
+  // nie zlać się z tłem kliknięć.
+  error: 0.45,
   footstep0: 0.14,
   footstep1: 0.14,
   footstep2: 0.14,
