@@ -301,10 +301,9 @@ class TradingPost {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Nogi - PRZED cieniem/korpusem, w świecie (nie w przechylonej/
-    // przesuniętej grupie), żeby zawsze stały prosto na ziemi - ten sam
-    // wzorzec co _drawStruts w ship.js.
-    this._drawLegs(ctx, hw, hh);
+    // Cokół - PRZED cieniem/korpusem, w świecie (nie w przechylonej/
+    // przesuniętej grupie), żeby zawsze stał prosto na ziemi.
+    this._drawPedestal(ctx, hw, hh);
 
     // Cień korpusu.
     ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
@@ -514,22 +513,53 @@ class TradingPost {
   }
 
   /**
-   * Dwie nogi lądownicze/wsporcze - rysowane w ŚWIECIE (przed jakąkolwiek
-   * translacją korpusu), więc zawsze stoją prosto, ten sam wzorzec co
-   * Ship._drawStruts (ship.js).
+   * Cokół/podstawa - BYŁY dwie cienkie, rozstawione nogi (klasyczna
+   * sylwetka "telewizor na nóżkach" - Tomek: "co jeszcze zrobić żeby nie
+   * wyglądał jak telewizor na nogach" - dwie patykowate nóżki pod płaskim
+   * panelem to dosłownie ta sylwetka, niezależnie jak futurystyczny jest
+   * sam ekran). Teraz JEDNA lita, rozszerzająca się ku dołowi bryła
+   * (trapez) - konsola "wrasta" w podstawę zamiast "stać na nóżkach", ten
+   * sam duch co wtopione podpory Rozbitego Statku (ship.js - "wrysowane w
+   * sprite, osobne _drawStruts nie jest już potrzebne"). Rysowana w
+   * ŚWIECIE (przed jakąkolwiek translacją korpusu), więc zawsze stoi
+   * prosto.
    */
-  _drawLegs(ctx, hw, hh) {
+  _drawPedestal(ctx, hw, hh) {
+    const topW = hw * 1.15;
+    const botW = hw * 1.55;
+    const topY = hh * 0.42;
+    const botY = hh + 12;
+
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.strokeStyle = 'rgba(20, 24, 27, 0.9)';
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    [-0.55, 0.55].forEach((t) => {
-      ctx.beginPath();
-      ctx.moveTo(t * hw * 0.85, hh * 0.55);
-      ctx.lineTo(t * hw * 1.05, hh + 10);
-      ctx.stroke();
-    });
+
+    const grad = ctx.createLinearGradient(0, topY, 0, botY);
+    grad.addColorStop(0, this._lighten('#4A5A62', 20));
+    grad.addColorStop(1, this._lighten('#4A5A62', -26));
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-topW, topY);
+    ctx.lineTo(topW, topY);
+    ctx.lineTo(botW, botY);
+    ctx.lineTo(-botW, botY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Wąski pasek światła TUŻ POD korpusem - ten sam akcent co dioda/
+    // poświata ekranu, spaja podstawę wizualnie z resztą urządzenia zamiast
+    // zostawiać ją "martwym" klockiem metalu. BUGFIX: górna część cokołu
+    // (topY do hh) jest i tak zasłonięta przez sprite korpusu rysowany
+    // PO cokole (patrz draw()) - pasek musi siedzieć PONIŻEJ hh (dolna
+    // krawędź korpusu), inaczej byłby narysowany, ale nigdy niewidoczny.
+    const accent = this.inRange ? '#69F0AE' : '#4FBFA0';
+    ctx.globalAlpha = this.inRange ? 0.7 : 0.4;
+    ctx.fillStyle = accent;
+    ctx.fillRect(-hw * 0.85, hh + 3, hw * 1.7, 2);
+    ctx.globalAlpha = 1;
+
     ctx.restore();
   }
 
