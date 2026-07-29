@@ -27,7 +27,15 @@ const SPRITE_PATH_CANDIDATES = {
   product: ['product.png', 'assets/items/product.png', 'assets/product.png'],
   machine_recycle: ['recycle.png', 'assets/machines/recycle.png', 'assets/recycle.png'],
   machine_press: ['press.png', 'assets/machines/press.png', 'assets/press.png'],
-  machine_furnace: ['piechutniczy.png', 'assets/machines/piechutniczy.png', 'assets/piechutniczy.png']
+  machine_furnace: ['piechutniczy.png', 'assets/machines/piechutniczy.png', 'assets/piechutniczy.png'],
+  // Faza kosmicznego reskinu maszyn (machines.js, _drawRecycleMachine/
+  // _drawPressMachine/_drawFurnaceMachine) - prawdziwe teksturki poświaty z
+  // Kenney "Particle Pack" (CC0), białe/szare więc TINTOWALNE na dowolny
+  // kolor akcentu maszyny tą samą techniką co skiny gracza (player.js
+  // _bakeTintedCanvas) zamiast rysowanych ręcznie radialnych gradientów.
+  fx_glow: ['assets/effects/fx_glow.png'],
+  fx_flare: ['assets/effects/fx_flare.png'],
+  fx_spark: ['assets/effects/fx_spark.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd
