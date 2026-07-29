@@ -57,6 +57,18 @@ const SPRITE_PATH_CANDIDATES = {
   // fasetowany kształt pasuje tematycznie do kryształów bez żadnej edycji.
   machine_sci_capsule: ['assets/machines/sci_capsule.png'],
   machine_sci_grinder: ['assets/machines/sci_grinder.png'],
+  // Terminal Handlowy (market.js) - Tomek: "sam wygląd terminalu trzeba
+  // zmienić... ma to wyglądać jakby to był jakiś fragment technologii z
+  // statku, a nie jakiś targ na obcej planecie". BYŁ procedural: ciepła
+  // drewniana bryła + pasiasta czerwono-kremowa markiza (klasyczny stragan
+  // targowy) - zastąpione TĄ SAMĄ techniką co maszyny (prawdziwa bryła
+  // Kenney "Space Shooter Extension" + hue-shift _getRecoloredSprite):
+  //   sci_terminal - płaski panel z jasnym "ekranem" na górze
+  //                  (spaceStation_030) - korpus terminala.
+  //   sci_antenna  - smukły maszt z kopułą (spaceStation_020) - zastępuje
+  //                  markizę, sterczy nad korpusem jak antena łącznościowa.
+  machine_sci_terminal: ['assets/machines/sci_terminal.png'],
+  machine_sci_antenna: ['assets/machines/sci_antenna.png'],
   // Myśliwiec (spaceShips_001) - kadłub Rozbitego Statku (ship.js). Trzecia
   // iteracja: rakieta (spaceRockets_002, "za ludzka") -> spodek/UFO
   // (spaceStation_031) -> TA, po tym jak Tomek wysłał zrzut folderu Ships

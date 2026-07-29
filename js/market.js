@@ -275,7 +275,7 @@ class TradingPost {
 
   /**
    * Viewport culling (ten sam wzorzec co items.js/machines.js) - jedna
-   * instancja, ale rysowanie (nogi, skrzynki, gradient korpusu, markiza)
+   * instancja, ale rysowanie (nogi, kanistry, sprite korpusu, antena)
    * kosztuje niezależnie od tego ile ich jest, więc szkoda płacić za nią
    * na każdej klatce, gdy gracz jest na drugim końcu mapy. update() (ceny,
    * timer sprzedaży) działa zawsze, niezależnie od widoczności.
@@ -313,39 +313,29 @@ class TradingPost {
     ctx.ellipse(this.x, this.y + hh + 4, hw * 0.85, hh * 0.2, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Korpus terminala - pionowy gradient (jaśniejsza góra) zamiast płaskiego
-    // koloru, żeby czytał się jako bryła, ten sam zabieg co MachineManager.
-    // shadowBlur usunięty (patrz ten sam BUGFIX w items.js) - jedna z
-    // najdroższych operacji Canvas, tu rysowana co klatkę bez powodu (terminal
-    // ma już cień-elipsę poniżej, patrz wyżej).
-    ctx.save();
-    // SPÓJNOŚĆ: było #37474F / #2B353A - prawie czerń, przez co terminal
-    // czytał się jak panel interfejsu położony na mapie, a nie jak obiekt z
-    // tego samego świata co maszyny. Sprite'y maszyn stoją na wyraźnych,
-    // przygaszonych barwach (zieleń/błękit/czerwień), więc stragan dostaje
-    // ciepłe drewno - inny materiał niż metal maszyn (bo to nie maszyna),
-    // ale ta sama jasność i nasycenie.
-    const baseColor = this.inRange ? '#8A6244' : '#7A5539';
-    const bodyGrad = ctx.createLinearGradient(this.x, this.y - hh, this.x, this.y + hh);
-    bodyGrad.addColorStop(0, this._lighten(baseColor, 22));
-    bodyGrad.addColorStop(0.55, baseColor);
-    bodyGrad.addColorStop(1, this._lighten(baseColor, -18));
-    ctx.fillStyle = bodyGrad;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-    ctx.lineWidth = 2;
-    this._traceRoundedRect(ctx, this.x - hw, this.y - hh, this.w, this.h, 12);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    // Cienka listwa dekoracyjna tuż pod górną krawędzią korpusu - drobny
-    // przemysłowy detal, ten sam duch co żeberka wentylacyjne w machines.js.
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(this.x - hw + 8, this.y - hh + 10);
-    ctx.lineTo(this.x + hw - 8, this.y - hh + 10);
-    ctx.stroke();
+    // Korpus terminala - Tomek: "ma to wyglądać jakby to był jakiś fragment
+    // technologii z statku, a nie jakiś targ na obcej planecie". BYŁ
+    // procedural rounded-rect z ciepłym drewnianym gradientem (patrz stara
+    // wersja w historii) - jedyny większy obiekt w grze BEZ prawdziwej bryły
+    // Kenney, podczas gdy wszystkie 5 maszyn i Rozbity Statek dawno dostały
+    // tę technikę. Teraz PRAWDZIWA bryła (spaceStation_030, ta sama paczka
+    // "Space Shooter Extension" co maszyny) - już natywnie szaro-błękitny
+    // metal z jasnym "ekranem" u góry, więc BEZ obrotu odcienia (hueDeg:0,
+    // czysty przebieg funkcji przez HSL i z powrotem - matematyczny no-op na
+    // samym kolorze), tylko lekki zielonkawy overlayTint spójny z diodą
+    // zasilania (#69F0AE, patrz niżej) - subtelnie mocniejszy w zasięgu
+    // (0.22 vs 0.12), ten sam duch co dawne jaśniejsze baseColor.inRange.
+    const terminalTintAlpha = this.inRange ? 0.22 : 0.12;
+    const terminalSprite = this._getRecoloredSprite('machine_sci_terminal', 0, 1, 0.08, ['#69F0AE', terminalTintAlpha]);
+    if (terminalSprite) {
+      ctx.drawImage(terminalSprite, this.x - hw, this.y - hh, this.w, this.h);
+    } else {
+      // Fallback (sprite jeszcze niewczytany) - płaski panel zamiast pustego
+      // miejsca, w tonacji docelowego metalu (nie dawnego drewna).
+      ctx.fillStyle = this.inRange ? '#5C7A82' : '#4A6068';
+      this._traceRoundedRect(ctx, this.x - hw, this.y - hh, this.w, this.h, 12);
+      ctx.fill();
+    }
 
     // Ekran - lekki puls (jaśniejszy) na chwilę po sprzedaży, teraz z
     // wyraźną ramką/bezelem, żeby czytał się jako WYŚWIETLACZ, nie
@@ -436,10 +426,10 @@ class TradingPost {
       }
     });
 
-    // Markiza (daszek) NAD korpusem - główny element, który wypełnia pustkę
-    // nad terminalem i najmocniej sygnalizuje "stoisko handlowe" na pierwszy
-    // rzut oka, zanim gracz w ogóle przeczyta etykietę.
-    this._drawAwning(ctx, hw, hh);
+    // Antena łącznościowa NAD korpusem - zajmuje więcej pionowej przestrzeni
+    // niż dawna płaska markiza (58px maszt vs 26+9px pasy), więc etykieta
+    // niżej przesunięta wyżej (42->60/56->74), żeby maszt jej nie zasłaniał.
+    this._drawAntenna(ctx, hw, hh);
 
     // Etykieta + status. BUGFIX: dawniej stały ciemny/na wpół przezroczysty
     // fillStyle - czytelny na trawie, ale ginący na ciemnym popiele/bagnie
@@ -449,14 +439,14 @@ class TradingPost {
     ctx.font = 'bold 11px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    this._drawOutlinedText(ctx, 'Terminal Handlowy', this.x, this.y - hh - 42, '#FFFFFF');
+    this._drawOutlinedText(ctx, 'Terminal Handlowy', this.x, this.y - hh - 60, '#FFFFFF');
 
     if (this.inRange) {
       const stack = window.stackController;
       const hasSellable = stack && !stack.isEmpty() && stack.find((item) => this.acceptsType.includes(item.typeId));
       const statusColor = hasSellable ? '#A5D6A7' : 'rgba(255, 255, 255, 0.75)';
       ctx.font = '10px Arial';
-      this._drawOutlinedText(ctx, hasSellable ? 'Sprzedaję...' : 'Brak towaru do sprzedania', this.x, this.y - hh - 56, statusColor);
+      this._drawOutlinedText(ctx, hasSellable ? 'Sprzedaję...' : 'Brak towaru do sprzedania', this.x, this.y - hh - 74, statusColor);
     }
   }
 
@@ -481,19 +471,21 @@ class TradingPost {
   }
 
   /**
-   * Trzy małe skrzynki/worki towaru obok terminala - kolory nawiązują do
-   * sprzedawanych surowców (plastik/produkt/stop), czysto dekoracyjne
-   * (nie wpływają na sprzedaż), ale wypełniają pustą przestrzeń u podstawy
-   * i wzmacniają wrażenie "tu się handluje", zanim gracz w ogóle podejdzie
-   * blisko.
+   * Trzy małe kanistry/pojemniki ładunku obok terminala - czysto dekoracyjne
+   * (nie wpływają na sprzedaż), wypełniają pustą przestrzeń u podstawy.
+   * BYŁY jednolicie kolorowe skrzynki (niebieska/fioletowa/piaskowa) -
+   * czytały się jak skrzynki z bazaru. Teraz neutralny metalowy korpus (ten
+   * sam gunmetal co fallback korpusu terminala) + kolorowy pasek "typu
+   * ładunku" u góry - to samo rozróżnienie kolorem co dawniej, ale w formie
+   * przemysłowego oznaczenia kanistra, nie pomalowanej na całość skrzynki.
    */
   _drawGoodsCrates(ctx, hw, hh) {
     ctx.save();
     ctx.translate(this.x, this.y);
     const crates = [
-      { dx: -hw * 1.2, dy: hh * 0.5, size: 20, color: '#42A5F5' },
-      { dx: -hw * 0.92, dy: hh * 0.78, size: 15, color: '#AB47BC' },
-      { dx: hw * 1.15, dy: hh * 0.55, size: 18, color: '#D4A574' }
+      { dx: -hw * 1.2, dy: hh * 0.5, size: 20, accent: '#4FC3F7' },
+      { dx: -hw * 0.92, dy: hh * 0.78, size: 15, accent: '#BA68C8' },
+      { dx: hw * 1.15, dy: hh * 0.55, size: 18, accent: '#FFB74D' }
     ];
     crates.forEach((c) => {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
@@ -501,77 +493,131 @@ class TradingPost {
       ctx.ellipse(c.dx, c.dy + c.size * 0.42, c.size * 0.55, c.size * 0.16, 0, 0, Math.PI * 2);
       ctx.fill();
 
+      const bodyColor = '#54666E';
       const grad = ctx.createLinearGradient(c.dx, c.dy - c.size / 2, c.dx, c.dy + c.size / 2);
-      grad.addColorStop(0, this._lighten(c.color, 30));
-      grad.addColorStop(1, this._lighten(c.color, -25));
+      grad.addColorStop(0, this._lighten(bodyColor, 26));
+      grad.addColorStop(1, this._lighten(bodyColor, -22));
       ctx.fillStyle = grad;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
       ctx.lineWidth = 1.5;
       this._traceRoundedRect(ctx, c.dx - c.size / 2, c.dy - c.size / 2, c.size, c.size, 3);
       ctx.fill();
       ctx.stroke();
+
+      // Pasek typu ładunku - wąski, u góry kanistra, kolor przejęty z
+      // dawnej skrzynki (rozróżnienie zostaje, tylko mniej dominujące).
+      const bandH = c.size * 0.24;
+      ctx.fillStyle = c.accent;
+      ctx.fillRect(c.dx - c.size / 2 + 1.5, c.dy - c.size / 2 + 1.5, c.size - 3, bandH);
     });
     ctx.restore();
   }
 
   /**
-   * Pasiasta markiza nad korpusem, z zębatym (postrzępionym) dolnym
-   * brzegiem - klasyczny wizualny skrót dla "stoiska handlowego", dużo
-   * czytelniejszy z daleka niż sam ciemny korpus. Dwie rozpórki łączą ją
-   * wizualnie z korpusem, żeby nie wyglądała jak oddzielny, unoszący się
-   * obiekt.
+   * Antena łącznościowa nad korpusem - ZASTĘPUJE dawną pasiastą markizę
+   * straganu (Tomek: "ma wyglądać jak fragment technologii z statku").
+   * Prawdziwa bryła Kenney (sci_antenna, spaceStation_020 - smukły maszt z
+   * kopułą), wypełnia dokładnie tę samą pustą przestrzeń nad korpusem, którą
+   * wcześniej zajmowała markiza, ale czyta się jako sprzęt, nie tkanina.
+   * Mały pulsujący sygnał na szczycie masztu - ten sam duch co dioda
+   * zasilania ekranu niżej (draw()), osobna kopia zgodnie z konwencją
+   * projektu (nie da się dzielić lokalnej zmiennej ledPulse między metodami).
    */
-  _drawAwning(ctx, hw, hh) {
-    const roofW = hw * 2.2;
-    const roofH = 26;
-    const roofY = this.y - hh - roofH - 8;
-    const roofTop = this.x - roofW / 2;
-    const stripeCount = 8;
-    const stripeW = roofW / stripeCount;
-    const scallopH = 9;
+  _drawAntenna(ctx, hw, hh) {
+    const antennaH = 58;
+    const antennaW = antennaH * (248 / 694); // proporcje natywne sci_antenna.png
+    const antennaX = this.x - antennaW / 2;
+    const antennaY = this.y - hh - antennaH + 5; // lekkie zachodzenie na korpus - "przykręcona", nie unosząca się
 
+    const sprite = this._getRecoloredSprite('machine_sci_antenna', 0, 1, 0.08, ['#69F0AE', this.inRange ? 0.2 : 0.1]);
     ctx.save();
-
-    // Rozpórki łączące markizę z korpusem.
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(this.x - hw * 0.65, this.y - hh);
-    ctx.lineTo(roofTop + 6, roofY + roofH);
-    ctx.moveTo(this.x + hw * 0.65, this.y - hh);
-    ctx.lineTo(roofTop + roofW - 6, roofY + roofH);
-    ctx.stroke();
-
-    // Pasy markizy + zębaty dół każdego pasa.
-    // SPÓJNOŚĆ: było #FFB300 / #37474F - jaskrawy żółty na prawie czarnym,
-    // czyli najwyższy kontrast w całej grze (czytało się jak taśma
-    // ostrzegawcza BHP, nie jak markiza straganu). Trzy sprite'y maszyn
-    // (assets/machines/*.png) trzymają się przygaszonych, płaskich barw bez
-    // czerni - stragan dostaje więc ciepłą czerwień i kość słoniową, ten sam
-    // klasyczny duet markizy, ale w tej samej rodzinie tonalnej co reszta.
-    for (let i = 0; i < stripeCount; i++) {
-      const sx = roofTop + i * stripeW;
-      ctx.fillStyle = i % 2 === 0 ? '#D9614F' : '#F2E6D0';
-      ctx.fillRect(sx, roofY, stripeW, roofH);
+    if (sprite) {
+      ctx.drawImage(sprite, antennaX, antennaY, antennaW, antennaH);
+    } else {
+      // Fallback - prosty maszt, żeby korpus nigdy nie został kompletnie goły.
+      ctx.strokeStyle = 'rgba(180, 195, 200, 0.8)';
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(sx, roofY + roofH);
-      ctx.lineTo(sx + stripeW / 2, roofY + roofH + scallopH);
-      ctx.lineTo(sx + stripeW, roofY + roofH);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(this.x, this.y - hh + 5);
+      ctx.lineTo(this.x, antennaY);
+      ctx.stroke();
     }
 
-    // Górna obwódka + cień pod spodem, żeby markiza "siedziała" na korpusie.
-    // Obwódka w kolorze ciepłego drewna zamiast białej - biel na jasnej
-    // kości słoniowej i tak jest niewidoczna, a na czerwieni odcinała się
-    // ostrzej niż cokolwiek na sprite'ach maszyn.
-    ctx.strokeStyle = 'rgba(120, 82, 60, 0.55)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(roofTop, roofY, roofW, roofH);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-    ctx.fillRect(roofTop, roofY + roofH, roofW, 3);
-
+    // Pulsujący sygnał na szczycie masztu (niezależna faza od diody ekranu).
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 420);
+    ctx.globalAlpha = 0.5 + 0.5 * pulse;
+    ctx.fillStyle = '#69F0AE';
+    ctx.beginPath();
+    ctx.arc(this.x, antennaY + antennaH * 0.06, 2.6, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
+  }
+
+  /**
+   * Przekolorowuje PRAWDZIWY sprite Kenney (korpus/antena terminala) obracając
+   * odcień piksel po pikselu w HSL, z opcjonalnym overlayTint ('source-atop')
+   * nałożonym na wierzch - DOKŁADNA kopia MachineManager._getRecoloredSprite
+   * (machines.js), zgodnie z konwencją "brak współdzielonych utili". Cache'
+   * owana per (spriteKey, hueDeg, satMult, minSat, overlayTint).
+   */
+  _getRecoloredSprite(spriteKey, hueDeg, satMult, minSat = 0.08, overlayTint = null) {
+    this._fxRecolorCache = this._fxRecolorCache || {};
+    const cacheKey = `${spriteKey}|${hueDeg}|${satMult}|${minSat}|${overlayTint ? overlayTint.join(',') : ''}`;
+    if (this._fxRecolorCache[cacheKey]) return this._fxRecolorCache[cacheKey];
+    const img = window.spriteLoader && window.spriteLoader.get(spriteKey);
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const tctx = canvas.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    const imageData = tctx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    const hueShift = hueDeg / 360;
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3];
+      if (a === 0) continue;
+      const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const l = (max + min) / 2;
+      const d = max - min;
+      if (d === 0) continue;
+      let s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (s < minSat) continue;
+      let h2;
+      if (max === r) h2 = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h2 = ((b - r) / d + 2) / 6;
+      else h2 = ((r - g) / d + 4) / 6;
+      h2 = (h2 + hueShift) % 1;
+      if (h2 < 0) h2 += 1;
+      s = Math.min(1, s * satMult);
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      const hue2rgb = (t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      data[i] = Math.round(hue2rgb(h2 + 1 / 3) * 255);
+      data[i + 1] = Math.round(hue2rgb(h2) * 255);
+      data[i + 2] = Math.round(hue2rgb(h2 - 1 / 3) * 255);
+    }
+    tctx.putImageData(imageData, 0, 0);
+    if (overlayTint) {
+      const [color, alpha] = overlayTint;
+      tctx.globalCompositeOperation = 'source-atop';
+      tctx.globalAlpha = alpha;
+      tctx.fillStyle = color;
+      tctx.fillRect(0, 0, w, h);
+      tctx.globalAlpha = 1;
+      tctx.globalCompositeOperation = 'source-over';
+    }
+    this._fxRecolorCache[cacheKey] = canvas;
+    return canvas;
   }
 
   /** Ten sam wzorzec co MachineManager._lighten (machines.js) - proste
