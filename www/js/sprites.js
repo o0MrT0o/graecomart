@@ -57,11 +57,14 @@ const SPRITE_PATH_CANDIDATES = {
   // fasetowany kształt pasuje tematycznie do kryształów bez żadnej edycji.
   machine_sci_capsule: ['assets/machines/sci_capsule.png'],
   machine_sci_grinder: ['assets/machines/sci_grinder.png'],
-  // Rakieta (spaceRockets_002) - nowy kadłub Rozbitego Statku (ship.js),
-  // zamiast rysowanego ręcznie "spodka" - pionowa forma z zadartymi
-  // stateczniekami u dołu i oknem, dokładnie w duchu "statek do naprawy
-  // i wystrzelenia", nie latający talerz.
-  ship_rocket: ['assets/ship_rocket.png']
+  // Spodek/UFO (spaceStation_031) - kadłub Rozbitego Statku (ship.js).
+  // BYŁA tu najpierw rakieta (spaceRockets_002) - Tomek: "ma nie być ludzka
+  // rakieta tylko kosmiczna od obcych". Sześciokątny spodek ze świecącym
+  // pasem "okna" dookoła, przefarbowany na obcy zielono-turkusowy odcień
+  // (ship.js, ta sama technika overlay-tint co klepsydra Kompresora w
+  // machines.js - spodek jest prawie pozbawiony saturacji jak reszta
+  // metalowych brył w tej paczce).
+  ship_saucer: ['assets/ship_saucer.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd
