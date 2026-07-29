@@ -655,8 +655,12 @@ class ShopPanel {
       badge.innerHTML = item.fromShip ? `${ROCKET_ICON_SVG} ZE STATKU` : 'MAX';
       actionEl.appendChild(badge);
     } else {
+      // Kłódka PRZED ceną, TYLKO gdy nie stać (denied) - dźwięk odmowy
+      // (UIButton `denied`, patrz audio.js 'error') mówi "nie" dopiero PO
+      // kliknięciu; kłódka daje ten sam sygnał OD RAZU, bez tapnięcia.
+      const costLabel = canBuy ? `${item.cost}${CREDIT_ICON_SVG}` : `${LOCK_ICON_SVG} ${item.cost}${CREDIT_ICON_SVG}`;
       const btn = new UIButton({
-        label: `${item.cost}${CREDIT_ICON_SVG}`,
+        label: costLabel,
         variant: canBuy ? 'accent' : 'ghost',
         denied: !canBuy,
         title: canBuy ? 'Kup ulepszenie' : 'Za mało pieniędzy',
@@ -1131,8 +1135,10 @@ class PrestigePanel {
       badge.textContent = 'MAX';
       actionEl.appendChild(badge);
     } else {
+      // Kłódka gdy nie stać - patrz identyczny komentarz w ShopPanel._buildRow.
+      const costLabel = canBuy ? `${CORE_ICON_SVG}${item.cost}` : `${LOCK_ICON_SVG} ${CORE_ICON_SVG}${item.cost}`;
       const btn = new UIButton({
-        label: `${CORE_ICON_SVG}${item.cost}`,
+        label: costLabel,
         variant: canBuy ? 'accent' : 'ghost',
         denied: !canBuy,
         title: canBuy ? 'Kup trwałe ulepszenie' : 'Za mało Rdzeni',
@@ -1712,8 +1718,10 @@ class SkinsPanel {
       actionEl.appendChild(btn.mount());
     } else {
       const canBuy = this.economyManager.cores >= s.cost;
+      // Kłódka gdy nie stać - patrz identyczny komentarz w ShopPanel._buildRow.
+      const costLabel = canBuy ? `${CORE_ICON_SVG}${s.cost}` : `${LOCK_ICON_SVG} ${CORE_ICON_SVG}${s.cost}`;
       const btn = new UIButton({
-        label: `${CORE_ICON_SVG}${s.cost}`,
+        label: costLabel,
         variant: canBuy ? 'accent' : 'ghost',
         denied: !canBuy,
         title: canBuy ? 'Kup skin' : 'Za mało Rdzeni',
