@@ -566,6 +566,21 @@ canvas {
     transition: opacity 0.3s ease;
 }
 
+/* Kenney UI Pack "input_rectangle" (ta sama paczka co przyciski/ikony,
+   PNG/Extra/Default - dotąd nieużyty), odwrócony jasność+przyciemniony
+   (assets/ui/panel_dark.png - był jasnym polem tekstowym, nie ciemnym
+   panelem) - border-image zamiast płaskiego background+border. Tomek:
+   "niech przyciski i menu będą też z jakiegoś zestawu Kenney" - jedyny
+   PASUJĄCY do płaskiego stylu gry kandydat na "ramkę okna" w naszych
+   paczkach (sprawdzone: panel_blue/brown z UI Pack RPG Expansion to
+   fantasy kamień/drewno z nitami - po przyciemnieniu pod ciemny motyw traci
+   całą fakturę i wygląda jak zwykły szary prostokąt, zero zysku względem
+   CSS). DÓŁ celowo BEZ border-image (border-width/slice = 0 na dole) -
+   arkusz dalej dokuje się płasko do krawędzi ekranu (bottom:0), tylko górne
+   rogi/krawędzie dostają prawdziwą ramkę zamiast border-radius+border.
+   Wypełnienie w środku obrazu jest w pełni nieprzezroczyste (source też
+   był), więc backdrop-filter (dawne "mleczne szkło") nie miał już czego
+   rozmywać - usunięty (czysty koszt GPU bez efektu). */
 .ui-shop-sheet {
     position: absolute;
     left: 50%;
@@ -573,12 +588,12 @@ canvas {
     transform: translate(-50%, 105%);
     width: min(440px, calc(100vw - 24px));
     max-height: min(72vh, 640px);
-    background: var(--ui-bg-solid);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border: 1px solid var(--ui-border);
-    border-bottom: none;
-    border-radius: 22px 22px 0 0;
+    border-style: solid;
+    border-color: transparent;
+    border-width: 14px 14px 0 14px;
+    border-image-slice: 24 24 0 24 fill;
+    border-image-source: url('assets/ui/panel_dark.png');
+    border-image-repeat: stretch;
     box-shadow: 0 -16px 44px rgba(0, 0, 0, 0.45);
     display: flex;
     flex-direction: column;
