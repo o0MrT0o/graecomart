@@ -653,16 +653,22 @@ const PLANET_MODIFIERS = [
 // wyjątek od "brak współdzielonych utili" tej samej klasy co odczyt
 // window.economyManager przez inne moduły (to dane, nie funkcja pomocnicza).
 // `tint: null` = domyślny skin, bez przebarwienia (oryginalny sprite).
+// Nazwy BEZ "Kombinezon" (Tomek: "to nie są kombinezony tylko kolor
+// postaci") - `tint` przebarwia sam sprite gracza (skórę obcego), nie
+// dokłada żadnego ubrania, więc nazwa sugerująca strój była myląca, tym
+// bardziej że w grze istnieje osobny, PRAWDZIWY Kombinezon Radiacyjny
+// (gear, patrz SHOP_UPGRADES) - dwie zupełnie różne rzeczy o niemal tej
+// samej nazwie.
 const PLAYER_SKINS = [
-  { id: 'default', name: 'Domyślny Kombinezon', desc: 'Klasyczny wygląd - bez dopłaty', tint: null, cost: 0 },
-  { id: 'verde', name: 'Zielony Kombinezon', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#66BB6A', cost: 2 },
-  { id: 'crimson', name: 'Czerwony Kombinezon', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#EF5350', cost: 2 },
-  { id: 'amber', name: 'Bursztynowy Kombinezon', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#FFB74D', cost: 4 },
+  { id: 'default', name: 'Domyślny kolor', desc: 'Klasyczny wygląd - bez dopłaty', tint: null, cost: 0 },
+  { id: 'verde', name: 'Zielony', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#66BB6A', cost: 2 },
+  { id: 'crimson', name: 'Czerwony', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#EF5350', cost: 2 },
+  { id: 'amber', name: 'Bursztynowy', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#FFB74D', cost: 4 },
   // Barwy Kryształowej Grani (patrz _bakeCrystalGroundTexture w game.js) -
   // nagroda-nawiązanie do najtrudniej dostępnej strefy, nie wymaga jednak
   // faktycznego jej odblokowania (kupowana wyłącznie za Rdzenie, jak reszta).
-  { id: 'crystal', name: 'Kryształowy Kombinezon', desc: 'W barwach Kryształowej Grani', tint: '#B388FF', cost: 8 },
-  { id: 'gold', name: 'Złoty Kombinezon', desc: 'Dla tych, którzy zebrali sporo Rdzeni', tint: '#FFD54F', cost: 15 }
+  { id: 'crystal', name: 'Kryształowy', desc: 'W barwach Kryształowej Grani', tint: '#B388FF', cost: 8 },
+  { id: 'gold', name: 'Złoty', desc: 'Dla tych, którzy zebrali sporo Rdzeni', tint: '#FFD54F', cost: 15 }
 ];
 
 class EconomyManager {

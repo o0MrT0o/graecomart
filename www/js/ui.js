@@ -32,33 +32,28 @@ const STACK_ICON_SVG = '<img class="ui-backpack-icon" src="assets/ui/backpack.pn
 // część z nich (np. CORE_ICON_SVG, CLOSE_ICON_SVG) pojawia się dziesiątki
 // razy w tym pliku, więc jedna stała + wstawienie w template stringu jest
 // jedynym sensownym podejściem.
-// Sklep/Menu/Statek (fab) + Wpłać/Leć dalej (accent) - PRZEROBIONE razem z
-// przyciskami na Kenney UI Pack (patrz style.css .ui-btn). Dawne cienkie
-// 2px-kreskowe ikonki (każda we własnym odcieniu - żółty koszyk, szary
-// tryb, cyjanowa rakieta) ginęły na grubych, płaskocieniowanych
-// przyciskach Kenney - "sklejone obok", nie "część tego samego przycisku".
-// Teraz: SOLIDNE wypełnione sylwetki, fill="currentColor" (dziedziczy
-// kolor tekstu przycisku - #062634 na fab/niebieskim, #1a1400 na accent/
-// żółtym - Tomek: "żeby wszystko pasowało do siebie z przycisków i
-// ikon"), okienka/otwory (rakieta, tryb, moneta) wycięte przez
-// fill-rule="evenodd" zamiast malowane na sztywno kolorem tła - dzięki
-// temu ta sama ikona wygląda poprawnie na KAŻDYM tle (niebieski fab,
-// żółty accent, biały tytuł panelu Statku, złota plakietka "ZE STATKU"),
-// bez osobnej wersji na każdy kontekst. Zębatka GEAR_ICON_SVG była
-// dodatkowo błędna geometrycznie (przypadkowe współrzędne, "1.4 6 -0.7
-// 8.1" - ujemna wartość w środku listy punktów) - wygenerowana od nowa
-// trygonometrycznie (8 zębów, promień zewn./wewn. 9.6/7.1 + okrągły
-// otwór na środku).
-const CART_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2 3a1 1 0 0 0 0 2h1.2l.35 1.4 2.1 8.4A2.5 2.5 0 0 0 8 16.7h8.6A2.5 2.5 0 0 0 19 14.8L21 8.4A1 1 0 0 0 20 7H5.75l-.4-1.6A1 1 0 0 0 4.4 4.6L4.3 4.2A1 1 0 0 0 3.3 3H3Z"/><circle cx="8.5" cy="19.5" r="1.6"/><circle cx="16.5" cy="19.5" r="1.6"/></svg>';
+// Sklep/Menu/Statek (fab) + Wpłać/Leć dalej (accent) - pierwsza wersja tych
+// ikon (dawno temu) to ręcznie rysowane SOLIDNE sylwetki fill="currentColor"
+// (nie cienkie kreski) - dobrane celowo pod grube, płaskocieniowane
+// przyciski Kenney (style.css .ui-btn), okienka/otwory (rakieta, tryb,
+// moneta) wycięte fill-rule="evenodd", żeby ikona wyglądała poprawnie na
+// KAŻDYM tle przycisku bez osobnej wersji na kontekst.
+// CART/GEAR/PAY PODMIENIONE (razem z resztą tej fali - Tomek: "wszystkie
+// ikony w sklepie i w menu niech będą zgodne z resztą z gry") na prawdziwe
+// sylwetki Kenney - ten sam .ui-icon (maska CSS + currentColor) mechanizm,
+// który już utrzymywał dopasowanie koloru do tła przycisku (fab/accent) w
+// poprzedniej, ręcznie rysowanej wersji, więc zero regresji w dopasowaniu
+// barw, tylko realny asset zamiast narysowanego od zera kształtu. PAY (był
+// "$" wycięty evenodd) na zwykłą monetę (coin.png) - ostatni MIEJSCA symbol
+// dolara w kodzie, reszta dawno zastąpiona sześciokątnym "czipem"
+// (CREDIT_ICON_SVG). ROCKET zostaje custom SVG - żadna z dostępnych paczek
+// Kenney nie miała prostej, jednokolorowej sylwetki rakiety pasującej do
+// tej samej maski/rozmiaru co reszta (tylko szczegółowe, kolorowe bryły
+// statków, nie sylwetki-ikony).
+const CART_ICON_SVG = '<span class="ui-icon ui-icon--cart" aria-hidden="true"></span>';
 const ROCKET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path fill-rule="evenodd" d="M12 2c3.5 2.8 4.6 7.3 3 12.2H9C7.4 9.3 8.5 4.8 12 2ZM13.7 9A1.7 1.7 0 1 1 10.3 9A1.7 1.7 0 1 1 13.7 9Z"/><path d="M9 14.5 6.4 17.8 7.4 18.4 9.8 15.7Z"/><path d="M15 14.5 17.6 17.8 16.6 18.4 14.2 15.7Z"/><path d="M10 15v4.3l2 1.7 2-1.7V15Z"/></svg>';
-const GEAR_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" fill-rule="evenodd"><path d="M18.98 10.72 21.44 10.28 21.44 13.72 18.98 13.28 17.84 16.04 19.9 17.46 17.46 19.9 16.04 17.84 13.28 18.98 13.72 21.44 10.28 21.44 10.72 18.98 7.96 17.84 6.54 19.9 4.1 17.46 6.16 16.04 5.02 13.28 2.56 13.72 2.56 10.28 5.02 10.72 6.16 7.96 4.1 6.54 6.54 4.1 7.96 6.16 10.72 5.02 10.28 2.56 13.72 2.56 13.28 5.02 16.04 6.16 17.46 4.1 19.9 6.54 17.84 7.96ZM15 12A3 3 0 1 0 9 12A3 3 0 1 0 15 12Z"/></svg>';
-// Osobna, uproszczona moneta TYLKO dla przycisku "Wpłać" (accent) -
-// odróżniona od MONEY_ICON_SVG (woreczek z monetami w HUD-zie, wyżej) bo ta
-// żyje wewnątrz żółtego przycisku Kenney i musi być monochromatyczna jak
-// pozostałe ikony-w-przyciskach; "$" wycięty evenodd zamiast namalowany
-// osobnym <text> (uniknięcie zderzenia kolorów - obie części tym samym
-// currentColor by się zlały).
-const PAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" fill-rule="evenodd"><path d="M12 2.3a9.3 9.3 0 1 0 0.001 18.601A9.3 9.3 0 0 0 12 2.3ZM9.6 8.2c0-1.1 1-1.9 2.5-1.9 1.1 0 1.9.4 2.5 1L13.5 8.6c-.4-.4-.9-.6-1.5-.6-.6 0-1 .3-1 .7 0 .5.5.7 1.5 1 1.5.5 2.6 1.1 2.6 2.6 0 1.3-1 2.1-2.4 2.3v1.1h-1.4v-1.1c-1.2-.1-2.1-.6-2.7-1.3l1.1-1.1c.5.5 1.2.8 1.9.8.7 0 1.1-.3 1.1-.7 0-.5-.4-.7-1.6-1-1.4-.4-2.5-1-2.5-2.6Z"/></svg>';
+const GEAR_ICON_SVG = '<span class="ui-icon ui-icon--gear" aria-hidden="true"></span>';
+const PAY_ICON_SVG = '<span class="ui-icon ui-icon--coin" aria-hidden="true"></span>';
 // TROPHY/WRENCH/UNLOCK/SPEAKER/RECYCLE_RESET/INFO (niżej) - PODMIENIONE z
 // ręcznie rysowanych SVG na prawdziwe sylwetki z Kenney "Game Icons" (CC0),
 // ta sama paczka co przyciski (style.css .ui-btn/.ui-icon). Technika: CSS
@@ -68,8 +63,8 @@ const PAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24
 // przyciemniony tekst wiersza Menu). Same stałe (span zamiast svg) -
 // WSZYSTKIE miejsca wołające ${TROPHY_ICON_SVG} itd. zostają bez zmian.
 const TROPHY_ICON_SVG = '<span class="ui-icon ui-icon--trophy" aria-hidden="true"></span>';
-const CLOSE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5 19 19M19 5 5 19"/></svg>';
-const CHECK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9.5 18 20 6"/></svg>';
+const CLOSE_ICON_SVG = '<span class="ui-icon ui-icon--cross" aria-hidden="true"></span>';
+const CHECK_ICON_SVG = '<span class="ui-icon ui-icon--checkmark" aria-hidden="true"></span>';
 // Symbol waluty Rdzeni (Rdzenie/Cores) - zastępuje ⚡ używane dotąd JAKO
 // TEKST wewnątrz wielu stringów ("⚡${cost}") - wstawiany bezpośrednio w
 // template literały (wszystkie miejsca użycia i tak trafiają do innerHTML,
@@ -85,19 +80,34 @@ const CORE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 2
 // dla pieniędzy). WSTAWIANY JAKO SUFIKS (`${amount}${CREDIT_ICON_SVG}`),
 // nie prefiks jak CORE_ICON_SVG - dokładnie tam, gdzie dotąd stało "$".
 const CREDIT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px" fill="#FFD54F" stroke="none"><path fill-rule="evenodd" d="M21 12 16.5 19.79 7.5 19.79 3 12 7.5 4.21 16.5 4.21Z M14.2 12A2.2 2.2 0 1 1 9.8 12A2.2 2.2 0 1 1 14.2 12Z"/></svg>';
-const LOCK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
+// LOCK PODMIENIONY (był ten sam cienki, ręcznie rysowany kłódkowy kontur co
+// reszta tej fali - patrz komentarz przy CART/GEAR/PAY wyżej) - dodany
+// niedawno (kłódka "za mało kasy"), ale od razu na docelowej ikonie
+// (locked.png), więc CAŁA historia zmiany tu nieaktualna, brak osobnego
+// komentarza "przed/po".
+const LOCK_ICON_SVG = '<span class="ui-icon ui-icon--locked" aria-hidden="true"></span>';
 const UNLOCK_ICON_SVG = '<span class="ui-icon ui-icon--unlocked" aria-hidden="true"></span>';
 const SPEAKER_ICON_SVG = '<span class="ui-icon ui-icon--audio-on" aria-hidden="true"></span>';
-const CHART_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#90CAF9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M9.5 20V4M15 20v-7M20 20V8"/></svg>';
-const BOOK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#CE93D8" stroke-width="1.8" stroke-linejoin="round"><path d="M12 6c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-13c-3-.5-6 0-8 1.5Z" fill="#CE93D8" fill-opacity="0.2"/><path d="M12 6v13"/></svg>';
+// CHART/BOOK/SPARKLE/PARTY/FLAME/SHIRT (niżej) - ta sama fala co CART/GEAR/
+// PAY/LOCK wyżej: prawdziwe sylwetki Kenney zamiast ręcznie rysowanych
+// SVG. Stały kolor akcentu KAŻDEGO z nich (dawniej stroke/fill="#hex" w
+// samym SVG) przeniesiony na inline style="color:#hex" na spanie - .ui-icon
+// czyta currentColor z KONTEKSTU (patrz komentarz przy TROPHY_ICON_SVG),
+// więc bez tego wszystkie przejęłyby kolor otaczającego tekstu i straciłyby
+// swój rozpoznawalny odcień (fioletowa gwiazdka, pomarańczowy płomień itd).
+// PLANET zostaje custom SVG - kenney_planets.zip to surowe "części"
+// (światła/szumy/tekstury) do procedualnego składania planet w tle, nie
+// gotowe, proste ikonki pod maskę UI.
+const CHART_ICON_SVG = '<span class="ui-icon ui-icon--chart" aria-hidden="true" style="color:#90CAF9"></span>';
+const BOOK_ICON_SVG = '<span class="ui-icon ui-icon--book" aria-hidden="true" style="color:#CE93D8"></span>';
 const RECYCLE_RESET_ICON_SVG = '<span class="ui-icon ui-icon--reset" aria-hidden="true"></span>';
 const INFO_ICON_SVG = '<span class="ui-icon ui-icon--information" aria-hidden="true"></span>';
-const SPARKLE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#CE93D8" stroke="none"><path d="M12 2 13.8 9.2 21 11 13.8 12.8 12 20 10.2 12.8 3 11 10.2 9.2Z"/></svg>';
-const PARTY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round"><path d="M4 20 9 9l6 6Z" fill="#FFD54F" fill-opacity="0.3"/><path d="M15 4v2M19 6l-1.4 1.4M21 10h-2M18 15l-2-2"/></svg>';
+const SPARKLE_ICON_SVG = '<span class="ui-icon ui-icon--star" aria-hidden="true" style="color:#CE93D8"></span>';
+const PARTY_ICON_SVG = '<span class="ui-icon ui-icon--award" aria-hidden="true" style="color:#FFD54F"></span>';
 const WRENCH_ICON_SVG = '<span class="ui-icon ui-icon--wrench" aria-hidden="true"></span>';
 const PLANET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B39DDB" stroke-width="1.8"><circle cx="11" cy="12" r="6" fill="#B39DDB" fill-opacity="0.25"/><ellipse cx="11" cy="12" rx="10" ry="3.2" transform="rotate(-18 11 12)"/></svg>';
-const FLAME_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="#FF7043" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c1 1 1.5 2.3 1.5 3.5A4.5 4.5 0 0 1 12 18a5.5 5.5 0 0 1-5.5-5.5C6.5 8 9 6 12 2Z"/></svg>';
-const SHIRT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#90CAF9" stroke-width="1.8" stroke-linejoin="round"><path d="M8 3 4 6l2 3 2-1.2V21h8V7.8L18 9l2-3-4-3-2 2h-4Z" fill="#90CAF9" fill-opacity="0.2"/></svg>';
+const FLAME_ICON_SVG = '<span class="ui-icon ui-icon--fire" aria-hidden="true" style="color:#FF7043"></span>';
+const SHIRT_ICON_SVG = '<span class="ui-icon ui-icon--brush" aria-hidden="true" style="color:#90CAF9"></span>';
 
 // --- Bazowy komponent -------------------------------------------------------
 
@@ -438,8 +448,10 @@ class ChallengeDisplay extends UIComponent {
   }
 }
 
-// Ikona kompasu/celu dla paska "co dalej" - SVG, spójnie z resztą UI.
-const NEXT_UNLOCK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+// Ikona "czas/postęp do celu" dla paska "co dalej" - był zegar (ręcznie
+// rysowany), teraz klepsydra (Kenney Board Game Icons) - ta sama fala
+// ujednolicenia co CART/GEAR/CLOSE/CHECK/LOCK wyżej.
+const NEXT_UNLOCK_ICON_SVG = '<span class="ui-icon ui-icon--hourglass" aria-hidden="true" style="color:#FFD54F"></span>';
 
 /**
  * Pasek "co dalej" - pokazuje postęp łącznego zarobku do NASTĘPNEGO

@@ -1297,6 +1297,23 @@ canvas {
 .ui-icon--audio-on { -webkit-mask-image: url('assets/ui/icons/audio-on.png'); mask-image: url('assets/ui/icons/audio-on.png'); }
 .ui-icon--reset { -webkit-mask-image: url('assets/ui/icons/return.png'); mask-image: url('assets/ui/icons/return.png'); }
 .ui-icon--pouch { -webkit-mask-image: url('assets/ui/icons/pouch.png'); mask-image: url('assets/ui/icons/pouch.png'); }
+/* Ujednolicenie ikon Sklepu/Menu ze stylem reszty gry (Tomek: "wszystkie
+   ikony w sklepie i w menu niech będą zgodne z resztą z gry") - realne
+   tekstury Kenney zamiast ręcznie rysowanych SVG, ten sam wzorzec maski co
+   wyżej. */
+.ui-icon--cross { -webkit-mask-image: url('assets/ui/icons/cross.png'); mask-image: url('assets/ui/icons/cross.png'); }
+.ui-icon--checkmark { -webkit-mask-image: url('assets/ui/icons/checkmark.png'); mask-image: url('assets/ui/icons/checkmark.png'); }
+.ui-icon--locked { -webkit-mask-image: url('assets/ui/icons/locked.png'); mask-image: url('assets/ui/icons/locked.png'); }
+.ui-icon--gear { -webkit-mask-image: url('assets/ui/icons/gear.png'); mask-image: url('assets/ui/icons/gear.png'); }
+.ui-icon--cart { -webkit-mask-image: url('assets/ui/icons/shoppingCart.png'); mask-image: url('assets/ui/icons/shoppingCart.png'); }
+.ui-icon--star { -webkit-mask-image: url('assets/ui/icons/star.png'); mask-image: url('assets/ui/icons/star.png'); }
+.ui-icon--fire { -webkit-mask-image: url('assets/ui/icons/fire.png'); mask-image: url('assets/ui/icons/fire.png'); }
+.ui-icon--book { -webkit-mask-image: url('assets/ui/icons/book_closed.png'); mask-image: url('assets/ui/icons/book_closed.png'); }
+.ui-icon--award { -webkit-mask-image: url('assets/ui/icons/award.png'); mask-image: url('assets/ui/icons/award.png'); }
+.ui-icon--hourglass { -webkit-mask-image: url('assets/ui/icons/hourglass.png'); mask-image: url('assets/ui/icons/hourglass.png'); }
+.ui-icon--brush { -webkit-mask-image: url('assets/ui/icons/toolBrush.png'); mask-image: url('assets/ui/icons/toolBrush.png'); }
+.ui-icon--coin { -webkit-mask-image: url('assets/ui/icons/coin.png'); mask-image: url('assets/ui/icons/coin.png'); }
+.ui-icon--chart { -webkit-mask-image: url('assets/ui/icons/leaderboardsSimple.png'); mask-image: url('assets/ui/icons/leaderboardsSimple.png'); }
 
 /* ==========================================================================
    Tooltip
