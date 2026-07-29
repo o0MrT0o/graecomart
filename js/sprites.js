@@ -57,14 +57,14 @@ const SPRITE_PATH_CANDIDATES = {
   // fasetowany kształt pasuje tematycznie do kryształów bez żadnej edycji.
   machine_sci_capsule: ['assets/machines/sci_capsule.png'],
   machine_sci_grinder: ['assets/machines/sci_grinder.png'],
-  // Spodek/UFO (spaceStation_031) - kadłub Rozbitego Statku (ship.js).
-  // BYŁA tu najpierw rakieta (spaceRockets_002) - Tomek: "ma nie być ludzka
-  // rakieta tylko kosmiczna od obcych". Sześciokątny spodek ze świecącym
-  // pasem "okna" dookoła, przefarbowany na obcy zielono-turkusowy odcień
-  // (ship.js, ta sama technika overlay-tint co klepsydra Kompresora w
-  // machines.js - spodek jest prawie pozbawiony saturacji jak reszta
-  // metalowych brył w tej paczce).
-  ship_saucer: ['assets/ship_saucer.png']
+  // Myśliwiec (spaceShips_001) - kadłub Rozbitego Statku (ship.js). Trzecia
+  // iteracja: rakieta (spaceRockets_002, "za ludzka") -> spodek/UFO
+  // (spaceStation_031) -> TA, po tym jak Tomek wysłał zrzut folderu Ships
+  // z paczki i powiedział "użyj tych bardziej, są ładne". W przeciwieństwie
+  // do dwóch poprzednich, TA bryła zostaje w NATYWNYCH kolorach (czerwono-
+  // biało-fioletowa) - dostał wyraźną pochwałę wyglądu, więc żadnego
+  // przefarbowywania.
+  ship_fighter: ['assets/ship_fighter.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd

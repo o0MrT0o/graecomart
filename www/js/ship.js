@@ -62,36 +62,36 @@ const SHIP_DROP_RADIUS = 90;
 const SHIP_CONTRIBUTION_INTERVAL_MS = 200;
 const SHIP_MONEY_PER_TICK = 25;
 
-// --- Wygląd (Faza kosmicznego reskinu, wersja 2): PRAWDZIWY spodek/UFO z
-// Kenney "Space Shooter Extension" (spaceStation_031, assets/ship_saucer.png,
-// CC0) - Tomek: dawniejsza rakieta (spaceRockets_002) "wygląda ludzko", ma
-// być "kosmiczny statek od obcych". Sześciokątny spodek ze świecącym pasem
-// "okna" dookoła - klasyczny kształt UFO, przefarbowany na obcy zielono-
-// turkusowy odcień (spodek jest prawie pozbawiony saturacji jak reszta
-// metalowych brył w tej paczce - overlay-tint, ta sama technika co klepsydra
-// Kompresora w machines.js). SHIP_SAUCER_ASPECT to proporcje PRAWDZIWEGO
-// pliku (120x76, SZEROKI, nie wysoki jak rakieta) - stąd this.h liczone z
-// this.w w konstruktorze, odwrotnie niż przy rakiecie.
-const SHIP_SAUCER_ASPECT = 120 / 76;
-const SHIP_HULL_W = 270;
-const SHIP_SAUCER_TINT = '#4E8577';
-// Pas "okna" spodka - pozycja/rozmiar zmierzone WPROST z pliku (bbox białego
-// paska), jako ułamek szerokości/wysokości całego sprite'a. To ELIPSA (pas
-// dookoła spodka), nie okrągłe okno jak w rakiecie - stąd osobne W/H_FRAC
-// zamiast jednego R_FRAC, żeby poświata dała się rozciągnąć do kształtu pasa.
-const SHIP_WINDOW_X_FRAC = 0.496;
-const SHIP_WINDOW_Y_FRAC = 0.467;
-const SHIP_WINDOW_W_FRAC = 0.82;
-const SHIP_WINDOW_H_FRAC = 0.34;
+// --- Wygląd (Faza kosmicznego reskinu, wersja 3): PRAWDZIWY myśliwiec z
+// Kenney "Space Shooter Extension" (spaceShips_001, assets/ship_fighter.png,
+// CC0). Trzecia iteracja kadłuba: rakieta (spaceRockets_002, "za ludzka")
+// -> spodek/UFO (spaceStation_031) -> TA, po tym jak Tomek wysłał zrzut
+// folderu Ships z paczki i powiedział "użyj tych bardziej, są ładne".
+// W przeciwieństwie do dwóch poprzednich, TA bryła zostaje w NATYWNYCH
+// kolorach (czerwono-biało-fioletowa, zaostrzony nos, zamaszyste skrzydła,
+// fioletowy owalny kokpit) - żadnego przefarbowywania, dostała wyraźną
+// pochwałę wyglądu. SHIP_FIGHTER_ASPECT to proporcje PRAWDZIWEGO pliku
+// (198x188, prawie kwadratowy).
+const SHIP_FIGHTER_ASPECT = 198 / 188;
+const SHIP_HULL_H = 260;
+// Kokpit myśliwca - pozycja/rozmiar zmierzone WPROST z pliku (bbox
+// fioletowego owalu), jako ułamek szerokości/wysokości całego sprite'a.
+// W_FRAC/H_FRAC lekko powiększone względem samego konturu owalu, żeby
+// poświata delikatnie "przelewała się" na kadłub wokół, nie kończyła
+// twardo na krawędzi kokpitu.
+const SHIP_WINDOW_X_FRAC = 0.497;
+const SHIP_WINDOW_Y_FRAC = 0.705;
+const SHIP_WINDOW_W_FRAC = 0.22;
+const SHIP_WINDOW_H_FRAC = 0.36;
 // Zapala się STOPNIOWO wraz z ukończonymi modułami (litFraction w draw()) -
 // statek wizualnie "budzi się do życia" w miarę postępu, zamiast być cały
-// czas tym samym jednolitym pasem od pierwszego do ostatniego modułu.
+// czas tym samym jednolitym kokpitem od pierwszego do ostatniego modułu.
 const SHIP_WINDOW_GLOW_COLOR = '#7CFFD4';
 // Stała pozycja plamy uszkodzenia (ułamek hw/hh od środka) - CELOWO nie
-// losowa, żeby nie "skakała" między odświeżeniami strony. Dolny-lewy rąbek
-// spodka - z dala od etykiety (góra) i pasa okna (środek).
-const SHIP_DAMAGE_DX = -0.68;
-const SHIP_DAMAGE_DY = 0.58;
+// losowa, żeby nie "skakała" między odświeżeniami strony. Dolne prawe
+// skrzydło - z dala od etykiety (góra) i kokpitu (środek-dół).
+const SHIP_DAMAGE_DX = 0.55;
+const SHIP_DAMAGE_DY = 0.5;
 // Co ile ms z uszkodzenia leci odrobina dymu - tylko dopóki statek nie jest
 // naprawiony (this._won == false). Po naprawie plama + dym znikają.
 const SHIP_SMOKE_INTERVAL_MS = 1100;
@@ -109,8 +109,8 @@ class Ship {
     this.yRatio = 0.55;
     this.x = SHIP_WORLD_WIDTH * this.xRatio;
     this.y = SHIP_WORLD_HEIGHT * this.yRatio;
-    this.w = SHIP_HULL_W;
-    this.h = SHIP_HULL_W / SHIP_SAUCER_ASPECT;
+    this.h = SHIP_HULL_H;
+    this.w = SHIP_HULL_H * SHIP_FIGHTER_ASPECT;
 
     this.playerX = 0;
     this.playerY = 0;
@@ -379,7 +379,7 @@ class Ship {
     ctx.translate(this.x, this.y);
     ctx.rotate(-0.06);
 
-    this._drawSaucerBody(ctx, hw, hh, litFraction);
+    this._drawShipBody(ctx, hw, hh, litFraction);
     if (!this._won) this._drawDamageScorch(ctx, hw, hh);
 
     ctx.restore();
@@ -600,54 +600,28 @@ class Ship {
   }
 
   /**
-   * Przefarbowuje spodek (assets/ship_saucer.png) na obcy zielono-turkusowy
-   * odcień (SHIP_SAUCER_TINT) - overlay 'source-atop' przy alpha<1 (jak
-   * klepsydra Kompresora w machines.js _getRecoloredSprite), bo sprite jest
-   * prawie pozbawiony saturacji (metal tej paczki), więc hue-rotate nie
-   * miałby czego chwycić. Cache'owany raz w konstruktorze przy pierwszym
-   * użyciu - statek ma tylko JEDEN kolor, w przeciwieństwie do 5 maszyn.
+   * Kadłub: PRAWDZIWY myśliwiec z Kenney "Space Shooter Extension"
+   * (assets/ship_fighter.png, CC0) - trzecia iteracja (patrz komentarz przy
+   * SHIP_FIGHTER_ASPECT), zastępuje dawną ręcznie rysowaną elipsę "spodka" +
+   * kopułę + pierścień okienek. W NATYWNYCH kolorach - bez przefarbowywania
+   * (Tomek: "są ładne"), w przeciwieństwie do dwóch poprzednich wersji
+   * kadłuba. Jedyna pozostała animacja to poświata NA prawdziwym kokpicie
+   * sprite'a (SHIP_WINDOW_*_FRAC, zmierzone wprost z pliku, rysowana jako
+   * elipsa dopasowana do owalnego konturu kokpitu) - jaśniejsza wraz z
+   * litFraction (statek "budzi się" wraz z ukończonymi modułami), z krótkim
+   * przebłyskiem zaraz po ukończeniu (_moduleCompleteFlashUntil, ten sam
+   * wzorzec co dawny pierścień okienek rakiety/spodka).
    */
-  _getTintedSaucer() {
-    if (this._saucerCanvas) return this._saucerCanvas;
-    const img = window.spriteLoader && window.spriteLoader.get('ship_saucer');
-    if (!img || !img.complete || !img.naturalWidth) return null;
-    const w = img.naturalWidth, h = img.naturalHeight;
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const tctx = canvas.getContext('2d');
-    tctx.drawImage(img, 0, 0);
-    tctx.globalCompositeOperation = 'source-atop';
-    tctx.globalAlpha = 0.55;
-    tctx.fillStyle = SHIP_SAUCER_TINT;
-    tctx.fillRect(0, 0, w, h);
-    tctx.globalAlpha = 1;
-    this._saucerCanvas = canvas;
-    return canvas;
-  }
-
-  /**
-   * Kadłub: PRAWDZIWY spodek/UFO z Kenney "Space Shooter Extension"
-   * (assets/ship_saucer.png, CC0) - zastępuje dawną ręcznie rysowaną elipsę
-   * "spodka" + kopułę + pierścień okienek (i krótko, w międzyczasie, rakietę
-   * - patrz historia sesji). Jedyna pozostała animacja to poświata NA
-   * prawdziwym pasie "okna" sprite'a (SHIP_WINDOW_*_FRAC, zmierzone wprost z
-   * pliku, rysowana jako ELIPSA - pas okrąża spodek, nie jest okrągłym
-   * oknem jak w rakiecie) - jaśniejsza wraz z litFraction (statek "budzi
-   * się" wraz z ukończonymi modułami), z krótkim przebłyskiem zaraz po
-   * ukończeniu (_moduleCompleteFlashUntil, ten sam wzorzec co dawny
-   * pierścień okienek).
-   */
-  _drawSaucerBody(ctx, hw, hh, litFraction) {
-    const saucer = this._getTintedSaucer();
-    if (saucer) {
-      ctx.drawImage(saucer, -hw, -hh, hw * 2, hh * 2);
+  _drawShipBody(ctx, hw, hh, litFraction) {
+    const fighterImg = window.spriteLoader && window.spriteLoader.get('ship_fighter');
+    if (fighterImg && fighterImg.complete && fighterImg.naturalWidth) {
+      ctx.drawImage(fighterImg, -hw, -hh, hw * 2, hh * 2);
     } else {
       // Awaryjny fallback (plik się nie wczytał) - prosty szary owal,
       // wystarczający żeby statek nie zniknął całkiem z ekranu.
-      ctx.fillStyle = '#5B7A6E';
+      ctx.fillStyle = '#8B8B93';
       ctx.beginPath();
-      ctx.ellipse(0, 0, hw, hh * 0.7, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, hw * 0.7, hh, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
