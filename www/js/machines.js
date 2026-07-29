@@ -103,8 +103,8 @@ const MACHINE_DEFINITIONS = [
     // Oczyszczalnia (Faza progresji): rafinuje SZKŁO w KRYSZTAŁY - drugie,
     // droższe zastosowanie szkła obok Pieca (metal+szkło->stop). Szkło ma
     // więc teraz realny wybór: tańszy stop szybciej vs droższy kryształ.
-    // Brak własnego PNG - ma jednak WŁASNĄ bespoke bryłę (_drawRefineryMachine
-    // w draw()), nie generyczny fallback jak recycle_a/press_b.
+    // Brak gotowego PNG w stylu recycle_a/press_b - ma WŁASNĄ bryłę złożoną z
+    // prawdziwego sprite'a Kenney (_drawRefineryMachine w draw()).
     // Umieszczona w Strefie Bagiennej (x>0.62, y>0.32 - tam spawnuje szkło),
     // po przeciwnej stronie niż Piec, żeby nie zlewały się wizualnie.
     // Bramkowana progiem zarobku (PROGRESSION_UNLOCKS 'refinery_b' w
@@ -130,8 +130,8 @@ const MACHINE_DEFINITIONS = [
     // reszta maszyn. Odłamek (surowiec bez żadnego przetwarzania, patrz
     // komentarz przy crystal_shard w market.js) dostaje tu drugie,
     // wolniejsze zastosowanie obok bezpośredniej sprzedaży - ten sam duch co
-    // Oczyszczalnia dla szkła. Brak pliku PNG (jak Oczyszczalnia) - bespoke
-    // proceduralna bryła, patrz _drawCrystalPolisherMachine.
+    // Oczyszczalnia dla szkła. Bryła złożona z prawdziwego sprite'a Kenney,
+    // patrz _drawCrystalPolisherMachine.
     id: 'crystal_polisher',
     label: 'Szlifiernia Kryształów',
     xRatio: 1.15,
@@ -1230,41 +1230,32 @@ class MachineManager {
   }
 
   /**
-   * Oczyszczalnia - bespoke proceduralna bryła (brak pliku PNG w projekcie),
-   * w TYM SAMYM języku wizualnym co trzy prawdziwe sprite'y (Recykler/Prasa/
-   * Piec): lej z surowcem u góry, korpus z gradientem, "okienko" pokazujące
-   * sam proces, panel kontrolny (gauge + lampki), przenośnik z gotowym
-   * produktem z boku. Generyczny fallback reszty maszyn (płaski gradient +
-   * "żeberka" + wycentrowane emoji) obok trzech prawdziwych sprite'ów
-   * wyglądał jak niedokończony placeholder - stąd osobna metoda zamiast
-   * dorzucenia kolejnego warunku do tamtego bloku.
+   * Oczyszczalnia - CZWARTA maszyna "Fazy kosmicznego reskinu, wersja 2"
+   * (po Reaktorze/Kompresorze/Piecu). Bryła to teraz prawdziwa kapsuła z
+   * Kenney "Space Shooter Extension" (spaceStation_001,
+   * assets/machines/sci_capsule.png, CC0) - podłużny moduł z jasnym paskiem
+   * "okna" na całej długości, przefarbowany na fioletowo (overlay - kapsuła
+   * jest prawie pozbawiona saturacji, jak klepsydra Kompresora, więc hue-
+   * rotate sam nie wystarczy). Rdzeń (sci_core.png) osadzony na środku paska.
    */
   _drawRefineryMachine(ctx, m, isActive) {
-    // SKALA: trzy prawdziwe sprite'y (recycle/press/piechutniczy.png) zajmują
-    // na ekranie ~120x120 px - zmierzone wprost z nieprzezroczystego obszaru
-    // PNG-ów przeskalowanego przez spriteSize (m.w*1.2). Pierwsza wersja tej
-    // maszyny rysowała korpus na pełne m.w/m.h (200) PLUS lej nad nim i
-    // przenośnik z boku, czyli ~340x310 px - prawie trzykrotnie więcej niż
-    // sąsiedzi. To była GŁÓWNA przyczyna, dla której odstawała, ważniejsza
-    // niż kolory. Wszystko liczymy więc od U (jednostki), nie od m.w.
     const U = MACHINE_PROC_UNIT;
     const cx = m.x;
     const cy = m.y;
     const now = performance.now();
 
-    // Paleta: przygaszona, bez czerni. PNG-i NIE mają twardych, ciemnych
-    // konturów ani nasyconych kolorów - mają płaskie plamy z delikatnym
-    // cieniowaniem. Poprzednia wersja miała jaskrawy fiolet + wyraźny ciemny
-    // obrys, przez co czytała się jak naklejka obok tamtych.
-    const body = isActive ? this._lighten('#8E6BC4', MACHINE_LIGHTEN_AMOUNT) : '#8E6BC4';
-    const bodyDark = this._lighten(body, -34);
-    const metal = '#8A94A6';
-    const metalDark = '#6C7585';
+    const hull = isActive ? this._lighten('#4B4359', MACHINE_LIGHTEN_AMOUNT) : '#4B4359';
+    const hullDark = this._lighten(hull, -34);
+    const accent = '#8E6BC4';
+    const accentGlow = '#D5C4F0';
 
-    // --- Lej u góry (ten sam trapez co u sąsiadów) ---
-    const hopW = U * 0.62, hopNeck = U * 0.24;
-    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.34;
-    ctx.fillStyle = metal;
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.28);
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.66, U * 0.2, 'rgba(213, 196, 240, 0.55)', 0.00055, 6);
+
+    // --- Lej u góry, ze szkłem czekającym na wsyp. ---
+    const hopW = U * 0.5, hopNeck = U * 0.2;
+    const hopTop = cy - U * 0.66, hopBot = cy - U * 0.46;
+    ctx.fillStyle = hull;
     ctx.beginPath();
     ctx.moveTo(cx - hopW / 2, hopTop);
     ctx.lineTo(cx + hopW / 2, hopTop);
@@ -1272,8 +1263,7 @@ class MachineManager {
     ctx.lineTo(cx - hopNeck / 2, hopBot);
     ctx.closePath();
     ctx.fill();
-    // Cieniowany bok leja - lekka bryłowatość, tak jak w PNG-ach.
-    ctx.fillStyle = metalDark;
+    ctx.fillStyle = hullDark;
     ctx.beginPath();
     ctx.moveTo(cx + hopW * 0.16, hopTop);
     ctx.lineTo(cx + hopW / 2, hopTop);
@@ -1281,77 +1271,61 @@ class MachineManager {
     ctx.lineTo(cx + hopNeck * 0.1, hopBot);
     ctx.closePath();
     ctx.fill();
-
-    // Szkło czekające na wsyp - wystaje z leja, jak butelki u Recyklera.
     ['#8ED8E8', '#C3EAF2'].forEach((col, i) => {
       ctx.fillStyle = col;
-      const gx = cx + (i === 0 ? -U * 0.14 : U * 0.1);
+      const gx = cx + (i === 0 ? -U * 0.1 : U * 0.08);
       const gy = hopTop - U * 0.03;
       ctx.beginPath();
-      ctx.moveTo(gx, gy - U * 0.09);
-      ctx.lineTo(gx + U * 0.05, gy + U * 0.03);
-      ctx.lineTo(gx - U * 0.05, gy + U * 0.03);
+      ctx.moveTo(gx, gy - U * 0.08);
+      ctx.lineTo(gx + U * 0.045, gy + U * 0.02);
+      ctx.lineTo(gx - U * 0.045, gy + U * 0.02);
       ctx.closePath();
       ctx.fill();
     });
 
-    // --- Korpus: zaokrąglony prostokąt, jaśniejsza lewa / ciemniejsza prawa
-    // strona (to samo proste cieniowanie co w PNG-ach, zamiast gradientu). ---
-    const bw = U * 0.78, bh = U * 0.72;
-    const bx = cx - bw / 2, by = cy - U * 0.34;
-    ctx.fillStyle = body;
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.fill();
-    ctx.save();
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.clip();
-    ctx.fillStyle = bodyDark;
-    ctx.fillRect(bx + bw * 0.62, by, bw * 0.38, bh);
-    ctx.restore();
-
-    // --- Okienko procesu: bulgocząca kadź. Mniejsze i wtopione w korpus,
-    // nie dominujące jak wcześniej. ---
-    const ww = bw * 0.5, wh = bh * 0.42;
-    const wx = cx - ww / 2 - bw * 0.06, wy = by + bh * 0.16;
-    ctx.fillStyle = '#3B2E57';
-    this._traceRoundedRect(ctx, wx - 2, wy - 2, ww + 4, wh + 4, 4);
-    ctx.fill();
-    ctx.save();
-    this._traceRoundedRect(ctx, wx, wy, ww, wh, 3);
-    ctx.clip();
-    ctx.fillStyle = '#B9A0DE';
-    ctx.fillRect(wx, wy, ww, wh);
-    for (let i = 0; i < 3; i++) {
-      const t = ((now * (0.0004 + i * 0.00008) + i * 0.4) % 1);
-      ctx.globalAlpha = 0.5 * (1 - t);
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(wx + ww * (0.25 + i * 0.25), wy + wh * (1 - t), 1.6, 0, Math.PI * 2);
+    // --- Kapsuła: PRAWDZIWA bryła Kenney (sci_capsule.png) przefarbowana na
+    // fioletowo overlayem (jak klepsydra Kompresora - prawie bez saturacji). ---
+    const capW = U * 1.05;
+    const capH = capW * (72 / 168);
+    const capTop = cy - U * 0.18;
+    const capLeft = cx - capW / 2;
+    const capsuleSprite = this._getRecoloredSprite('machine_sci_capsule', -69, 1.5, 0.08, [accent, 0.55]);
+    if (capsuleSprite) {
+      ctx.drawImage(capsuleSprite, capLeft, capTop, capW, capH);
+    } else {
+      ctx.fillStyle = hull;
+      this._traceRoundedRect(ctx, capLeft, capTop, capW, capH, U * 0.08);
       ctx.fill();
     }
-    ctx.globalAlpha = 1;
-    ctx.restore();
 
-    // --- Panel z kolorowymi kwadracikami - dokładnie ten detal, który mają
-    // wszystkie trzy PNG-owe maszyny (u nich po prawej stronie korpusu). ---
-    const px0 = bx + bw * 0.72, py0 = by + bh * 0.2, ps = U * 0.055;
-    [['#E8574B', 0], ['#F2C14E', 1], ['#63C267', 2]].forEach(([col, i]) => {
-      ctx.fillStyle = col;
-      ctx.fillRect(px0, py0 + i * ps * 1.7, ps, ps);
-    });
+    // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana na fioletowo,
+    // osadzona na środku paska "okna" kapsuły - z "oddychaniem" skalą. ---
+    const winCx = cx, winCy = capTop + capH * 0.5;
+    const breath = 1 + 0.05 * Math.sin(now * 0.0035);
+    const winR = capH * 0.62 * breath;
+    const coreSprite = this._getRecoloredSprite('machine_sci_core', 250, 1.25, 0.4);
+    if (coreSprite) {
+      ctx.drawImage(coreSprite, winCx - winR, winCy - winR, winR * 2, winR * 2);
+    } else {
+      ctx.fillStyle = accentGlow;
+      ctx.beginPath();
+      ctx.arc(winCx, winCy, winR * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    this._drawGlassHighlight(ctx, winCx, winCy, winR);
 
-    // --- Przenośnik po prawej (jak u sąsiadów) + gotowy kryształ. ---
-    const beltY = cy + U * 0.2, beltX = cx + bw * 0.42, beltW = U * 0.34, beltH = U * 0.1;
-    ctx.fillStyle = metal;
+    // --- Przenośnik po prawej + gotowy kryształ. ---
+    const beltY = cy + U * 0.24, beltX = cx + capW * 0.32, beltW = U * 0.34, beltH = U * 0.1;
+    ctx.fillStyle = hull;
     this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
     ctx.fill();
-    ctx.fillStyle = metalDark;
+    ctx.fillStyle = hullDark;
     [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
       ctx.beginPath();
       ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
       ctx.fill();
     });
-    ctx.fillStyle = '#C9A6F0';
+    ctx.fillStyle = m.outputColor;
     const kx = beltX + beltW * 0.55, ky = beltY - beltH * 0.75;
     ctx.beginPath();
     ctx.moveTo(kx, ky - U * 0.07);
@@ -1360,25 +1334,18 @@ class MachineManager {
     ctx.lineTo(kx - U * 0.045, ky);
     ctx.closePath();
     ctx.fill();
-
-    // --- Nóżki - PNG-i stoją na krótkich podporach, nie na samym korpusie. ---
-    ctx.fillStyle = metalDark;
-    [-bw * 0.3, bw * 0.22].forEach((dx) => {
-      ctx.fillRect(cx + dx, by + bh, U * 0.08, U * 0.06);
-    });
   }
 
   /**
-   * Szlifiernia Kryształów - druga bespoke proceduralna bryła (brak pliku
-   * PNG, jak Oczyszczalnia wyżej - patrz jej komentarz o "niedokończonym
-   * placeholderze"). Ten sam język wizualny (lej/hopper, korpus, okienko,
-   * panel, przenośnik, nóżki), ale paleta lodowato-turkusowa zamiast
-   * fioletowej Oczyszczalni - żeby dwie bespoke maszyny obok siebie w Grani/
-   * na jej granicy nie wyglądały jak duplikat tej samej bryły w innym
-   * kolorze. Różni się głównie oknem procesu: zamiast bulgoczącej kadzi,
-   * WIRUJĄCA tarcza szlifierska (kilka trójkątnych "zębów" obracających się
-   * wokół środka) - inny, bardziej "mechaniczny" niż "chemiczny" ruch,
-   * pasujący do tematu szlifowania twardego kryształu, nie warzenia cieczy.
+   * Szlifiernia Kryształów - PIĄTA i ostatnia maszyna "Fazy kosmicznego
+   * reskinu, wersja 2". Bryła to prawdziwy stożek zbiegający się w oszlifowany
+   * ośmiokątny klejnot z Kenney "Space Shooter Extension" (spaceStation_028,
+   * assets/machines/sci_grinder.png, CC0) - naturalnie fasetowany kształt
+   * pasuje tematycznie do kryształu BEZ ŻADNEJ edycji. Stożek zostaje
+   * neutralnie metalowy (saturacja=0, hue-rotate nie ma czego chwycić), ale
+   * klejnot na czubku dostaje turkusowy tint przez osobny, PRZYCIĘTY
+   * (clipowany) drugi drawImage - jedyny sposób pomalować TYLKO fragment
+   * sprite'a, skoro _getRecoloredSprite działa na całym obrazku naraz.
    */
   _drawCrystalPolisherMachine(ctx, m, isActive) {
     const U = MACHINE_PROC_UNIT;
@@ -1386,17 +1353,18 @@ class MachineManager {
     const cy = m.y;
     const now = performance.now();
 
-    const body = isActive ? this._lighten('#3F9E97', MACHINE_LIGHTEN_AMOUNT) : '#3F9E97';
-    const bodyDark = this._lighten(body, -34);
-    const metal = '#8A94A6';
-    const metalDark = '#6C7585';
+    const hull = isActive ? this._lighten('#39514F', MACHINE_LIGHTEN_AMOUNT) : '#39514F';
+    const hullDark = this._lighten(hull, -34);
+    const accent = '#4DD0C8';
+    const accentGlow = '#E1F5FE';
 
-    // --- Lej u góry - ten sam trapez co u sąsiadów, z odłamkiem kryształu
-    // (fioletowy romb, ten sam kolor co crystal_shard w items.js) czekającym
-    // na wsyp, zamiast butelek szkła. ---
-    const hopW = U * 0.62, hopNeck = U * 0.24;
-    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.34;
-    ctx.fillStyle = metal;
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.3);
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.68, U * 0.22, 'rgba(225, 245, 254, 0.55)', 0.00065, 7);
+
+    // --- Lej u góry, z odłamkiem kryształu czekającym na wsyp. ---
+    const hopW = U * 0.4, hopNeck = U * 0.16;
+    const hopTop = cy - U * 0.66, hopBot = cy - U * 0.5;
+    ctx.fillStyle = hull;
     ctx.beginPath();
     ctx.moveTo(cx - hopW / 2, hopTop);
     ctx.lineTo(cx + hopW / 2, hopTop);
@@ -1404,92 +1372,83 @@ class MachineManager {
     ctx.lineTo(cx - hopNeck / 2, hopBot);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = metalDark;
-    ctx.beginPath();
-    ctx.moveTo(cx + hopW * 0.16, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx + hopNeck * 0.1, hopBot);
-    ctx.closePath();
-    ctx.fill();
-
     ctx.fillStyle = '#9575CD';
     const gx = cx, gy = hopTop - U * 0.02;
     ctx.beginPath();
-    ctx.moveTo(gx, gy - U * 0.09);
-    ctx.lineTo(gx + U * 0.055, gy);
-    ctx.lineTo(gx, gy + U * 0.09);
-    ctx.lineTo(gx - U * 0.055, gy);
+    ctx.moveTo(gx, gy - U * 0.08);
+    ctx.lineTo(gx + U * 0.05, gy);
+    ctx.lineTo(gx, gy + U * 0.08);
+    ctx.lineTo(gx - U * 0.05, gy);
     ctx.closePath();
     ctx.fill();
 
-    // --- Korpus: identyczna geometria co Oczyszczalnia (zaokrąglony
-    // prostokąt, jaśniejsza lewa / ciemniejsza prawa strona), inna paleta. ---
-    const bw = U * 0.78, bh = U * 0.72;
-    const bx = cx - bw / 2, by = cy - U * 0.34;
-    ctx.fillStyle = body;
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.fill();
+    // --- Szlifierka: PRAWDZIWA bryła Kenney (sci_grinder.png) - stożek
+    // metalowy (bez tinta) zbiegający w klejnot (tint turkusowy TYLKO na
+    // prawych ~40% szerokości, gdzie faktycznie jest klejnot). Delikatne
+    // kołysanie kątem (nie pełny obrót - stożek ma kierunek) w rytm "pracy". ---
+    const grindW = U * 1.08;
+    const grindH = grindW * (89 / 164);
+    const grindTop = cy - U * 0.14;
+    const grindLeft = cx - grindW / 2;
+    const rock = Math.sin(now * 0.003) * 0.025;
+    const grinderNative = window.spriteLoader && window.spriteLoader.get('machine_sci_grinder');
+    const grinderTinted = this._getRecoloredSprite('machine_sci_grinder', 150, 1.4, 0.08, [accent, 0.6]);
     ctx.save();
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.clip();
-    ctx.fillStyle = bodyDark;
-    ctx.fillRect(bx + bw * 0.62, by, bw * 0.38, bh);
-    ctx.restore();
-
-    // --- Okienko procesu: WIRUJĄCA tarcza szlifierska (kilka trójkątnych
-    // "zębów" wokół środka, obracających się w czasie) - zamiast bulgoczącej
-    // kadzi Oczyszczalni, mechaniczny ruch pasujący do szlifowania. ---
-    const ww = bw * 0.5, wh = bh * 0.42;
-    const wx = cx - ww / 2 - bw * 0.06, wy = by + bh * 0.16;
-    ctx.fillStyle = '#1B3A38';
-    this._traceRoundedRect(ctx, wx - 2, wy - 2, ww + 4, wh + 4, 4);
-    ctx.fill();
-    ctx.save();
-    this._traceRoundedRect(ctx, wx, wy, ww, wh, 3);
-    ctx.clip();
-    ctx.fillStyle = '#1B3A38';
-    ctx.fillRect(wx, wy, ww, wh);
-    const wheelCx = wx + ww / 2, wheelCy = wy + wh / 2;
-    const wheelR = Math.min(ww, wh) * 0.42;
-    const spin = (now * 0.004) % (Math.PI * 2);
-    const teeth = 6;
-    for (let i = 0; i < teeth; i++) {
-      const a = spin + (i / teeth) * Math.PI * 2;
-      const tx = wheelCx + Math.cos(a) * wheelR;
-      const ty = wheelCy + Math.sin(a) * wheelR;
-      ctx.fillStyle = i % 2 === 0 ? '#B2EBE6' : '#7FD8D0';
-      ctx.beginPath();
-      ctx.arc(tx, ty, wheelR * 0.22, 0, Math.PI * 2);
+    ctx.translate(cx, grindTop + grindH / 2);
+    ctx.rotate(rock);
+    ctx.translate(-cx, -(grindTop + grindH / 2));
+    if (grinderNative && grinderNative.complete && grinderNative.naturalWidth) {
+      ctx.drawImage(grinderNative, grindLeft, grindTop, grindW, grindH);
+      if (grinderTinted) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(grindLeft + grindW * 0.62, grindTop, grindW * 0.38, grindH);
+        ctx.clip();
+        ctx.drawImage(grinderTinted, grindLeft, grindTop, grindW, grindH);
+        ctx.restore();
+      }
+    } else {
+      ctx.fillStyle = hull;
+      this._traceRoundedRect(ctx, grindLeft, grindTop, grindW, grindH, U * 0.06);
       ctx.fill();
     }
-    ctx.fillStyle = '#E1F5FE';
-    ctx.beginPath();
-    ctx.arc(wheelCx, wheelCy, wheelR * 0.32, 0, Math.PI * 2);
-    ctx.fill();
     ctx.restore();
 
-    // --- Panel z kolorowymi kwadracikami - ten sam detal co u sąsiadów. ---
-    const px0 = bx + bw * 0.72, py0 = by + bh * 0.2, ps = U * 0.055;
-    [['#E8574B', 0], ['#F2C14E', 1], ['#63C267', 2]].forEach(([col, i]) => {
-      ctx.fillStyle = col;
-      ctx.fillRect(px0, py0 + i * ps * 1.7, ps, ps);
-    });
+    // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana turkusowo,
+    // osadzona na klejnocie - iskrzy, jakby właśnie się szlifował. ---
+    const winCx = cx + grindW * 0.32, winCy = grindTop + grindH * 0.5;
+    const pulse = 1 + 0.07 * Math.sin(now * 0.006);
+    const winR = grindH * 0.34 * pulse;
+    const coreSprite = this._getRecoloredSprite('machine_sci_core', 163, 1.2, 0.4);
+    if (coreSprite) {
+      ctx.drawImage(coreSprite, winCx - winR, winCy - winR, winR * 2, winR * 2);
+    } else {
+      ctx.fillStyle = accentGlow;
+      ctx.beginPath();
+      ctx.arc(winCx, winCy, winR * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const sparkle = this._getTintedFx('fx_flare', '#FFFFFF');
+    if (sparkle) {
+      const s = winR * 0.7 * (0.5 + 0.5 * Math.sin(now * 0.008));
+      ctx.globalAlpha = 0.8;
+      ctx.drawImage(sparkle, winCx - s / 2, winCy - s / 2, s, s);
+      ctx.globalAlpha = 1;
+    }
+    this._drawGlassHighlight(ctx, winCx, winCy, winR);
 
-    // --- Przenośnik po prawej + gotowy, oszlifowany kryształ (blady,
-    // prawie biały - outputColor #E1F5FE, wyraźnie jaśniejszy niż surowy
-    // fioletowy odłamek w leju powyżej, żeby widać było "przemianę"). ---
-    const beltY = cy + U * 0.2, beltX = cx + bw * 0.42, beltW = U * 0.34, beltH = U * 0.1;
-    ctx.fillStyle = metal;
+    // --- Przenośnik po prawej + gotowy, oszlifowany kryształ. ---
+    const beltY = cy + U * 0.26, beltX = cx + grindW * 0.34, beltW = U * 0.34, beltH = U * 0.1;
+    ctx.fillStyle = hull;
     this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
     ctx.fill();
-    ctx.fillStyle = metalDark;
+    ctx.fillStyle = hullDark;
     [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
       ctx.beginPath();
       ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
       ctx.fill();
     });
-    ctx.fillStyle = '#E1F5FE';
+    ctx.fillStyle = m.outputColor;
     const kx = beltX + beltW * 0.55, ky = beltY - beltH * 0.75;
     ctx.beginPath();
     ctx.moveTo(kx, ky - U * 0.07);
@@ -1498,12 +1457,6 @@ class MachineManager {
     ctx.lineTo(kx - U * 0.045, ky);
     ctx.closePath();
     ctx.fill();
-
-    // --- Nóżki. ---
-    ctx.fillStyle = metalDark;
-    [-bw * 0.3, bw * 0.22].forEach((dx) => {
-      ctx.fillRect(cx + dx, by + bh, U * 0.08, U * 0.06);
-    });
   }
 
   /**

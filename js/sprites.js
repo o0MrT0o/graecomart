@@ -49,7 +49,19 @@ const SPRITE_PATH_CANDIDATES = {
   machine_sci_module: ['assets/machines/sci_module.png'],
   machine_sci_press: ['assets/machines/sci_press.png'],
   machine_sci_dome: ['assets/machines/sci_dome.png'],
-  machine_sci_core: ['assets/machines/sci_core.png']
+  machine_sci_core: ['assets/machines/sci_core.png'],
+  // Dwie ostatnie maszyny reskinu (machines.js, _drawRefineryMachine/
+  // _drawCrystalPolisherMachine) - kapsuła z jasnym paskiem "okna"
+  // (spaceStation_001) dla Oczyszczalni, stożek zbiegający się w oszlifowany
+  // ośmiokątny klejnot (spaceStation_028) dla Szlifierni - jego naturalnie
+  // fasetowany kształt pasuje tematycznie do kryształów bez żadnej edycji.
+  machine_sci_capsule: ['assets/machines/sci_capsule.png'],
+  machine_sci_grinder: ['assets/machines/sci_grinder.png'],
+  // Rakieta (spaceRockets_002) - nowy kadłub Rozbitego Statku (ship.js),
+  // zamiast rysowanego ręcznie "spodka" - pionowa forma z zadartymi
+  // stateczniekami u dołu i oknem, dokładnie w duchu "statek do naprawy
+  // i wystrzelenia", nie latający talerz.
+  ship_rocket: ['assets/ship_rocket.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd
