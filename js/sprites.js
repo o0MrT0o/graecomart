@@ -63,8 +63,16 @@ const SPRITE_PATH_CANDIDATES = {
   // drewniana bryła + pasiasta czerwono-kremowa markiza (klasyczny stragan
   // targowy) - zastąpione TĄ SAMĄ techniką co maszyny (prawdziwa bryła
   // Kenney "Space Shooter Extension" + hue-shift _getRecoloredSprite):
-  //   sci_terminal - płaski panel z jasnym "ekranem" na górze
-  //                  (spaceStation_030) - korpus terminala.
+  //   sci_terminal - płaski, żeberkowany panel (spaceStation_003) - korpus
+  //                  terminala. BYŁ spaceStation_030 (bryła z jasnym
+  //                  "ekranem" u góry) - ALE ten kształt zwęża się mocno na
+  //                  górze (pełną szerokość ma dopiero od ~28% do ~69%
+  //                  wysokości), więc prostokątny ekran cennika (draw(),
+  //                  liczony jako stały margines od bryły) wystawał poza
+  //                  widoczną sylwetkę w górnych rogach - Tomek: "czemu
+  //                  ekran z cenami tak wystaje poza obręb". 003 wypełnia
+  //                  CAŁY swój prostokąt na każdej wysokości (zero zwężenia),
+  //                  więc margines zawsze mieści się w widocznej bryle.
   //   sci_antenna  - smukły maszt z kopułą (spaceStation_020) - zastępuje
   //                  markizę, sterczy nad korpusem jak antena łącznościowa.
   machine_sci_terminal: ['assets/machines/sci_terminal.png'],

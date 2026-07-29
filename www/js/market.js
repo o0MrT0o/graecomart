@@ -275,7 +275,7 @@ class TradingPost {
 
   /**
    * Viewport culling (ten sam wzorzec co items.js/machines.js) - jedna
-   * instancja, ale rysowanie (nogi, kanistry, sprite korpusu, antena)
+   * instancja, ale rysowanie (nogi, sprite korpusu, antena)
    * kosztuje niezależnie od tego ile ich jest, więc szkoda płacić za nią
    * na każdej klatce, gdy gracz jest na drugim końcu mapy. update() (ceny,
    * timer sprzedaży) działa zawsze, niezależnie od widoczności.
@@ -301,11 +301,10 @@ class TradingPost {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Nogi + skrzynki towaru - PRZED cieniem/korpusem, w świecie (nie w
-    // przechylonej/przesuniętej grupie), żeby zawsze stały prosto na ziemi -
-    // ten sam wzorzec co _drawStruts w ship.js.
+    // Nogi - PRZED cieniem/korpusem, w świecie (nie w przechylonej/
+    // przesuniętej grupie), żeby zawsze stały prosto na ziemi - ten sam
+    // wzorzec co _drawStruts w ship.js.
     this._drawLegs(ctx, hw, hh);
-    this._drawGoodsCrates(ctx, hw, hh);
 
     // Cień korpusu.
     ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
@@ -466,49 +465,6 @@ class TradingPost {
       ctx.moveTo(t * hw * 0.85, hh * 0.55);
       ctx.lineTo(t * hw * 1.05, hh + 10);
       ctx.stroke();
-    });
-    ctx.restore();
-  }
-
-  /**
-   * Trzy małe kanistry/pojemniki ładunku obok terminala - czysto dekoracyjne
-   * (nie wpływają na sprzedaż), wypełniają pustą przestrzeń u podstawy.
-   * BYŁY jednolicie kolorowe skrzynki (niebieska/fioletowa/piaskowa) -
-   * czytały się jak skrzynki z bazaru. Teraz neutralny metalowy korpus (ten
-   * sam gunmetal co fallback korpusu terminala) + kolorowy pasek "typu
-   * ładunku" u góry - to samo rozróżnienie kolorem co dawniej, ale w formie
-   * przemysłowego oznaczenia kanistra, nie pomalowanej na całość skrzynki.
-   */
-  _drawGoodsCrates(ctx, hw, hh) {
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    const crates = [
-      { dx: -hw * 1.2, dy: hh * 0.5, size: 20, accent: '#4FC3F7' },
-      { dx: -hw * 0.92, dy: hh * 0.78, size: 15, accent: '#BA68C8' },
-      { dx: hw * 1.15, dy: hh * 0.55, size: 18, accent: '#FFB74D' }
-    ];
-    crates.forEach((c) => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-      ctx.beginPath();
-      ctx.ellipse(c.dx, c.dy + c.size * 0.42, c.size * 0.55, c.size * 0.16, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      const bodyColor = '#54666E';
-      const grad = ctx.createLinearGradient(c.dx, c.dy - c.size / 2, c.dx, c.dy + c.size / 2);
-      grad.addColorStop(0, this._lighten(bodyColor, 26));
-      grad.addColorStop(1, this._lighten(bodyColor, -22));
-      ctx.fillStyle = grad;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.lineWidth = 1.5;
-      this._traceRoundedRect(ctx, c.dx - c.size / 2, c.dy - c.size / 2, c.size, c.size, 3);
-      ctx.fill();
-      ctx.stroke();
-
-      // Pasek typu ładunku - wąski, u góry kanistra, kolor przejęty z
-      // dawnej skrzynki (rozróżnienie zostaje, tylko mniej dominujące).
-      const bandH = c.size * 0.24;
-      ctx.fillStyle = c.accent;
-      ctx.fillRect(c.dx - c.size / 2 + 1.5, c.dy - c.size / 2 + 1.5, c.size - 3, bandH);
     });
     ctx.restore();
   }
