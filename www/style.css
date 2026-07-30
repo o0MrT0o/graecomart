@@ -1356,6 +1356,14 @@ canvas {
 .ui-icon--brush { -webkit-mask-image: url('assets/ui/icons/toolBrush.png'); mask-image: url('assets/ui/icons/toolBrush.png'); }
 .ui-icon--coin { -webkit-mask-image: url('assets/ui/icons/coin.png'); mask-image: url('assets/ui/icons/coin.png'); }
 .ui-icon--chart { -webkit-mask-image: url('assets/ui/icons/leaderboardsSimple.png'); mask-image: url('assets/ui/icons/leaderboardsSimple.png'); }
+/* Osiągnięcia na późną grę (economy.js: ACHIEVEMENTS, tier 3) - realne
+   ikonki Kenney zamiast kolejnych ręcznie rysowanych SVG. */
+.ui-icon--medal1 { -webkit-mask-image: url('assets/ui/icons/medal1.png'); mask-image: url('assets/ui/icons/medal1.png'); }
+.ui-icon--medal2 { -webkit-mask-image: url('assets/ui/icons/medal2.png'); mask-image: url('assets/ui/icons/medal2.png'); }
+.ui-icon--crown { -webkit-mask-image: url('assets/ui/icons/crown.png'); mask-image: url('assets/ui/icons/crown.png'); }
+.ui-icon--flag { -webkit-mask-image: url('assets/ui/icons/flag.png'); mask-image: url('assets/ui/icons/flag.png'); }
+.ui-icon--target { -webkit-mask-image: url('assets/ui/icons/target.png'); mask-image: url('assets/ui/icons/target.png'); }
+.ui-icon--diamond { -webkit-mask-image: url('assets/ui/icons/diamond.png'); mask-image: url('assets/ui/icons/diamond.png'); }
 
 /* ==========================================================================
    Tooltip

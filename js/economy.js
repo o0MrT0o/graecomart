@@ -485,6 +485,15 @@ const DAILY_CHALLENGE_TEMPLATES = [
 // jedyny mnożnik zarobku, który rośnie z każdym kolejnym przebiegiem
 // niezależnie od bieżących ulepszeń.
 const ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK = 0.01;
+
+// Ikonka-plakietka z PRAWDZIWEGO assetu Kenney (kółko tła + .ui-icon maska,
+// ten sam wzorzec co kenneyIcon() w getStatsCatalog niżej) - dla tier-3
+// osiągnięć (późna gra) NIE rysujemy już kolejnych ręcznych SVG (Tomek:
+// "użyj paczek do tego"), tylko sięgamy po realne tekstury tam, gdzie
+// pasujący kształt istnieje w już pobranych paczkach.
+const _achKenneyIcon = (maskClass, color) =>
+  `<span class="ui-shop-item__icon-badge" style="background:${color}26"><span class="ui-icon ui-icon--${maskClass}" style="color:${color}" aria-hidden="true"></span></span>`;
+
 const ACHIEVEMENTS = [
   { id: 'first_pickup', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81C784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V11"/><path d="M12 11C12 6 8 5 5 5c0 4 2 6.5 7 6Z" fill="#81C784" fill-opacity="0.3"/><path d="M12 14C12 10 15 8.5 18 8c0 3.5-1.5 6-6 6Z" fill="#81C784" fill-opacity="0.3"/></svg>', name: 'Pierwszy krok', desc: 'Zbierz pierwszy surowiec', stat: 'itemsCollected', target: 1 },
   { id: 'collector_100', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#66BB6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.9-5.4"/><path d="M20 3v5h-5"/><path d="M20 12a8 8 0 0 1-13.9 5.4"/><path d="M4 21v-5h5"/></svg>', name: 'Recyklingowicz', desc: 'Zbierz łącznie 100 surowców', stat: 'itemsCollected', target: 100 },
@@ -498,7 +507,24 @@ const ACHIEVEMENTS = [
   { id: 'planets_3', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#B39DDB" stroke-width="1.8"><circle cx="9" cy="12" r="4.5" fill="#B39DDB" fill-opacity="0.25"/><ellipse cx="9" cy="12" rx="7.5" ry="2.4" transform="rotate(-18 9 12)"/><path d="M18 5 18.6 6.6 20.2 7.2 18.6 7.8 18 9.4 17.4 7.8 15.8 7.2 17.4 6.6Z" fill="#B39DDB" stroke="none"/><path d="M20 15 20.4 16 21.4 16.4 20.4 16.8 20 17.8 19.6 16.8 18.6 16.4 19.6 16Z" fill="#B39DDB" stroke="none"/></svg>', name: 'Podróżnik', desc: 'Ukończ 3 planety', stat: 'planetsCompleted', target: 3 },
   { id: 'modules_5', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#B0BEC5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 4.5a4.5 4.5 0 0 0-5.9 5L4 15l2 2 5.5-5.6a4.5 4.5 0 0 0 5-5.9l-2.9 2.9-2-2Z" fill="#B0BEC5" fill-opacity="0.2"/></svg>', name: 'Mechanik', desc: 'Ukończ 5 modułów statku', stat: 'shipModulesCompleted', target: 5 },
   { id: 'streak_3', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="#FF7043" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c1 1 1.5 2.3 1.5 3.5A4.5 4.5 0 0 1 12 18a5.5 5.5 0 0 1-5.5-5.5C6.5 8 9 6 12 2Z"/></svg>', name: 'Codzienny gracz', desc: 'Zaloguj się 3 dni z rzędu', stat: 'maxLoginStreak', target: 3 },
-  { id: 'challenges_5', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#CE93D8" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2" fill="#CE93D8" fill-opacity="0.15"/><path d="M4 9.5h16"/><path d="M8 3v6.5M16 3v6.5" stroke-linecap="round"/><path d="M8.5 15 10.5 17 15.5 12" stroke-linecap="round" stroke-linejoin="round"/></svg>', name: 'Wyzwaniowiec', desc: 'Odbierz 5 wyzwań dnia', stat: 'challengesClaimed', target: 5 }
+  { id: 'challenges_5', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#CE93D8" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2" fill="#CE93D8" fill-opacity="0.15"/><path d="M4 9.5h16"/><path d="M8 3v6.5M16 3v6.5" stroke-linecap="round"/><path d="M8.5 15 10.5 17 15.5 12" stroke-linecap="round" stroke-linejoin="round"/></svg>', name: 'Wyzwaniowiec', desc: 'Odbierz 5 wyzwań dnia', stat: 'challengesClaimed', target: 5 },
+  // --- Tier 3 (późna gra) - dla graczy, którzy ograli komplet powyższych.
+  // Progi wielokrotnie wyższe niż tier 2, żeby dać sens dalszemu, wielo-
+  // planetowemu grindowi (patrz balans previewPrestigeCores - pełne
+  // zmaksowanie ulepszeń Rdzeni to i tak ~60-100 odlotów).
+  { id: 'collector_10000', icon: _achKenneyIcon('medal1', '#FFD54F'), name: 'Legenda recyklingu', desc: 'Zbierz łącznie 10 000 surowców', stat: 'itemsCollected', target: 10000 },
+  { id: 'feeder_2000', icon: _achKenneyIcon('medal2', '#FFA726'), name: 'Mistrz fabryki', desc: 'Nakarm maszyny 2000 razy', stat: 'machinesFed', target: 2000 },
+  { id: 'earn_100000', icon: _achKenneyIcon('crown', '#FFCA28'), name: 'Potentat odpadów', desc: `Zarób łącznie 100 000${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 100000 },
+  { id: 'shopper_50', icon: _achKenneyIcon('gear', '#B0BEC5'), name: 'Inżynier ulepszeń', desc: 'Kup 50 ulepszeń', stat: 'upgradesBought', target: 50 },
+  { id: 'planets_10', icon: _achKenneyIcon('flag', '#B39DDB'), name: 'Odkrywca galaktyki', desc: 'Ukończ 10 planet', stat: 'planetsCompleted', target: 10 },
+  { id: 'modules_25', icon: _achKenneyIcon('wrench', '#CFD8DC'), name: 'Konstruktor floty', desc: 'Ukończ łącznie 25 modułów statku', stat: 'shipModulesCompleted', target: 25 },
+  // DAILY_STREAK_CAP_DAYS (economy.js) = 20 - powyżej tego dalsze dni nie
+  // podbijają już nagrody streaka, więc 20 to naturalny "pełny" próg.
+  { id: 'streak_20', icon: _achKenneyIcon('fire', '#FF5722'), name: 'Weteran', desc: 'Zaloguj się 20 dni z rzędu', stat: 'maxLoginStreak', target: 20 },
+  { id: 'challenges_30', icon: _achKenneyIcon('target', '#CE93D8'), name: 'Perfekcjonista', desc: 'Odbierz 30 wyzwań dnia', stat: 'challengesClaimed', target: 30 },
+  // Jedyny nowy licznik (stats.coresEarned) - patrz komentarz przy nim w
+  // konstruktorze i przy prestige() (rośnie tam obok this.cores).
+  { id: 'cores_100', icon: _achKenneyIcon('diamond', '#81D4FA'), name: 'Kolekcjoner Rdzeni', desc: 'Zdobądź łącznie 100 Rdzeni Prestiżu', stat: 'coresEarned', target: 100 }
 ];
 
 // --- Progresywne odblokowania (walka z "martwo - wszystko dostępne od razu") --
@@ -824,7 +850,12 @@ class EconomyManager {
       // (wyżej) zeruje się przy prestige() (patrz komentarz przy nim), więc
       // ekran statystyk (getStatsCatalog niżej) potrzebuje osobnego,
       // NIGDY nie zerowanego licznika łącznego czasu gry.
-      lifetimePlaytimeSeconds: 0
+      lifetimePlaytimeSeconds: 0,
+      // Odpowiednik lifetimeEarned, tylko dla Rdzeni - this.cores MALEJE przy
+      // wydawaniu (ulepszenia/skiny), więc osiągnięcie "zdobądź łącznie 100
+      // Rdzeni" potrzebuje osobnego licznika, który tylko rośnie (patrz
+      // prestige()).
+      coresEarned: 0
     };
     // Set id-ków już zdobytych osiągnięć (patrz ACHIEVEMENTS). Serializowany
     // jako tablica (Set nie idzie wprost do JSON), tak jak unlockedIds.
@@ -1695,6 +1726,7 @@ class EconomyManager {
 
     const coresEarned = this.previewPrestigeCores();
     this.cores += coresEarned;
+    this.stats.coresEarned += coresEarned;
 
     // --- Reset przebiegu -----------------------------------------------------
     this.money = 0;
