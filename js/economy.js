@@ -382,7 +382,13 @@ const MACHINE_UPGRADE_BASE_COST = {
   recycle_a: 120,
   press_b: 180,
   furnace_c: 260,
-  refinery_b: 340
+  refinery_b: 340,
+  // BALANS: brakowało tego wpisu - Szlifiernia Kryształów (najdroższa i
+  // najpóźniej odblokowana maszyna, patrz PROGRESSION_UNLOCKS) nie miała
+  // WCALE ulepszeń, bo getMachineUpgradeCost()/getMachineUpgradeCatalog()
+  // iterują tylko po kluczach tego obiektu. Wartość kontynuuje wzorzec
+  // wzrostu (+60/+80/+80) powyższych maszyn.
+  crystal_polisher: 450
 };
 // Nazwy maszyn do UI - własna kopia etykiet z MACHINE_DEFINITIONS (machines.js),
 // zgodnie z konwencją projektu (brak współdzielonych utili).
@@ -390,7 +396,8 @@ const MACHINE_UPGRADE_LABELS = {
   recycle_a: 'Recykler',
   press_b: 'Prasa',
   furnace_c: 'Piec',
-  refinery_b: 'Oczyszczalnia'
+  refinery_b: 'Oczyszczalnia',
+  crystal_polisher: 'Szlifiernia'
 };
 // O ile drożeje każdy kolejny poziom TEJ SAMEJ maszyny.
 const MACHINE_UPGRADE_COST_SCALE = 1.85;
@@ -512,12 +519,16 @@ const PROGRESSION_UNLOCKS = [
   // w player.js dodatkowo wymaga OBU strojów ochronnych naraz (Filtr +
   // Kombinezon), więc to naturalna "nagroda za pełne wyposażenie" pod koniec
   // przebiegu, nie kolejny przystanek po drodze.
-  { id: 'zone_D', kind: 'zone', threshold: 950, name: 'Kryształowa Grań', desc: 'Odłamki Kryształu - wymaga PEŁNEJ ochrony (Filtr + Kombinezon)' },
+  // BALANS: próg podniesiony z 950 do 1200 - Filtr (250$) + Kombinezon (500$)
+  // to DODATKOWE 750$ ponad totalEarned potrzebne, żeby faktycznie wejść do
+  // strefy, więc sam próg 950 dawał za mało czasu na uzbieranie obu naraz
+  // (progresja liczy totalEarned, nie zapas gotówki). 1200 daje realny bufor.
+  { id: 'zone_D', kind: 'zone', threshold: 1200, name: 'Kryształowa Grań', desc: 'Odłamki Kryształu - wymaga PEŁNEJ ochrony (Filtr + Kombinezon)' },
   // Szlifiernia Kryształów - kapitalizuje Grań (odblokowaną wyżej) drugim,
   // wolniejszym zastosowaniem odłamka obok bezpośredniej sprzedaży (ten sam
   // duch co Oczyszczalnia dla szkła: surowiec ma teraz realny wybór -
   // szybko i pewnie na targ, albo przez maszynę na coś droższego). Próg
-  // WYŻSZY niż zone_D (950), bo wymaga, żeby gracz zdążył już nazbierać
+  // WYŻSZY niż zone_D (1200), bo wymaga, żeby gracz zdążył już nazbierać
   // odłamków - wypełnia lukę między Granią a 3. modułem statku (1600$).
   { id: 'crystal_polisher', kind: 'machine', threshold: 1400, name: 'Szlifiernia Kryształów', desc: 'Szlifuje Odłamki Kryształu w najcenniejszy towar w grze' }
 ];
@@ -1445,8 +1456,17 @@ class EconomyManager {
    * Pierwiastek zamiast zależności liniowej: rosnący totalEarned daje coraz
    * mniejszy PRZYROST Rdzeni za każde kolejne 100 zarobione, więc farmienie
    * jednego przebiegu w nieskończoność ma malejący sens, a start kolejnej
-   * planety zawsze się opłaca. Współczynniki NIEZBALANSOWANE/nietestowane -
-   * do podkręcenia po zagraniu, ta sama zasada co reszta liczb w tej grze.
+   * planety zawsze się opłaca.
+   *
+   * BALANS (przegląd ekonomii): dzielnik był 10 - dawało to ~6-10 Rdzeni za
+   * typowy pierwszy odlot (totalEarned ~4800, tyle kosztują wszystkie 5
+   * modułów statku), a zmaksowanie JEDNEGO ulepszenia za Rdzenie kosztuje
+   * od ~140 (Zapasy Startowe, najtańsze) do ~860 (Wzmacniacz Zarobku)
+   * Rdzeni - dawny dzielnik wymagałby dziesiątek-setek odlotów na
+   * jedno ulepszenie. Dzielnik 10 -> 2 (5x) daje ten sam pierwszy odlot
+   * ~30-35 Rdzeni - wciąż długofalowa progresja (pełne zmaksowanie
+   * wszystkich 10 ulepszeń to nadal ~60-100 odlotów), ale każdy
+   * pojedynczy odlot realnie kupuje kilka poziomów, nie ułamek jednego.
    *
    * Drugi poziom Rdzeni (core_prestige_boost) mnoży WYNIK pierwiastka, nie
    * totalEarned pod nim - inaczej rósłby wolniej niż liniowo (sam
@@ -1454,7 +1474,7 @@ class EconomyManager {
    */
   previewPrestigeCores() {
     const boostMult = this.getCoreValue('core_prestige_boost') || 1;
-    return Math.max(1, Math.floor((Math.sqrt(this.totalEarned) / 10) * boostMult));
+    return Math.max(1, Math.floor((Math.sqrt(this.totalEarned) / 2) * boostMult));
   }
 
   getCoreUpgradeCost(upgradeId) {
