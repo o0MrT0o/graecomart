@@ -1295,14 +1295,15 @@ class Game {
     // sposób na podbicie ich szansy wylosowania bez pełnego systemu wag: te
     // drobne akcenty koloru/detalu powinny być częstsze niż rzadkie drzewo,
     // ale rzadsze niż podstawowa trawa/krzak danej strefy.
-    // BALANS (Strefa C/ash): crate było 1/4 (na równi z rock) - za dużo jak
-    // na duży, "ciężki" sprite, zwłaszcza że nic nie pilnowało odstępu
-    // między egzemplarzami (patrz crateTooClose niżej). Rozcieńczone do 1/7
-    // (rock/sign dokładają dodatkowe wpisy), więc realnie ~1/3 dawnej ilości.
+    // BALANS (Strefa C/ash): crate i sign były OBA za częste (crate 1/4 na
+    // równi z rock, sign podbite razem z pierwszą rundą poprawek do 3/7 -
+    // wciąż za dużo). rock teraz wyraźnie dominuje (5/7), sign i crate to
+    // rzadkie akcenty (po 1/7 każdy) - crate dodatkowo pilnuje odstępu
+    // między egzemplarzami (patrz crateTooClose niżej).
     const zoneTypes = {
       A: ['tree', 'bush', 'shrub', 'flower', 'flower', 'grass_tuft', 'grass_tuft', 'fern'],
       B: ['shrub', 'rock', 'puddle'],
-      C: ['rock', 'rock', 'rock', 'sign', 'sign', 'sign', 'crate'],
+      C: ['rock', 'rock', 'rock', 'rock', 'rock', 'sign', 'crate'],
       D: ['crystal', 'crystal', 'rock']
     };
 
