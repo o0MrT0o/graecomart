@@ -1298,8 +1298,7 @@ class Game {
     // BALANS (Strefa C/ash): crate i sign były OBA za częste (crate 1/4 na
     // równi z rock, sign podbite razem z pierwszą rundą poprawek do 3/7 -
     // wciąż za dużo). rock teraz wyraźnie dominuje (5/7), sign i crate to
-    // rzadkie akcenty (po 1/7 każdy) - crate dodatkowo pilnuje odstępu
-    // między egzemplarzami (patrz crateTooClose niżej).
+    // rzadkie akcenty (po 1/7 każdy).
     const zoneTypes = {
       A: ['tree', 'bush', 'shrub', 'flower', 'flower', 'grass_tuft', 'grass_tuft', 'fern'],
       B: ['shrub', 'rock', 'puddle'],
@@ -1307,15 +1306,21 @@ class Game {
       D: ['crystal', 'crystal', 'rock']
     };
 
-    // Minimalny odstęp między środkami dwóch skrzyń (Strefa C) - bez tego
-    // rejection-sampling wyżej (tooClose od keepAway) nic nie mówi o
-    // ODLEGŁOŚCI OD SIEBIE dekoracji tego samego typu, więc dwie skrzynie
-    // mogły wylosować się w tym samym miejscu i wizualnie zlać w jedną
-    // plamę. Wartość z grubsza pokrywa najszerszy możliwy rendering skrzyni
-    // (DECOR_BASE_HEIGHT * crate scale * maks. losowy mnożnik item.scale)
-    // + mały margines - patrz DECOR_TYPE_SCALE.crate wyżej w pliku.
-    const CRATE_MIN_SPACING = 85;
-    const placedCrates = [];
+    // "Ciężkie", dyskretne obiekty (Tomek: "kamienie drzew krzaki i inne
+    // obiekty niech się nie dotykają") - w przeciwieństwie do drobnego
+    // naziemnego wypełnienia (kwiat/kałuża/kępka trawy/paproć), które
+    // CELOWO tworzy gęsty "dywan" i śmiało może się nakładać, te typy
+    // pilnują odstępu od SIEBIE NAWZAJEM (dowolna para, nie tylko ten sam
+    // typ - kamień tak samo nie powinien wchodzić w drzewo jak w inny
+    // kamień). Promień "zajętości" liczony z realnego rozmiaru renderu
+    // (DECOR_BASE_HEIGHT * skala typu * losowa skala egzemplarza), więc
+    // duże drzewo wymaga większego odstępu niż mały kamień - bez tego
+    // jedna sztywna stała albo dusiłaby małe typy w gęstych strefach, albo
+    // była za ciasna dla drzew.
+    const DECOR_SOLID_TYPES = new Set(['tree', 'bush', 'shrub', 'rock', 'crate', 'sign', 'crystal']);
+    const DECOR_SOLID_MARGIN = 12; // dodatkowy odstęp POZA sumą promieni - inaczej "brak nachodzenia" pozwoliłby na czysto styczne krawędzie
+    const footprintRadius = (type, scale) => (DECOR_BASE_HEIGHT * (DECOR_TYPE_SCALE[type] || 1) * scale) / 2;
+    const placedSolids = [];
 
     const list = [];
     let attempts = 0;
@@ -1339,22 +1344,28 @@ class Game {
         : py < topH ? 'C' : px > rightX ? 'B' : 'A';
       const options = zoneTypes[zone];
       const type = options[Math.floor(rand() * options.length)];
+      // Skala MUSI się wylosować TU (przed ewentualnym `continue` niżej),
+      // nie dopiero przy budowie `item` - inaczej odrzucona próba zużyłaby
+      // inną liczbę wywołań rand() niż przyjęta, psując deterministyczny
+      // ciąg reszty dekoracji przy każdej zmianie DECOR_SOLID_MARGIN itp.
+      const scale = 0.75 + rand() * 0.65;
 
-      if (type === 'crate') {
-        const crateTooClose = placedCrates.some((c) => {
-          const dx = px - c.x;
-          const dy = py - c.y;
-          return Math.sqrt(dx * dx + dy * dy) < CRATE_MIN_SPACING;
+      if (DECOR_SOLID_TYPES.has(type)) {
+        const radius = footprintRadius(type, scale);
+        const overlapsExisting = placedSolids.some((s) => {
+          const dx = px - s.x;
+          const dy = py - s.y;
+          return Math.sqrt(dx * dx + dy * dy) < radius + s.radius + DECOR_SOLID_MARGIN;
         });
-        if (crateTooClose) continue;
-        placedCrates.push({ x: px, y: py });
+        if (overlapsExisting) continue;
+        placedSolids.push({ x: px, y: py, radius });
       }
 
       // seed: losowa, ale STAŁA (raz wygenerowana) wartość 0..1 - typy
       // proceduralne (flower/puddle) czytają ją do wyboru wariantu koloru/
       // fazy animacji, żeby każdy egzemplarz wyglądał inaczej, ale identycznie
       // za każdym odświeżeniem (ta sama filozofia co DECOR_SEED).
-      const item = { x: px, y: py, type, scale: 0.75 + rand() * 0.65, seed: rand() };
+      const item = { x: px, y: py, type, scale, seed: rand() };
 
       // BUGFIX (przycinanie na telefonie): _drawFlowerDecor/_drawPuddleDecor
       // odbudowywały swój kształt OD ZERA co klatkę - dla kwiatka to ~50
