@@ -1295,12 +1295,26 @@ class Game {
     // sposób na podbicie ich szansy wylosowania bez pełnego systemu wag: te
     // drobne akcenty koloru/detalu powinny być częstsze niż rzadkie drzewo,
     // ale rzadsze niż podstawowa trawa/krzak danej strefy.
+    // BALANS (Strefa C/ash): crate było 1/4 (na równi z rock) - za dużo jak
+    // na duży, "ciężki" sprite, zwłaszcza że nic nie pilnowało odstępu
+    // między egzemplarzami (patrz crateTooClose niżej). Rozcieńczone do 1/7
+    // (rock/sign dokładają dodatkowe wpisy), więc realnie ~1/3 dawnej ilości.
     const zoneTypes = {
       A: ['tree', 'bush', 'shrub', 'flower', 'flower', 'grass_tuft', 'grass_tuft', 'fern'],
       B: ['shrub', 'rock', 'puddle'],
-      C: ['rock', 'rock', 'crate', 'sign'],
+      C: ['rock', 'rock', 'rock', 'sign', 'sign', 'sign', 'crate'],
       D: ['crystal', 'crystal', 'rock']
     };
+
+    // Minimalny odstęp między środkami dwóch skrzyń (Strefa C) - bez tego
+    // rejection-sampling wyżej (tooClose od keepAway) nic nie mówi o
+    // ODLEGŁOŚCI OD SIEBIE dekoracji tego samego typu, więc dwie skrzynie
+    // mogły wylosować się w tym samym miejscu i wizualnie zlać w jedną
+    // plamę. Wartość z grubsza pokrywa najszerszy możliwy rendering skrzyni
+    // (DECOR_BASE_HEIGHT * crate scale * maks. losowy mnożnik item.scale)
+    // + mały margines - patrz DECOR_TYPE_SCALE.crate wyżej w pliku.
+    const CRATE_MIN_SPACING = 85;
+    const placedCrates = [];
 
     const list = [];
     let attempts = 0;
@@ -1324,6 +1338,16 @@ class Game {
         : py < topH ? 'C' : px > rightX ? 'B' : 'A';
       const options = zoneTypes[zone];
       const type = options[Math.floor(rand() * options.length)];
+
+      if (type === 'crate') {
+        const crateTooClose = placedCrates.some((c) => {
+          const dx = px - c.x;
+          const dy = py - c.y;
+          return Math.sqrt(dx * dx + dy * dy) < CRATE_MIN_SPACING;
+        });
+        if (crateTooClose) continue;
+        placedCrates.push({ x: px, y: py });
+      }
 
       // seed: losowa, ale STAŁA (raz wygenerowana) wartość 0..1 - typy
       // proceduralne (flower/puddle) czytają ją do wyboru wariantu koloru/
