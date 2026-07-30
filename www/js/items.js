@@ -62,6 +62,24 @@ const ITEM_TYPE_ZONE = {
   crystal_shard: 'D'
 };
 
+// Tomek: "niech nic się nie respi za maszynami czy terminalem albo
+// statkiem" - _spawnItem (niżej) losowało pozycję TYLKO w granicach strefy,
+// zero wiedzy o tym, gdzie stoją maszyny/statek/terminal, więc surowiec
+// mógł wylosować się dokładnie POD jednym z nich (niewidoczny, dopóki
+// gracz nie podejdzie na tyle blisko, że i tak dostanie go magnesem -
+// wygląda jak "wyskakiwanie zza" obiektu). Te same pozycje i promień co
+// keepAway w game.js (_generateDecorations) - własna kopia, konwencja
+// projektu (brak współdzielonych utili).
+const ITEM_KEEP_AWAY = [
+  { xr: 0.32, yr: 0.4 }, // recykler
+  { xr: 0.28, yr: 0.72 }, // prasa
+  { xr: 0.59, yr: 0.35 }, // piec hutniczy
+  { xr: 0.8, yr: 0.62 }, // oczyszczalnia
+  { xr: 0.5, yr: 0.85 }, // terminal handlowy
+  { xr: 0.18, yr: 0.55 }, // statek
+  { xr: 1.15, yr: 0.28 } // szlifiernia kryształów (xr > 1 - Strefa D, patrz komentarz w machines.js)
+].map((p) => ({ x: ITEM_ZONE_CORE_WIDTH * p.xr, y: ITEM_WORLD_HEIGHT * p.yr, r: 170 }));
+
 const ITEM_RARITY = {
   common:    { border: '#B0BEC5', glow: 'rgba(176, 190, 197, 0.55)', label: 'Zwykły' },
   uncommon:  { border: '#66BB6A', glow: 'rgba(102, 187, 106, 0.6)', label: 'Nietypowy' },
@@ -578,17 +596,38 @@ class ItemManager {
 
     const type = ITEM_TYPES.find((t) => t.id === typeId) || ITEM_TYPES[0];
     const bounds = this._getZoneBounds(ITEM_TYPE_ZONE[typeId] || 'A');
+    const pos = this._rollSpawnPosition(bounds);
 
     const item = this._makeItem({
       typeId,
       label: type.label,
       color: type.color,
-      x: bounds.minX + Math.random() * (bounds.maxX - bounds.minX),
-      y: bounds.minY + Math.random() * (bounds.maxY - bounds.minY)
+      x: pos.x,
+      y: pos.y
     });
 
     this.items.push(item);
     return item;
+  }
+
+  /** Losuje pozycję w granicach strefy, odrzucając te zbyt blisko maszyn/
+   * statku/terminala (patrz ITEM_KEEP_AWAY) - do 20 prób, potem poddaje się
+   * i zwraca ostatnią wylosowaną (skrajny przypadek: strefa na tyle mała, że
+   * ŻADNA pozycja jej nie spełnia - lepiej dostać surowiec trochę za blisko
+   * niż zawiesić spawn na stałe). */
+  _rollSpawnPosition(bounds) {
+    let x; let y;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      x = bounds.minX + Math.random() * (bounds.maxX - bounds.minX);
+      y = bounds.minY + Math.random() * (bounds.maxY - bounds.minY);
+      const tooClose = ITEM_KEEP_AWAY.some((k) => {
+        const dx = x - k.x;
+        const dy = y - k.y;
+        return Math.sqrt(dx * dx + dy * dy) < k.r;
+      });
+      if (!tooClose) break;
+    }
+    return { x, y };
   }
 
   /**

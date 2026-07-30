@@ -42,6 +42,20 @@ const GOLDBONUS_VISUAL_SIZE = 40;
 const GOLDBONUS_BOB_FREQUENCY = 2.2;
 const GOLDBONUS_BOB_AMP = 5;
 
+// Tomek: "niech nic się nie respi za maszynami czy terminalem albo
+// statkiem" - kilka z nich (recykler/prasa/terminal/statek) stoją FIZYCZNIE
+// wewnątrz granic Strefy A, więc bez tego bonus mógłby wylosować się
+// wprost pod jednym z nich. Te same pozycje/promień co ITEM_KEEP_AWAY
+// (items.js) / keepAway (game.js) - własna kopia, konwencja projektu.
+const GOLDBONUS_KEEP_AWAY = [
+  { xr: 0.32, yr: 0.4 }, // recykler
+  { xr: 0.28, yr: 0.72 }, // prasa
+  { xr: 0.5, yr: 0.85 }, // terminal handlowy
+  { xr: 0.18, yr: 0.55 } // statek
+  // Piec/oczyszczalnia/szlifiernia pominięte - leżą poza Strefą A (jedyną,
+  // w której bonus się losuje), więc nigdy by się z nim nie zderzyły.
+].map((p) => ({ x: GOLDBONUS_ZONE_CORE_WIDTH * p.xr, y: GOLDBONUS_WORLD_HEIGHT * p.yr, r: 170 }));
+
 class GoldBonusManager {
   constructor() {
     this.active = null; // { x, y, spawnedAt, bobPhase }
@@ -63,7 +77,7 @@ class GoldBonusManager {
 
   /** Granice Strefy A (bezpiecznej) - własna, minimalna kopia z items.js
    * (_getZoneBounds tam), tylko wariant 'A' - reszta stref temu managerowi
-   * niepotrzebna. */
+   * niepotrzebna. Odrzuca (do 20 prób) pozycje zbyt blisko GOLDBONUS_KEEP_AWAY. */
   _rollSpawnPosition() {
     const topH = GOLDBONUS_WORLD_HEIGHT * GOLDBONUS_ZONE_C_TOP_RATIO;
     const rightX = GOLDBONUS_ZONE_CORE_WIDTH * GOLDBONUS_ZONE_B_RIGHT_RATIO;
@@ -72,10 +86,19 @@ class GoldBonusManager {
     const maxX = Math.max(m + 1, rightX - m);
     const minY = Math.max(topH + m, m);
     const maxY = Math.max(topH + m + 1, GOLDBONUS_WORLD_HEIGHT - m);
-    return {
-      x: minX + Math.random() * (maxX - minX),
-      y: minY + Math.random() * (maxY - minY)
-    };
+
+    let x; let y;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      x = minX + Math.random() * (maxX - minX);
+      y = minY + Math.random() * (maxY - minY);
+      const tooClose = GOLDBONUS_KEEP_AWAY.some((k) => {
+        const dx = x - k.x;
+        const dy = y - k.y;
+        return Math.sqrt(dx * dx + dy * dy) < k.r;
+      });
+      if (!tooClose) break;
+    }
+    return { x, y };
   }
 
   _spawn() {

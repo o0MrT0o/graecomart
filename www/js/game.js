@@ -1306,18 +1306,17 @@ class Game {
       D: ['crystal', 'crystal', 'rock']
     };
 
-    // "Ciężkie", dyskretne obiekty (Tomek: "kamienie drzew krzaki i inne
-    // obiekty niech się nie dotykają") - w przeciwieństwie do drobnego
-    // naziemnego wypełnienia (kwiat/kałuża/kępka trawy/paproć), które
-    // CELOWO tworzy gęsty "dywan" i śmiało może się nakładać, te typy
-    // pilnują odstępu od SIEBIE NAWZAJEM (dowolna para, nie tylko ten sam
-    // typ - kamień tak samo nie powinien wchodzić w drzewo jak w inny
-    // kamień). Promień "zajętości" liczony z realnego rozmiaru renderu
-    // (DECOR_BASE_HEIGHT * skala typu * losowa skala egzemplarza), więc
-    // duże drzewo wymaga większego odstępu niż mały kamień - bez tego
-    // jedna sztywna stała albo dusiłaby małe typy w gęstych strefach, albo
-    // była za ciasna dla drzew.
-    const DECOR_SOLID_TYPES = new Set(['tree', 'bush', 'shrub', 'rock', 'crate', 'sign', 'crystal']);
+    // WSZYSTKIE dekoracje pilnują odstępu od SIEBIE NAWZAJEM (dowolna para,
+    // dowolne typy - Tomek: "niech trawa czy inne kwiatki i obiekty nie
+    // nachodzą na inne") - BYŁO tylko dla "ciężkich" sprite'owych typów
+    // (tree/bush/rock/...), z drobnym naziemnym wypełnieniem (kwiat/kałuża/
+    // trawa/paproć) celowo pominiętym jako "ma tworzyć gęsty dywan" - to
+    // założenie się nie sprawdziło, gracz i tak widział nachodzące na siebie
+    // kępki. Promień "zajętości" liczony z realnego rozmiaru renderu
+    // (DECOR_BASE_HEIGHT * skala typu * losowa skala egzemplarza), więc małe
+    // typy (trawa/paproć) wymagają dużo mniejszego odstępu niż drzewo -
+    // gęstość "dywanu" i tak zostaje wysoka, tylko bez faktycznego
+    // zachodzenia kształtów jednego na drugi.
     const DECOR_SOLID_MARGIN = 12; // dodatkowy odstęp POZA sumą promieni - inaczej "brak nachodzenia" pozwoliłby na czysto styczne krawędzie
     const footprintRadius = (type, scale) => (DECOR_BASE_HEIGHT * (DECOR_TYPE_SCALE[type] || 1) * scale) / 2;
     const placedSolids = [];
@@ -1350,16 +1349,14 @@ class Game {
       // ciąg reszty dekoracji przy każdej zmianie DECOR_SOLID_MARGIN itp.
       const scale = 0.75 + rand() * 0.65;
 
-      if (DECOR_SOLID_TYPES.has(type)) {
-        const radius = footprintRadius(type, scale);
-        const overlapsExisting = placedSolids.some((s) => {
-          const dx = px - s.x;
-          const dy = py - s.y;
-          return Math.sqrt(dx * dx + dy * dy) < radius + s.radius + DECOR_SOLID_MARGIN;
-        });
-        if (overlapsExisting) continue;
-        placedSolids.push({ x: px, y: py, radius });
-      }
+      const radius = footprintRadius(type, scale);
+      const overlapsExisting = placedSolids.some((s) => {
+        const dx = px - s.x;
+        const dy = py - s.y;
+        return Math.sqrt(dx * dx + dy * dy) < radius + s.radius + DECOR_SOLID_MARGIN;
+      });
+      if (overlapsExisting) continue;
+      placedSolids.push({ x: px, y: py, radius });
 
       // seed: losowa, ale STAŁA (raz wygenerowana) wartość 0..1 - typy
       // proceduralne (flower/puddle) czytają ją do wyboru wariantu koloru/
