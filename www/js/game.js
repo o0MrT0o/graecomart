@@ -1030,13 +1030,21 @@ class Game {
       const h = DECOR_BASE_HEIGHT * d.scale * (DECOR_TYPE_SCALE[d.type] || 1);
       const w = h * (img.naturalWidth / img.naturalHeight);
 
-      // Ten sam kształt/pozycja cienia co dawniej w _drawDecorations (patrz
-      // komentarz "kamienie latają" tam) - tylko przeniesiony tutaj, do
-      // jednorazowego pieczenia zamiast rysowania co klatkę.
-      wctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-      wctx.beginPath();
-      wctx.ellipse(d.x, d.y, w * 0.42, Math.max(3, h * 0.14), 0, 0, Math.PI * 2);
-      wctx.fill();
+      // Tomek: "trawa nie musi mieć cienia" - grass_tuft/fern to cienkie,
+      // rzadkie kępki (dużo pustej przestrzeni między źdźbłami), a pełny,
+      // wypełniony owal cienia pod nimi wyglądał nieproporcjonalnie ciężko
+      // względem tego, jak niewiele piksela faktycznie zasłaniają. Reszta
+      // typów (drzewo/krzak/kamień/skrzynia/tabliczka) zostaje bez zmian -
+      // to bryły, którym cień faktycznie kotwiczy je do ziemi.
+      if (d.type !== 'grass_tuft' && d.type !== 'fern') {
+        // Ten sam kształt/pozycja cienia co dawniej w _drawDecorations (patrz
+        // komentarz "kamienie latają" tam) - tylko przeniesiony tutaj, do
+        // jednorazowego pieczenia zamiast rysowania co klatkę.
+        wctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        wctx.beginPath();
+        wctx.ellipse(d.x, d.y, w * 0.42, Math.max(3, h * 0.14), 0, 0, Math.PI * 2);
+        wctx.fill();
+      }
 
       // Reszta sprite'owych typów (rock/crate/sign) - jedyne poza tree/bush/
       // shrub, które NIE kołyszą się na wietrze (DECOR_SWAY_TYPES), więc ich
@@ -1328,13 +1336,6 @@ class Game {
       const px = 40 + rand() * (this.worldWidth - 80);
       const py = 40 + rand() * (this.worldHeight - 80);
 
-      const tooClose = keepAway.some((k) => {
-        const dx = px - k.x;
-        const dy = py - k.y;
-        return Math.sqrt(dx * dx + dy * dy) < k.r;
-      });
-      if (tooClose) continue;
-
       // Strefa D to teraz NIEZALEŻNY pas na pełnej wysokości (na prawo od
       // dLeftX) - stąd sprawdzana jako PIERWSZA, tak samo jak w _getZoneAt
       // (player.js) i _getZoneBounds (items.js).
@@ -1348,8 +1349,23 @@ class Game {
       // inną liczbę wywołań rand() niż przyjęta, psując deterministyczny
       // ciąg reszty dekoracji przy każdej zmianie DECOR_SOLID_MARGIN itp.
       const scale = 0.75 + rand() * 0.65;
-
       const radius = footprintRadius(type, scale);
+
+      // BUGFIX ("drzewo nachodzi pod statek"): odstęp od keepAway (maszyny/
+      // statek/terminal) liczył się od STAŁEGO promienia (170px), bez
+      // uwzględnienia WŁASNEGO rozmiaru dekoracji - drzewo (promień nawet
+      // >100px przy DECOR_TYPE_SCALE.tree=2.8) mogło wylosować się tuż ZA
+      // granicą 170px, a jego korona i tak sięgała w stronę obiektu. Doliczamy
+      // promień dekoracji do progu, ten sam pomysł co przy overlapsExisting
+      // niżej - duże typy dostają większy realny odstęp, małe (trawa) prawie
+      // żaden.
+      const tooCloseToKeyPoint = keepAway.some((k) => {
+        const dx = px - k.x;
+        const dy = py - k.y;
+        return Math.sqrt(dx * dx + dy * dy) < k.r + radius;
+      });
+      if (tooCloseToKeyPoint) continue;
+
       const overlapsExisting = placedSolids.some((s) => {
         const dx = px - s.x;
         const dy = py - s.y;
