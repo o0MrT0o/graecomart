@@ -19,7 +19,15 @@
  * istnieje, patrz native-notifications-src.js) - reszta gry nie musi
  * wiedzieć, czy jesteśmy w prawdziwej apce Capacitor.
  */
-const OFFLINE_REMINDER_DELAY_SECONDS = 3 * 3600; // 3h - wystarczy czasu na spory zarobek, wciąż "dziś"
+const OFFLINE_REMINDER_DELAY_SECONDS = 3 * 3600; // 3h - kiedy powiadomienie faktycznie się pokaże
+// BALANS: podgląd w treści powiadomienia liczony z KRÓTSZEGO okna niż
+// faktyczne opóźnienie wyżej - inaczej (przy dobrym tempie zarobku) tekst
+// obiecywałby setki/tysiące $ za nicnierobienie, co wygląda jak tania
+// naganka i podważa sens grania aktywnie. 30 min to wciąż uczciwa,
+// niepusta liczba (ta sama formuła co prawdziwy modal - patrz niżej), po
+// prostu skromna - realna nagroda po 3h i tak będzie większa (miła
+// niespodzianka), nigdy mniejsza (zero ryzyka rozczarowania).
+const OFFLINE_REMINDER_PREVIEW_SECONDS = 30 * 60;
 
 class OfflineReminderManager {
   constructor(economyManager) {
@@ -36,15 +44,15 @@ class OfflineReminderManager {
   }
 
   /** Podgląd nagrody liczony TĄ SAMĄ metodą co prawdziwy modal offline
-   * (economy.js) - jedno miejsce z matematyką, więc powiadomienie nigdy
-   * nie obieca więcej, niż gracz faktycznie dostanie po powrocie. */
+   * (economy.js), ale z krótszego okna (OFFLINE_REMINDER_PREVIEW_SECONDS) -
+   * patrz komentarz przy tej stałej wyżej. */
   _scheduleReminder() {
     if (!window.NativeNotifications || !this.economyManager) return;
     const preview = typeof this.economyManager.computeOfflineReward === 'function'
-      ? this.economyManager.computeOfflineReward(OFFLINE_REMINDER_DELAY_SECONDS * 1000)
+      ? this.economyManager.computeOfflineReward(OFFLINE_REMINDER_PREVIEW_SECONDS * 1000)
       : null;
     const body = preview
-      ? `Twój sklep zarobił już ${preview.reward}$ - wróć po odbiór!`
+      ? `Twój sklep już zarabia (+${preview.reward}$) - wróć po odbiór!`
       : 'Twój sklep czeka na Ciebie w Eco Mart!';
     window.NativeNotifications.scheduleOfflineReminder(OFFLINE_REMINDER_DELAY_SECONDS, 'Eco Mart', body);
   }

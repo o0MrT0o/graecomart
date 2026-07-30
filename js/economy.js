@@ -1812,7 +1812,20 @@ class EconomyManager {
     const today = this._todayDateStr();
     if (this.lastLoginDateStr === today) return null;
 
-    const gap = this.lastLoginDateStr ? this._daysBetween(this.lastLoginDateStr, today) : 1;
+    // BUGFIX: zupełnie nowy gracz (lastLoginDateStr jeszcze puste - pierwsze
+    // uruchomienie w życiu) dostawał TEN SAM dzień-1 bonus streaka co gracz
+    // wracający po przerwie (+55$ zanim jeszcze cokolwiek zrobił w grze).
+    // Gra ma zaczynać się od zera - streak liczy się dopiero od PIERWSZEGO
+    // PRAWDZIWEGO powrotu (jutro), więc dziś tylko zapisujemy datę/streak=1
+    // bez wypłaty i bez toastu.
+    const isFirstEverLogin = !this.lastLoginDateStr;
+    if (isFirstEverLogin) {
+      this.loginStreak = 1;
+      this.lastLoginDateStr = today;
+      return null;
+    }
+
+    const gap = this._daysBetween(this.lastLoginDateStr, today);
     this.loginStreak = gap === 1 ? this.loginStreak + 1 : 1;
     this.lastLoginDateStr = today;
 
