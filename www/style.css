@@ -870,6 +870,20 @@ canvas {
     white-space: nowrap;
 }
 
+/* Kółko tła za prawdziwymi ikonami Kenney (.ui-icon) w StatsPanel - reszta
+   wierszy (pożyczone z ACHIEVEMENTS) ma kolorowe kółko WBUDOWANE we własne
+   SVG (fill-opacity na <circle>), więc bez tego wiersze z .ui-icon
+   wyglądałyby płasko/niespójnie na tle reszty listy. Kolor kółka ustawiany
+   per-wiersz inline stylem (background), tak jak kolor samej ikony. */
+.ui-shop-item__icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .ui-shop-sheet,
     .ui-shop-backdrop {

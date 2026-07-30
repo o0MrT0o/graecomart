@@ -888,18 +888,30 @@ class EconomyManager {
    * Katalog dla ekranu Statystyk (StatsPanel w ui.js) - czysty przegląd
    * liczników LIFETIME (this.stats + kilka pól spoza niego, patrz niżej),
    * bez żadnej logiki odblokowań/progresji (to już robią osiągnięcia
-   * wyżej). Ikony część własne, część pożyczone z ACHIEVEMENTS (ten sam
-   * koncept - np. "surowce zebrane" - nie ma sensu rysować drugi raz).
+   * wyżej). Ikony: tam gdzie w projekcie już istnieje prawdziwa ikonka
+   * Kenney UŻYWANA GDZIE INDZIEJ w DOKŁADNIE tym samym znaczeniu (moneta =
+   * zapłata, koszyk = sklep, klucz = moduł statku, płomień = combo/streak,
+   * puchar = osiągnięcia, klepsydra = odliczanie), pożyczamy ją (.ui-icon,
+   * ten sam mechanizm maski co Sklep/Menu) zamiast rysować coś nowego -
+   * mniej niespójnych ikon w grze. Reszta zostaje pożyczona z ACHIEVEMENTS
+   * (ten sam koncept, np. "surowce zebrane" - nie ma sensu rysować drugi
+   * raz) albo własna, gdy naprawdę nie ma dobrego odpowiednika w paczkach
+   * (planeta - kenney_planets.zip to surowy generator tekstur, nie ikony;
+   * Rdzenie - to bytowy symbol WALUTY używany wszędzie w HUD/PrestizPanel,
+   * podmiana tylko tutaj rozjechałaby się z resztą gry).
    */
   getStatsCatalog() {
     const achIcon = (id) => {
       const a = ACHIEVEMENTS.find((x) => x.id === id);
       return a ? a.icon : '';
     };
+    // Prawdziwa ikonka Kenney (kółko tła + .ui-icon maska) - patrz komentarz
+    // .ui-shop-item__icon-badge w style.css.
+    const kenneyIcon = (maskClass, color) =>
+      `<span class="ui-shop-item__icon-badge" style="background:${color}26"><span class="ui-icon ui-icon--${maskClass}" style="color:${color}" aria-hidden="true"></span></span>`;
+
     const planetIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81D4FA" stroke-width="1.8"><circle cx="12" cy="12" r="7" fill="#81D4FA" fill-opacity="0.2"/><ellipse cx="12" cy="12" rx="10.5" ry="3.4" transform="rotate(-16 12 12)"/></svg>';
     const coreIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="#81D4FA" stroke="none"><path d="M13 2 4 14h6l-1 8 9-12h-6Z"/></svg>';
-    const clockIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#A5D6A7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" fill="#A5D6A7" fill-opacity="0.15"/><path d="M12 7v5l3.5 2"/></svg>';
-    const trophyIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4a5 5 0 0 1-10 0Z" fill="#FFD54F" fill-opacity="0.2"/><path d="M7 5H4v1a4 4 0 0 0 4 4M17 5h3v1a4 4 0 0 1-4 4"/><path d="M12 13v3M9 20h6M10 17h4v3h-4Z"/></svg>';
 
     const fmtPlaytime = (totalSeconds) => {
       const h = Math.floor(totalSeconds / 3600);
@@ -910,16 +922,16 @@ class EconomyManager {
     return [
       { id: 'planet', icon: planetIcon, label: 'Bieżąca planeta', value: `#${this.planetNumber}` },
       { id: 'cores', icon: coreIcon, label: 'Rdzenie Prestiżu', value: `${this.cores}` },
-      { id: 'lifetimeEarned', icon: achIcon('earn_10000'), label: 'Zarobione łącznie', value: `${this.stats.lifetimeEarned.toLocaleString('pl-PL')}${ECONOMY_CREDIT_ICON_SVG}` },
+      { id: 'lifetimeEarned', icon: kenneyIcon('coin', '#FFD54F'), label: 'Zarobione łącznie', value: `${this.stats.lifetimeEarned.toLocaleString('pl-PL')}${ECONOMY_CREDIT_ICON_SVG}` },
       { id: 'itemsCollected', icon: achIcon('collector_1000'), label: 'Surowce zebrane', value: this.stats.itemsCollected.toLocaleString('pl-PL') },
       { id: 'machinesFed', icon: achIcon('feeder_500'), label: 'Maszyny nakarmione', value: this.stats.machinesFed.toLocaleString('pl-PL') },
-      { id: 'upgradesBought', icon: achIcon('shopper_10'), label: 'Ulepszenia kupione', value: this.stats.upgradesBought.toLocaleString('pl-PL') },
+      { id: 'upgradesBought', icon: kenneyIcon('cart', '#FFE082'), label: 'Ulepszenia kupione', value: this.stats.upgradesBought.toLocaleString('pl-PL') },
       { id: 'planetsCompleted', icon: achIcon('planets_3'), label: 'Ukończone planety', value: this.stats.planetsCompleted.toLocaleString('pl-PL') },
-      { id: 'shipModulesCompleted', icon: achIcon('modules_5'), label: 'Moduły statku ukończone', value: this.stats.shipModulesCompleted.toLocaleString('pl-PL') },
-      { id: 'maxLoginStreak', icon: achIcon('streak_3'), label: 'Najdłuższy streak logowania', value: `${this.stats.maxLoginStreak} dni` },
+      { id: 'shipModulesCompleted', icon: kenneyIcon('wrench', '#B0BEC5'), label: 'Moduły statku ukończone', value: this.stats.shipModulesCompleted.toLocaleString('pl-PL') },
+      { id: 'maxLoginStreak', icon: kenneyIcon('fire', '#FF7043'), label: 'Najdłuższy streak logowania', value: `${this.stats.maxLoginStreak} dni` },
       { id: 'challengesClaimed', icon: achIcon('challenges_5'), label: 'Wyzwania dnia odebrane', value: this.stats.challengesClaimed.toLocaleString('pl-PL') },
-      { id: 'achievements', icon: trophyIcon, label: 'Osiągnięcia zdobyte', value: `${this.unlockedAchievements.size} / ${ACHIEVEMENTS.length}` },
-      { id: 'playtime', icon: clockIcon, label: 'Czas gry łącznie', value: fmtPlaytime(this.stats.lifetimePlaytimeSeconds) }
+      { id: 'achievements', icon: kenneyIcon('trophy', '#FFD54F'), label: 'Osiągnięcia zdobyte', value: `${this.unlockedAchievements.size} / ${ACHIEVEMENTS.length}` },
+      { id: 'playtime', icon: kenneyIcon('hourglass', '#A5D6A7'), label: 'Czas gry łącznie', value: fmtPlaytime(this.stats.lifetimePlaytimeSeconds) }
     ];
   }
 
