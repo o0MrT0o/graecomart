@@ -1198,10 +1198,11 @@ class SettingsPanel {
    * nie potrzebuje (dawniej synchronizował ikonę osobnego przycisku Wycisz
    * w fabRow - ten przycisk usunięty, patrz komentarz w UIManager._render:
    * dźwięk włącza/wyłącza się TYLKO stąd, z Menu, nie z ekranu gry). */
-  constructor(onChange, onOpenAchievements, onOpenSkins) {
+  constructor(onChange, onOpenAchievements, onOpenSkins, onOpenStats) {
     this.onChange = onChange;
     this.onOpenAchievements = onOpenAchievements;
     this.onOpenSkins = onOpenSkins;
+    this.onOpenStats = onOpenStats;
     this.el = null;
     this.bodyEl = null;
     this.isOpen = false;
@@ -1271,7 +1272,7 @@ class SettingsPanel {
   refresh() {
     if (!this.bodyEl) return;
     this.bodyEl.innerHTML = '';
-    this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow(), this._buildSkinsRow()]));
+    this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildStatsRow()]));
     this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildTutorialRow(), this._buildFpsRow()]));
     this.bodyEl.appendChild(this._buildSection('Dane', [this._buildResetRow()]));
     this.bodyEl.appendChild(this._buildSection('O grze', [this._buildAboutRow()]));
@@ -1310,6 +1311,20 @@ class SettingsPanel {
       }
     });
     return this._buildRow(SHIRT_ICON_SVG, 'Skiny', `Odblokowane: ${unlocked}/${catalog.length}`, btn.mount());
+  }
+
+  /** Wiersz "Statystyki" - ten sam wzorzec co Osiągnięcia/Skiny wyżej,
+   * otwiera osobny panel (StatsPanel, patrz onOpenStats w UIManager). */
+  _buildStatsRow() {
+    const btn = new UIButton({
+      label: 'Pokaż',
+      variant: 'ghost',
+      onClick: () => {
+        this.close();
+        if (typeof this.onOpenStats === 'function') this.onOpenStats();
+      }
+    });
+    return this._buildRow(CHART_ICON_SVG, 'Statystyki', 'Podsumowanie postępów w grze', btn.mount());
   }
 
   /** Ten sam trzykolumnowy układ (ikona/opis/akcja) co ShopPanel._buildRow,
@@ -1560,6 +1575,119 @@ class AchievementsPanel {
         ${progressHtml}
       </div>
       <div class="ui-shop-item__action">${a.unlocked ? `<span class="ui-shop-item__done" aria-label="Zdobyte">${CHECK_ICON_SVG}</span>` : ''}</div>
+    `;
+    return row;
+  }
+
+  destroy() {
+    document.removeEventListener('keydown', this._onKeyDown);
+    if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
+  }
+}
+
+// --- Statystyki ----------------------------------------------------------------
+// Ta sama struktura co AchievementsPanel wyżej (bottom sheet, .ui-shop-item
+// wiersze) - czysty przegląd liczników z EconomyManager.getStatsCatalog(),
+// bez paska postępu/odblokowań (to już robi panel Osiągnięć) - tylko
+// ikona/etykieta/aktualna wartość.
+class StatsPanel {
+  constructor(economyManager) {
+    this.economyManager = economyManager;
+    this.el = null;
+    this.bodyEl = null;
+    this.isOpen = false;
+
+    this._onKeyDown = (e) => {
+      if (e.key === 'Escape' && this.isOpen) this.close();
+    };
+  }
+
+  mount(parent) {
+    if (!this.el) this._render();
+    if (parent && this.el.parentNode !== parent) parent.appendChild(this.el);
+    return this.el;
+  }
+
+  _render() {
+    this.el = document.createElement('div');
+    this.el.className = 'ui-shop';
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'ui-shop-backdrop';
+    backdrop.addEventListener('click', () => this.close());
+
+    const sheet = document.createElement('div');
+    sheet.className = 'ui-shop-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'Statystyki');
+    sheet.innerHTML = `
+      <div class="ui-shop-sheet__handle"></div>
+      <header class="ui-shop-sheet__header">
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${CHART_ICON_SVG}</span> Statystyki</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij statystyki">${CLOSE_ICON_SVG}</button>
+      </header>
+      <div class="ui-shop-sheet__body"></div>
+    `;
+    sheet.querySelector('.ui-shop-sheet__close').addEventListener('click', () => this.close());
+    sheet.addEventListener('click', (e) => e.stopPropagation());
+
+    this.bodyEl = sheet.querySelector('.ui-shop-sheet__body');
+
+    this.el.appendChild(backdrop);
+    this.el.appendChild(sheet);
+
+    this.refresh();
+  }
+
+  open() {
+    if (!this.el) this._render();
+    this.isOpen = true;
+    this.el.classList.add('ui-shop--open');
+    document.addEventListener('keydown', this._onKeyDown);
+    this.refresh();
+  }
+
+  close() {
+    this.isOpen = false;
+    if (this.el) this.el.classList.remove('ui-shop--open');
+    document.removeEventListener('keydown', this._onKeyDown);
+  }
+
+  toggle() {
+    if (this.isOpen) this.close();
+    else this.open();
+  }
+
+  refresh() {
+    if (!this.bodyEl || !this.economyManager || typeof this.economyManager.getStatsCatalog !== 'function') return;
+    const catalog = this.economyManager.getStatsCatalog();
+
+    this.bodyEl.innerHTML = '';
+
+    const section = document.createElement('div');
+    section.className = 'ui-shop-section';
+
+    const list = document.createElement('div');
+    list.className = 'ui-shop-list';
+    catalog.forEach((s) => list.appendChild(this._buildRow(s)));
+    section.appendChild(list);
+
+    this.bodyEl.appendChild(section);
+  }
+
+  /** Wiersz statystyki - reużywa .ui-shop-item (ikona/info/akcja), akcja
+   * to zawsze sama wartość licznika zamiast przycisku - panel jest
+   * czysto informacyjny. */
+  _buildRow(s) {
+    const row = document.createElement('article');
+    row.className = 'ui-shop-item';
+    row.innerHTML = `
+      <div class="ui-shop-item__icon" aria-hidden="true">${s.icon}</div>
+      <div class="ui-shop-item__info">
+        <span class="ui-shop-item__name">${s.label}</span>
+      </div>
+      <div class="ui-shop-item__action"><span class="ui-shop-item__stat-value">${s.value}</span></div>
     `;
     return row;
   }
@@ -1853,6 +1981,7 @@ class UIManager {
     this.settingsPanel = null;
     this.achievementsPanel = null;
     this.skinsPanel = null;
+    this.statsPanel = null;
     this.offlineModal = null;
     this.notifications = null;
     this.tooltip = null;
@@ -1968,6 +2097,7 @@ class UIManager {
       if (this.settingsPanel) this.settingsPanel.close();
       if (this.achievementsPanel) this.achievementsPanel.close();
       if (this.skinsPanel) this.skinsPanel.close();
+      if (this.statsPanel) this.statsPanel.close();
       if (this.prestigePanel) this.prestigePanel.open();
     };
 
@@ -2076,6 +2206,7 @@ class UIManager {
     });
     this.achievementsPanel = new AchievementsPanel(economy);
     this.skinsPanel = new SkinsPanel(economy);
+    this.statsPanel = new StatsPanel(economy);
     // Dźwięk włącza/wyłącza się TYLKO z Menu (SettingsPanel._buildSoundRow) -
     // brak osobnego przycisku Wycisz na ekranie gry (patrz usunięty
     // muteToggleBtn niżej), więc nie ma już nic do zsynchronizowania po
@@ -2083,7 +2214,8 @@ class UIManager {
     this.settingsPanel = new SettingsPanel(
       null,
       () => this.achievementsPanel.open(),
-      () => this.skinsPanel.open()
+      () => this.skinsPanel.open(),
+      () => this.statsPanel.open()
     );
 
     const toastContainer = document.createElement('div');
@@ -2108,6 +2240,7 @@ class UIManager {
         if (this.settingsPanel) this.settingsPanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
         if (this.skinsPanel) this.skinsPanel.close();
+        if (this.statsPanel) this.statsPanel.close();
         this.shopPanel.toggle();
       }
     });
@@ -2125,6 +2258,7 @@ class UIManager {
         if (this.settingsPanel) this.settingsPanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
         if (this.skinsPanel) this.skinsPanel.close();
+        if (this.statsPanel) this.statsPanel.close();
         this.prestigePanel.toggle();
       }
     });
@@ -2143,6 +2277,7 @@ class UIManager {
         if (this.prestigePanel) this.prestigePanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
         if (this.skinsPanel) this.skinsPanel.close();
+        if (this.statsPanel) this.statsPanel.close();
         this.settingsPanel.toggle();
       }
     });
@@ -2186,6 +2321,7 @@ class UIManager {
     this.root.appendChild(this.settingsPanel.mount());
     this.root.appendChild(this.achievementsPanel.mount());
     this.root.appendChild(this.skinsPanel.mount());
+    this.root.appendChild(this.statsPanel.mount());
     this.offlineModal = new OfflineRewardModal(window.economyManager, () => this._syncMoney(true));
     this.root.appendChild(this.offlineModal.mount());
 
@@ -2261,6 +2397,7 @@ class UIManager {
     if (this.settingsPanel) this.settingsPanel.close();
     if (this.achievementsPanel) this.achievementsPanel.close();
     if (this.skinsPanel) this.skinsPanel.close();
+    if (this.statsPanel) this.statsPanel.close();
     if (this.offlineModal) this.offlineModal.open(data);
   }
 
@@ -2360,6 +2497,7 @@ class UIManager {
     if (this.settingsPanel) this.settingsPanel.destroy();
     if (this.achievementsPanel) this.achievementsPanel.destroy();
     if (this.skinsPanel) this.skinsPanel.destroy();
+    if (this.statsPanel) this.statsPanel.destroy();
     if (this.offlineModal) this.offlineModal.destroy();
     if (this.root && this.root.parentNode) this.root.parentNode.removeChild(this.root);
   }

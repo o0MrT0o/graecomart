@@ -860,6 +860,16 @@ canvas {
     white-space: nowrap;
 }
 
+/* Wartość licznika w StatsPanel (ui.js) - kolumna akcji zamiast przycisku,
+   bo panel jest czysto informacyjny (nic się tu nie kupuje/odblokowuje). */
+.ui-shop-item__stat-value {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--ui-text);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .ui-shop-sheet,
     .ui-shop-backdrop {
