@@ -472,6 +472,19 @@ const DAILY_CHALLENGE_TEMPLATES = [
 // SHOP_UPGRADES/PRESTIGE_UPGRADES niżej) - BYŁY emoji ("trofea, cieplejszy
 // rejestr"), ale gra już nigdzie indziej ich nie używa, więc osiągnięcia
 // zostawały jedynym niespójnym miejscem.
+//
+// BALANS: osiągnięcia dawały WYŁĄCZNIE toast - zero realnej korzyści, więc
+// zdobywanie ich nie miało żadnej wagi poza kolekcjonerską satysfakcją.
+// Typowe gry idle spinają achievementy z małym, TRWAŁYM bonusem (patrz
+// ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK + _getAchievementIncomeMultiplier w
+// _addMoney niżej) - stąd jest już realny powód, żeby o nie zabiegać, nie
+// tylko żeby "odhaczyć listę". Płaski +1%/osiągnięcie (nie osobna wartość
+// per wpis) - prościej dla gracza do policzenia w głowie ("mam 5/13, więc
+// +5% na zawsze") niż zapamiętywanie różnych wartości dla różnych wpisów,
+// a NIGDY nie zerowany prestiżem (jak unlockedAchievements), więc to
+// jedyny mnożnik zarobku, który rośnie z każdym kolejnym przebiegiem
+// niezależnie od bieżących ulepszeń.
+const ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK = 0.01;
 const ACHIEVEMENTS = [
   { id: 'first_pickup', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81C784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V11"/><path d="M12 11C12 6 8 5 5 5c0 4 2 6.5 7 6Z" fill="#81C784" fill-opacity="0.3"/><path d="M12 14C12 10 15 8.5 18 8c0 3.5-1.5 6-6 6Z" fill="#81C784" fill-opacity="0.3"/></svg>', name: 'Pierwszy krok', desc: 'Zbierz pierwszy surowiec', stat: 'itemsCollected', target: 1 },
   { id: 'collector_100', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#66BB6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.9-5.4"/><path d="M20 3v5h-5"/><path d="M20 12a8 8 0 0 1-13.9 5.4"/><path d="M4 21v-5h5"/></svg>', name: 'Recyklingowicz', desc: 'Zbierz łącznie 100 surowców', stat: 'itemsCollected', target: 100 },
@@ -930,7 +943,7 @@ class EconomyManager {
       { id: 'shipModulesCompleted', icon: kenneyIcon('wrench', '#B0BEC5'), label: 'Moduły statku ukończone', value: this.stats.shipModulesCompleted.toLocaleString('pl-PL') },
       { id: 'maxLoginStreak', icon: kenneyIcon('fire', '#FF7043'), label: 'Najdłuższy streak logowania', value: `${this.stats.maxLoginStreak} dni` },
       { id: 'challengesClaimed', icon: achIcon('challenges_5'), label: 'Wyzwania dnia odebrane', value: this.stats.challengesClaimed.toLocaleString('pl-PL') },
-      { id: 'achievements', icon: kenneyIcon('trophy', '#FFD54F'), label: 'Osiągnięcia zdobyte', value: `${this.unlockedAchievements.size} / ${ACHIEVEMENTS.length}` },
+      { id: 'achievements', icon: kenneyIcon('trophy', '#FFD54F'), label: 'Osiągnięcia zdobyte', value: `${this.unlockedAchievements.size} / ${ACHIEVEMENTS.length} (+${this.getAchievementIncomeBonusPercent()}% zarobku)` },
       { id: 'playtime', icon: kenneyIcon('hourglass', '#A5D6A7'), label: 'Czas gry łącznie', value: fmtPlaytime(this.stats.lifetimePlaytimeSeconds) }
     ];
   }
@@ -1087,16 +1100,17 @@ class EconomyManager {
    * Jedyne miejsce, w którym gracz faktycznie ZARABIA (w przeciwieństwie do
    * contributeShipMoney, które WYDAJE). Oprócz this.money aktualizuje też
    * totalEarned (podstawa nagrody w Rdzeniach - patrz previewPrestigeCores)
-   * i dolicza trwały mnożnik core_income, jeśli gracz go wykupił - mnożnik
-   * wchodzi PRZED zapisaniem do totalEarned, żeby kolejne przebiegi z
-   * wykupionym Wzmacniaczem szybciej generowały kolejne Rdzenie (celowa
-   * spirala postępu, standard w grach z prestiżem).
+   * i dolicza trwałe mnożniki core_income (jeśli wykupiony) oraz osiągnięć
+   * (patrz _getAchievementIncomeMultiplier) - oba wchodzą PRZED zapisaniem
+   * do totalEarned, żeby kolejne przebiegi z tymi bonusami szybciej
+   * generowały kolejne Rdzenie (celowa spirala postępu, standard w grach
+   * z prestiżem).
    */
   _addMoney(amount, x, y) {
     const base = Math.max(0, Math.round(amount));
     if (base <= 0) return 0;
 
-    const value = Math.round(base * this._getCoreIncomeMultiplier());
+    const value = Math.round(base * this._getCoreIncomeMultiplier() * this._getAchievementIncomeMultiplier());
 
     this.money += value;
     this.totalEarned += value;
@@ -1156,6 +1170,20 @@ class EconomyManager {
     const def = PRESTIGE_UPGRADES.find((u) => u.id === 'core_income');
     if (!def) return 1;
     return def.getValue(this.prestigeLevels.core_income || 0);
+  }
+
+  /** Trwały mnożnik zarobku ze zdobytych osiągnięć (1.0 = brak bonusu, patrz
+   * ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK) - NIGDY nie zerowany prestiżem,
+   * bo unlockedAchievements też nie jest. */
+  _getAchievementIncomeMultiplier() {
+    return 1 + this.unlockedAchievements.size * ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK;
+  }
+
+  /** Aktualny bonus zarobku z osiągnięć jako liczba całkowita procent
+   * (np. 5 = "+5%") - do wyświetlenia w AchievementsPanel/StatsPanel bez
+   * duplikowania formuły w ui.js. */
+  getAchievementIncomeBonusPercent() {
+    return Math.round(this.unlockedAchievements.size * ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK * 100);
   }
 
   /** Maks. poziom combo (ECONOMY_COMBO_MAX_STACKS + trwały bonus z

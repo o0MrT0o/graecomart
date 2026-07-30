@@ -1285,6 +1285,7 @@ class SettingsPanel {
     const eco = window.economyManager;
     const catalog = (eco && typeof eco.getAchievementsCatalog === 'function') ? eco.getAchievementsCatalog() : [];
     const unlocked = catalog.filter((a) => a.unlocked).length;
+    const bonusPct = (eco && typeof eco.getAchievementIncomeBonusPercent === 'function') ? eco.getAchievementIncomeBonusPercent() : 0;
     const btn = new UIButton({
       label: 'Pokaż',
       variant: 'ghost',
@@ -1293,7 +1294,7 @@ class SettingsPanel {
         if (typeof this.onOpenAchievements === 'function') this.onOpenAchievements();
       }
     });
-    return this._buildRow(TROPHY_ICON_SVG, 'Osiągnięcia', `Zdobyte: ${unlocked}/${catalog.length}`, btn.mount());
+    return this._buildRow(TROPHY_ICON_SVG, 'Osiągnięcia', `Zdobyte: ${unlocked}/${catalog.length} — bonus zarobku: +${bonusPct}%`, btn.mount());
   }
 
   /** Wiersz "Skiny" - ten sam wzorzec co Osiągnięcia wyżej, otwiera osobny
@@ -1532,6 +1533,9 @@ class AchievementsPanel {
     if (!this.bodyEl || !this.economyManager) return;
     const catalog = this.economyManager.getAchievementsCatalog();
     const unlocked = catalog.filter((a) => a.unlocked).length;
+    const bonusPct = typeof this.economyManager.getAchievementIncomeBonusPercent === 'function'
+      ? this.economyManager.getAchievementIncomeBonusPercent()
+      : 0;
 
     this.bodyEl.innerHTML = '';
 
@@ -1539,7 +1543,7 @@ class AchievementsPanel {
     section.className = 'ui-shop-section';
     const heading = document.createElement('h3');
     heading.className = 'ui-shop-section__title';
-    heading.textContent = `Zdobyte: ${unlocked} / ${catalog.length}`;
+    heading.textContent = `Zdobyte: ${unlocked} / ${catalog.length} — bonus zarobku: +${bonusPct}%`;
     section.appendChild(heading);
 
     const list = document.createElement('div');
@@ -1572,6 +1576,7 @@ class AchievementsPanel {
       <div class="ui-shop-item__info">
         <span class="ui-shop-item__name">${a.name}</span>
         <span class="ui-shop-item__desc">${a.desc}</span>
+        <span class="ui-shop-item__reward">${PAY_ICON_SVG} +1% do zarobku (na stałe)</span>
         ${progressHtml}
       </div>
       <div class="ui-shop-item__action">${a.unlocked ? `<span class="ui-shop-item__done" aria-label="Zdobyte">${CHECK_ICON_SVG}</span>` : ''}</div>
@@ -2056,7 +2061,7 @@ class UIManager {
     // osiągnięć (gdyby akurat był otwarty) i licznik "X/Y" w Menu przy
     // następnym otwarciu (Menu i tak odświeża się przy każdym open()).
     this._onAchievementUnlocked = (d) => {
-      this.notifications.show(`Osiągnięcie: ${d.name}!`, {
+      this.notifications.show(`Osiągnięcie: ${d.name}! (+1% do zarobku na stałe)`, {
         type: 'success',
         icon: d.icon || TROPHY_ICON_SVG,
         duration: 4200

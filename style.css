@@ -810,6 +810,24 @@ canvas {
     font-variant-numeric: tabular-nums;
 }
 
+/* Nagroda za osiągnięcie (AchievementsPanel) - stały +1% do zarobku, patrz
+   ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK w economy.js. Kolor akcentu (nie
+   muted jak level-text) - to ma czytać się jako korzyść, nie jako
+   drugorzędny opis. */
+.ui-shop-item__reward {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.64rem;
+    font-weight: 700;
+    color: var(--ui-accent-hover);
+}
+
+.ui-shop-item__reward .ui-icon {
+    width: 0.85em;
+    height: 0.85em;
+}
+
 /* Cienki pasek postępu osiągnięcia (AchievementsPanel) - alternatywa dla
    .ui-shop-item__dots (te są dla dyskretnych poziomów ulepszeń; osiągnięcia
    mają ciągły postęp X/próg, więc pasek czyta się naturalniej). */
