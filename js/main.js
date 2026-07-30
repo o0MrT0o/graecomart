@@ -86,6 +86,12 @@ function startGame() {
     // ogóle ruszył. Wcześniej nie był modułem (nie potrzebował - wszystko
     // inne w nim jest event-driven/Date.now()-based).
     game.registerModule(window.economyManager);
+
+    // Powiadomienie "wróć po odbiór" przy chowaniu apki w tło - patrz
+    // offline-reminder.js. Nie jest modułem gry (czysto event-driven przez
+    // document.visibilitychange, brak update()/draw()) - wystarczy raz init().
+    window.offlineReminderManager = new OfflineReminderManager(window.economyManager);
+    window.offlineReminderManager.init();
     window.gameFeel = new GameFeel();
     game.registerModule(window.gameFeel);
 

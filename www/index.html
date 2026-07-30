@@ -80,12 +80,16 @@
     <!-- KOLEJNOŚĆ WAŻNA — nie zmieniaj -->
     <script src="js/eventbus.js"></script>
     <script src="js/audio.js"></script>
-    <!-- Bundlowany osobno (esbuild) - JEDYNY plik w projekcie z importem
-         npm (@capacitor-community/admob). Nieobecny/nieszkodliwy podczas
-         zwykłego testowania w przeglądarce (Live Server) - patrz README-ADS.md.
-         Musi ładować się PRZED ads.js, który sprawdza czy window.NativeAds istnieje. -->
+    <!-- Bundlowane osobno (esbuild) - jedyne dwa pliki w projekcie z importem
+         npm (@capacitor-community/admob, @capacitor/local-notifications).
+         Nieobecne/nieszkodliwe podczas zwykłego testowania w przeglądarce
+         (Live Server) - patrz README-ADS.md. Muszą ładować się PRZED
+         ads.js/offline-reminder.js, które sprawdzają czy window.NativeAds/
+         window.NativeNotifications istnieją. -->
     <script src="js/native-ads.bundle.js"></script>
     <script src="js/ads.js"></script>
+    <script src="js/native-notifications.bundle.js"></script>
+    <script src="js/offline-reminder.js"></script>
     <script src="js/save.js"></script>
     <script src="js/economy.js"></script>
     <script src="js/sprites.js"></script>
