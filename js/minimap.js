@@ -213,6 +213,16 @@ class MinimapManager {
       });
     }
 
+    // Złoty Bonus (goldbonus.js) - clampToEdge=true (jak POI), bo to rzadka,
+    // pilna okazja - gracz ma wiedzieć w którą stronę biec NAWET z drugiego
+    // końca mapy, nie tylko gdy akurat jest blisko. Rozmiar pulsuje szybciej
+    // niż zwykłe POI, żeby wyraźnie odróżnić się od stałych punktów.
+    const gb = window.goldBonusManager && window.goldBonusManager.active;
+    if (gb) {
+      const pulse = MINIMAP_POI_DOT_SIZE * (1.15 + Math.sin(performance.now() / 140) * 0.25);
+      this._drawDot(ctxUI, cx, cy, gb.x, gb.y, scale, '#FFD700', pulse, true);
+    }
+
     ctxUI.restore();
 
     // Znaczniki N/E/S/W na obwodzie - drobny "kompasowy" detal, ten sam

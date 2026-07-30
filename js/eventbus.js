@@ -55,6 +55,11 @@ const Events = {
     // dźwiękiem bez własnej wiedzy o mechanice hazardu (ten sam wzorzec co
     // reszta subskrypcji AudioManagera).
     ITEM_LOST:         'player:itemLost',       // { typeId }
+    // Złoty Bonus (goldbonus.js) - rzadki, zanikający pickup na mapie,
+    // niezależny od zwykłego systemu surowców (items.js). audio.js reaguje
+    // dźwiękiem, economy.js sam publikuje FX_POPUP/FX_PARTICLES w miejscu
+    // zdarzenia (ten sam wzorzec co sellItem).
+    GOLD_BONUS_COLLECTED: 'goldbonus:collected', // { reward, x, y }
 };
 
 if (typeof globalThis !== 'undefined') {

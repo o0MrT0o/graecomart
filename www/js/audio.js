@@ -342,6 +342,10 @@ class AudioManager {
     this._onZoneHazardWarning = () => this.play('hazard');
     this._onAchievementUnlocked = () => this.play('achievement');
     this._onItemLost = () => this.play('item_lost');
+    // Złoty Bonus (goldbonus.js) - reużywa 'achievement' (sfx_magic), ten
+    // sam "rzadki, celebracyjny moment" co odblokowanie osiągnięcia, żeby
+    // NIE dublować kluczy audio o jeden nowy plik dla jednego zdarzenia.
+    this._onGoldBonusCollected = () => this.play('achievement');
 
     Bus.subscribe(Events.ITEM_PICKUP, this._onItemPickup);
     Bus.subscribe(Events.MACHINE_RECEIVED, this._onMachineReceived);
@@ -354,6 +358,7 @@ class AudioManager {
     if (Events.ZONE_HAZARD_WARNING) Bus.subscribe(Events.ZONE_HAZARD_WARNING, this._onZoneHazardWarning);
     if (Events.ACHIEVEMENT_UNLOCKED) Bus.subscribe(Events.ACHIEVEMENT_UNLOCKED, this._onAchievementUnlocked);
     if (Events.ITEM_LOST) Bus.subscribe(Events.ITEM_LOST, this._onItemLost);
+    if (Events.GOLD_BONUS_COLLECTED) Bus.subscribe(Events.GOLD_BONUS_COLLECTED, this._onGoldBonusCollected);
   }
 
   /**
@@ -784,6 +789,7 @@ class AudioManager {
     if (Events.ZONE_HAZARD_WARNING) Bus.unsubscribe(Events.ZONE_HAZARD_WARNING, this._onZoneHazardWarning);
     if (Events.ACHIEVEMENT_UNLOCKED) Bus.unsubscribe(Events.ACHIEVEMENT_UNLOCKED, this._onAchievementUnlocked);
     if (Events.ITEM_LOST) Bus.unsubscribe(Events.ITEM_LOST, this._onItemLost);
+    if (Events.GOLD_BONUS_COLLECTED) Bus.unsubscribe(Events.GOLD_BONUS_COLLECTED, this._onGoldBonusCollected);
 
     this.stopMusic();
     if (this._audioCtx && typeof this._audioCtx.close === 'function') {

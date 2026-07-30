@@ -116,7 +116,11 @@ const SPRITE_PATH_CANDIDATES = {
   // 90°-obrót "up", więc rotacja dałaby wizualnie inny (gorszy) trójkąt.
   trend_up: ['assets/ui/icons/up.png'],
   trend_down: ['assets/ui/icons/down.png'],
-  trend_flat: ['assets/ui/icons/right.png']
+  trend_flat: ['assets/ui/icons/right.png'],
+  // Złoty Bonus (goldbonus.js, Tomek: "daj coś fajnego z paczek") - gwiazdka
+  // z Kenney "Space Shooter Remastered" (Power-ups/star_gold.png), ta sama
+  // paczka co ship_fighter/fx_soot/fx_smoke_puff wyżej.
+  fx_gold_star: ['assets/effects/fx_gold_star.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd

@@ -37,6 +37,7 @@ function startGame() {
 
     window.stackController = new StackController();
     window.itemManager = new ItemManager(gameplayCanvas);
+    window.goldBonusManager = new GoldBonusManager();
 
     const player = new PlayerController(gameplayCanvas);
     window.playerController = player;
@@ -66,6 +67,7 @@ function startGame() {
 
     game.registerModule(window.stackController);
     game.registerModule(window.itemManager);
+    game.registerModule(window.goldBonusManager);
     // Maszyny/Terminal/Statek PRZED graczem (moduły rysują się w kolejności
     // rejestracji, patrz game.js draw()) - Tomek: "postać niech wchodzi na
     // to i na maszyny, a nie chowa się za nimi". Kolizja z tymi obiektami

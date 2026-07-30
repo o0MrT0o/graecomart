@@ -271,6 +271,24 @@ class GameFeel {
       ctx.bezierCurveTo(-s * 0.5, s * 0.6, -s * 0.8, -s * 0.2, 0, -s);
       ctx.closePath();
       ctx.fill();
+    } else if (iconKey === 'star') {
+      // Gwiazdka - Złoty Bonus (economy.js: collectGoldBonus). 5-ramienna,
+      // ten sam prosty "wypełniony kształt" jak flame wyżej, nie kontur.
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const outerA = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+        const innerA = outerA + Math.PI / 5;
+        const ox = Math.cos(outerA) * s;
+        const oy = Math.sin(outerA) * s;
+        const ix = Math.cos(innerA) * s * 0.42;
+        const iy = Math.sin(innerA) * s * 0.42;
+        if (i === 0) ctx.moveTo(ox, oy);
+        else ctx.lineTo(ox, oy);
+        ctx.lineTo(ix, iy);
+      }
+      ctx.closePath();
+      ctx.fill();
     }
     ctx.restore();
   }

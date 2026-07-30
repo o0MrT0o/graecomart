@@ -19,6 +19,19 @@ const ECONOMY_COMBO_WINDOW_MS = 4000;
 const ECONOMY_COMBO_MAX_STACKS = 8;
 const ECONOMY_COMBO_BONUS_PER_STACK = 0.08; // +8% do wypłaty za poziom combo
 
+// Złoty Bonus (goldbonus.js) - rzadki, zanikający pickup na mapie, osobny od
+// zwykłej sprzedaży (nagroda "za granie aktywne" w duchu "arcade" połowy
+// nazwy gry, nie kolejny mnożnik ekonomii). Nagroda liczona z REALNEGO tempa
+// zarobku gracza (sellEarnings/totalPlaytimeSeconds - ta sama para pól co
+// computeOfflineReward), nie ze stałej kwoty - late-game gracz z wykupionymi
+// ulepszeniami dostaje proporcjonalnie więcej, early-game nie czuje się
+// pominięty dzięki GOLD_BONUS_MIN_REWARD. "SECONDS_WORTH" = ile sekund
+// normalnego zarobku reprezentuje jeden bonus - 90s to zauważalny, ale nie
+// ekonomię-łamiący zastrzyk (dla porównania: offline daje maks. 8h × 40%
+// skuteczności, więc pojedynczy bonus to ułamek tego).
+const GOLD_BONUS_SECONDS_WORTH = 90;
+const GOLD_BONUS_MIN_REWARD = 15;
+
 // Symbol głównej waluty - własna kopia ui.js CREDIT_ICON_SVG, pod INNĄ
 // nazwą (przedrostek ECONOMY_) - klasyczne <script> (nie moduły) dzielą
 // JEDNĄ globalną przestrzeń nazw najwyższego poziomu, więc dwie stałe
@@ -1057,6 +1070,35 @@ class EconomyManager {
       y,
       duration: 900,
       color: this.comboStacks >= comboMax ? '#FF7043' : '#FFD700'
+    });
+
+    return paidOut;
+  }
+
+  /**
+   * Wypłaca nagrodę Złotego Bonusu (goldbonus.js woła to w momencie
+   * zebrania) - kwota z realnego tempa zarobku (patrz komentarz przy
+   * GOLD_BONUS_SECONDS_WORTH), przez _addMoney() jak każda inna wypłata
+   * (core_income + bonus osiągnięć wliczone automatycznie). Publikuje
+   * własny FX_POPUP/FX_PARTICLES w miejscu zebrania - ten sam wzorzec co
+   * sellItem() wyżej, tylko złoty kolor i bez sufiksu combo (to nie jest
+   * combo-sprzedaż).
+   * @returns {number} faktycznie wypłacona kwota.
+   */
+  collectGoldBonus(x, y) {
+    const rate = this.totalPlaytimeSeconds > 0 ? this.sellEarnings / this.totalPlaytimeSeconds : 0;
+    const base = Math.max(GOLD_BONUS_MIN_REWARD, Math.round(rate * GOLD_BONUS_SECONDS_WORTH));
+    const paidOut = this._addMoney(base, x, y);
+
+    Bus.publish(Events.GOLD_BONUS_COLLECTED, { reward: paidOut, x, y });
+    Bus.publish(Events.FX_PARTICLES, { x, y, color: '#FFD700', count: 14 });
+    Bus.publish(Events.FX_POPUP, {
+      text: `+${paidOut}`,
+      icon: 'star',
+      x,
+      y,
+      duration: 1100,
+      color: '#FFD700'
     });
 
     return paidOut;
