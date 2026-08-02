@@ -121,16 +121,59 @@ const SWAMP_TEXTURE_SRC = 'assets/swamp.png';
 // "kulami" liści z Kenney RPG Pack) - żeby nie zdublować już istniejącego
 // typu dekoracji, tylko dać trawie własną, mniej kłującą tożsamość.
 const DECOR_TYPES = ['tree', 'bush', 'rock', 'shrub', 'crate', 'sign', 'grass_tuft', 'fern'];
-const DECOR_SRC = {
-  tree: 'assets/decor/tree.png',
-  bush: 'assets/decor/bush.png',
-  rock: 'assets/decor/rock.png',
-  shrub: 'assets/decor/shrub.png',
-  crate: 'assets/decor/crate.png',
-  sign: 'assets/decor/sign.png',
-  grass_tuft: 'assets/decor/grass_tuft.png',
-  fern: 'assets/decor/fern.png'
-};
+
+// Warianty dekoracji per planeta (Tomek: "na innych prestige'ach daj inną
+// roślinność i inne dodatki typu te skrzynki itd, tylko inne w podobnych
+// ilościach") - NIEZALEŻNE od GAME_PLANET_VISUAL_FILTERS wyżej: tamten
+// przebarwia CAŁE upieczone tło jednym globalnym filtrem, ten podmienia
+// SAME pliki/kształty sprite'ów. Trzy zestawy, wybierane deterministycznie
+// z planetNumber (patrz _currentDecorSet) - _generateDecorations (typ/
+// pozycja/liczba/skala każdej dekoracji) zostaje CAŁKOWICIE bez zmian, ta
+// tablica zmienia tylko to, JAKI obrazek rysujemy dla danego typu/miejsca.
+// rock jest WSPÓLNY dla wszystkich zestawów (żadna z już pobranych paczek
+// Kenney nie miała innego pasującego stylistycznie kamienia) - i tak
+// dostaje inny odcień z GAME_PLANET_VISUAL_FILTERS jak reszta tła, więc na
+// każdej planecie wygląda nieco inaczej mimo współdzielonego kształtu.
+const DECOR_SETS = [
+  {
+    // Zestaw 0 - domyślny (oryginalne assety, patrz stary DECOR_SRC).
+    tree: 'assets/decor/tree.png',
+    bush: 'assets/decor/bush.png',
+    rock: 'assets/decor/rock.png',
+    shrub: 'assets/decor/shrub.png',
+    crate: 'assets/decor/crate.png',
+    sign: 'assets/decor/sign.png',
+    grass_tuft: 'assets/decor/grass_tuft.png',
+    fern: 'assets/decor/fern.png'
+  },
+  {
+    // Zestaw 1 - "iglasty/mroźny" (Kenney Background Elements Remastered dla
+    // tree/bush/shrub, Platformer Pack Remastered dla crate/sign - ten sam
+    // pakiet co crate/sign zestawu 0, ale inne pliki - i Foliage Sprites,
+    // dotintowane offline chłodną zielenią, dla grass_tuft/fern).
+    tree: 'assets/decor/tree_alt1.png',
+    bush: 'assets/decor/bush_alt1.png',
+    rock: 'assets/decor/rock.png',
+    shrub: 'assets/decor/shrub_alt1.png',
+    crate: 'assets/decor/crate_alt1.png',
+    sign: 'assets/decor/sign_alt1.png',
+    grass_tuft: 'assets/decor/grass_tuft_alt1.png',
+    fern: 'assets/decor/fern_alt1.png'
+  },
+  {
+    // Zestaw 2 - "pustynny" (palma/kaktusy z Background Elements Remastered,
+    // inna skrzynia/tabliczka z Platformer Pack Remastered, Foliage Sprites
+    // dotintowane offline piaskowym odcieniem).
+    tree: 'assets/decor/tree_alt2.png',
+    bush: 'assets/decor/bush_alt2.png',
+    rock: 'assets/decor/rock.png',
+    shrub: 'assets/decor/shrub_alt2.png',
+    crate: 'assets/decor/crate_alt2.png',
+    sign: 'assets/decor/sign_alt2.png',
+    grass_tuft: 'assets/decor/grass_tuft_alt2.png',
+    fern: 'assets/decor/fern_alt2.png'
+  }
+];
 const DECOR_PROCEDURAL_TYPES = ['flower', 'puddle'];
 // Ile dekoracji rozrzucamy łącznie po całej mapie. Podniesione z 55 - przy
 // świecie 1400x2000 to zostawiało spore puste połacie ("nudna, pusta mapa").
@@ -382,19 +425,31 @@ class Game {
     // rysowane na warstwie tła (więc zawsze POD graczem/przedmiotami/maszynami,
     // bez potrzeby sortowania po Z). Ładujemy jako zwykłe obrazki - jeśli któryś
     // się nie wczyta, po prostu nie rysujemy tego typu (reszta działa normalnie).
-    this._decorImages = {};
-    DECOR_TYPES.forEach((type) => {
-      const img = new Image();
-      readyPromises.push(new Promise((resolve) => {
-        img.onload = () => resolve();
-        img.onerror = () => {
-          console.warn(`[Game] Nie udało się wczytać dekoracji ${type} (${DECOR_SRC[type]}).`);
-          resolve();
-        };
-      }));
-      img.src = DECOR_SRC[type];
-      this._decorImages[type] = img;
+    // Wczytujemy WSZYSTKIE zestawy (DECOR_SETS) od razu, nie tylko bieżący -
+    // dzięki temu zmiana zestawu po prestige (patrz PRESTIGE_DONE w
+    // _bindEvents) jest natychmiastowa (bez czekania na dociągnięcie nowych
+    // obrazków w środku sesji) kosztem kilkunastu dodatkowych, malutkich
+    // plików wczytanych z góry na ekranie ładowania.
+    this._decorImageSets = DECOR_SETS.map((set) => {
+      const images = {};
+      DECOR_TYPES.forEach((type) => {
+        const img = new Image();
+        readyPromises.push(new Promise((resolve) => {
+          img.onload = () => resolve();
+          img.onerror = () => {
+            console.warn(`[Game] Nie udało się wczytać dekoracji ${type} (${set[type]}).`);
+            resolve();
+          };
+        }));
+        img.src = set[type];
+        images[type] = img;
+      });
+      return images;
     });
+    // Wskaźnik na AKTYWNY zestaw (patrz _currentDecorSet) - reszta kodu
+    // (_decorImagesReady/_bakeStaticDecorations/_drawDecorations) używa
+    // wyłącznie this._decorImages, bez wiedzy o istnieniu innych zestawów.
+    this._decorImages = this._decorImageSets[this._currentDecorSetIndex()];
 
     // Ekran ładowania (main.js) czeka na to, ZANIM w ogóle pokaże grę - żeby
     // pierwsza widoczna klatka miała już upieczone tło świata (patrz
@@ -1024,6 +1079,14 @@ class Game {
     const planetFilter = this._currentPlanetFilter();
     if (planetFilter) wctx.filter = planetFilter;
 
+    // Zestaw dekoracji (patrz DECOR_SETS) dobrany TU, tuż przed pieczeniem -
+    // nie w konstruktorze, bo przy starcie gry window.economyManager (i
+    // odczytany z zapisu planetNumber) jeszcze nie istnieje w momencie
+    // tworzenia Game() (main.js tworzy go dopiero PO Game() - patrz
+    // _currentDecorSetIndex). Pieczenie i tak czeka na _decorImagesReady(),
+    // czyli zawsze wypada już PO pełnej inicjalizacji main.js.
+    this._decorImages = this._decorImageSets[this._currentDecorSetIndex()];
+
     this._renderZoneFills(wctx, 0, 0, this.worldWidth, this.worldHeight);
     this._bakeStaticDecorations(wctx);
 
@@ -1046,15 +1109,31 @@ class Game {
     return (modifier && GAME_PLANET_VISUAL_FILTERS[modifier.id]) || null;
   }
 
-  /** true, gdy WSZYSTKIE obrazki dekoracji sprite'owych (patrz DECOR_TYPES)
+  /** Który z DECOR_SETS jest aktywny na bieżącej planecie - cyklicznie z
+   * planetNumber (1, 2, 3, 4... -> 0, 1, 2, 0...), NIEZALEŻNIE od
+   * activeModifier/_currentPlanetFilter (ten dobiera KOLOR, to dobiera
+   * KSZTAŁTY - dwie osobne, niezsynchronizowane loterie dają więcej
+   * realnych kombinacji niż gdyby jechały na tym samym kluczu). Brak
+   * economyManager (np. bardzo wczesne wywołanie) -> zestaw 0, tak samo jak
+   * dla pierwszej planety. */
+  _currentDecorSetIndex() {
+    const planetNumber = (window.economyManager && window.economyManager.planetNumber) || 1;
+    return (planetNumber - 1) % DECOR_SETS.length;
+  }
+
+  /** true, gdy WSZYSTKIE obrazki dekoracji sprite'owych, ZE WSZYSTKICH
+   * zestawów (patrz DECOR_SETS/_decorImageSets) - nie tylko bieżącego -
    * skończyły próbę wczytania (sukces LUB porażka - `complete` jest true w
    * obu przypadkach, tak samo jak przy _loadTexture) - warunek gotowości do
-   * _bakeWorldBackground/_bakeStaticDecorations. */
+   * _bakeWorldBackground/_bakeStaticDecorations. Sprawdzamy WSZYSTKIE, bo
+   * _bakeWorldBackground dobiera aktywny zestaw dopiero tuż przed pieczeniem
+   * (patrz _currentDecorSetIndex) - w tamtym momencie każdy z trzech mógłby
+   * się okazać tym wybranym. */
   _decorImagesReady() {
-    return DECOR_TYPES.every((type) => {
-      const img = this._decorImages[type];
+    return this._decorImageSets.every((set) => DECOR_TYPES.every((type) => {
+      const img = set[type];
       return img && img.complete;
-    });
+    }));
   }
 
   /**
