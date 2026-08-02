@@ -57,21 +57,20 @@ const SHIP_PERK_HAZARD_GRACE_MULT = 2;
 const HEADLAMP_HAZARD_SPEED_MULT = 0.7;
 const BOOTS_HAZARD_GRACE_MULT = 1.5;
 
-// Ścieżka do sprite'a postaci (CC0, Kenney Platformer Pack - wariant niebieski).
-// Umieść plik pod tą ścieżką względem index.html: assets/player.png
-// BUGFIX: był 'assets/player.png' - taki folder nie istnieje w projekcie,
-// plik leży płasko jako player.png (ten sam bug co w sprites.js). Postać
-// od początku renderowała się więc proceduralnie (_drawProcedural), nigdy
-// prawdziwym sprite'em.
-// Lista kandydatur zamiast jednej sztywnej ścieżki - nie wiemy na pewno,
-// czy pliki leżą płasko obok index.html, czy w assets/, więc próbujemy obu
-// (patrz _loadImageWithFallbacks niżej) zamiast zgadywać i psuć jedno na
-// rzecz drugiego, jak to już raz wyszło.
-const PLAYER_SPRITE_CANDIDATES = ['player.png', 'assets/player.png'];
-// Spritesheet animacji chodzenia (ta sama postać, 11 klatek w poziomym pasku,
-// każda klatka to jednolity "stage" 71x95 - wyrównany tak, żeby stopy nie
-// skakały przy zmianie klatek). Umieść plik pod tą ścieżką: assets/player_walk.png
-const PLAYER_WALK_SPRITE_CANDIDATES = ['player_walk.png', 'assets/player_walk.png'];
+// Ścieżka do sprite'a postaci (CC0, Kenney Platformer Pack - wariant niebieski):
+// assets/player.png. Spritesheet animacji chodzenia (ta sama postać, 11
+// klatek w poziomym pasku, każda klatka to jednolity "stage" 71x95 -
+// wyrównany tak, żeby stopy nie skakały przy zmianie klatek): assets/player_walk.png.
+//
+// BUGFIX (Tomek: "martwe 404 przy starcie gry" - lista poprawek): OBA miały
+// dwie kandydatury (goła nazwa w katalogu głównym najpierw, assets/... jako
+// fallback) z czasów, gdy dokładny układ plików na dysku był niepewny -
+// zmierzone wprost (`ls`): pliki leżą WYŁĄCZNIE w assets/, goła nazwa w
+// katalogu głównym nigdy nie istniała, więc generowała gwarantowane 404 przy
+// KAŻDYM starcie gry, zanim _loadImageWithFallbacks (niżej) trafił w drugą,
+// działającą ścieżkę. Skrócone do jednej.
+const PLAYER_SPRITE_CANDIDATES = ['assets/player.png'];
+const PLAYER_WALK_SPRITE_CANDIDATES = ['assets/player_walk.png'];
 const PLAYER_WALK_FRAME_COUNT = 11;
 /**
  * Dokładna pozycja stóp (lewa/prawa noga, jako ułamek szerokości/wysokości

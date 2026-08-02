@@ -4,27 +4,28 @@
  * sprites.js — ładowanie sprite'ów Kenney (CC0) dla przedmiotów i maszyn.
  */
 
-// BUGFIX: ścieżki miały prefiks 'assets/items/' i 'assets/machines/', ale
-// prawdziwe pliki leżą płasko obok index.html (ten sam poziom co js/) -
-// dlatego KAŻDY sprite w grze failował na wczytaniu (onerror, po cichu) i
-// wszystko - przedmioty na mapie, w plecaku, ciała maszyn - renderowało się
-// przez emoji-fallback w ItemRenderer._drawSpriteOrLabel (items.js) albo
-// przez różowy "Brak pliku PNG!" (machines.js, dla pieca hutniczego).
-// Lista kandydatur na klucz, nie jedna sztywna ścieżka. Poprzedni fix
-// (usunięcie prefiksu 'assets/items/'/'assets/machines/') założył, że pliki
-// leżą płasko obok index.html, bo tak wyglądały uploadowane do projektu -
-// ale to była zgadywanka: 404 z Live Server pokazało, że płaska ścieżka
-// TEŻ nie trafia. Zamiast zgadywać po raz drugi, loadAll() (niżej) próbuje
-// WSZYSTKICH wariantów po kolei dla każdego pliku i bierze pierwszy, który
-// się wczyta - działa niezależnie od tego, którego układu Tomek faktycznie
-// używa na dysku, i nie wymaga już zgadywania.
+// Lista kandydatur na klucz, nie jedna sztywna ścieżka - loadAll() (niżej)
+// próbuje kolejnych wariantów, aż któryś się wczyta, na wypadek gdyby
+// prawdziwy układ plików na dysku różnił się od zakładanego.
+//
+// PORZĄDEK (Tomek: "martwe 404 przy starcie gry" - lista poprawek): pierwsze
+// trzy wpisy (trash/plastic/.../machine_furnace) miały historycznie PO
+// TRZY kandydatury (goła nazwa w katalogu głównym, assets/items/.../
+// assets/machines/..., płaska assets/...) z czasów, gdy dokładny układ
+// plików na dysku był niepewny - w praktyce od dawna trafia WYŁĄCZNIE
+// druga (assets/items/.../assets/machines/...), więc pierwsza i trzecia
+// generowały ~11 gwarantowanych, bezcelowych 404 przy KAŻDYM starcie gry
+// (zweryfikowane bezpośrednio: `find` na dysku - tylko assets/items/* i
+// assets/machines/* istnieją). Skrócone do jednej, faktycznie działającej
+// ścieżki - reszta wpisów w tym pliku (dodawanych już z pewnym układem) od
+// razu miała tylko jedną, ten fix tylko dogania resztę do tego samego stylu.
 const SPRITE_PATH_CANDIDATES = {
-  trash: ['trash.png', 'assets/items/trash.png', 'assets/trash.png'],
-  plastic: ['plastic.png', 'assets/items/plastic.png', 'assets/plastic.png'],
-  paper: ['paper.png', 'assets/items/paper.png', 'assets/paper.png'],
-  metal: ['metal.png', 'assets/items/metal.png', 'assets/metal.png'],
-  glass: ['glass.png', 'assets/items/glass.png', 'assets/glass.png'],
-  product: ['product.png', 'assets/items/product.png', 'assets/product.png'],
+  trash: ['assets/items/trash.png'],
+  plastic: ['assets/items/plastic.png'],
+  paper: ['assets/items/paper.png'],
+  metal: ['assets/items/metal.png'],
+  glass: ['assets/items/glass.png'],
+  product: ['assets/items/product.png'],
   // Tomek: "te ikony kryształów itd też podmień na lepsze z tej nowej
   // paczki" - alloy/crystal/crystal_shard/crystal_gem NIE miały pliku PNG
   // w projekcie (patrz komentarze przy ItemRenderer._drawIngot/_drawCrystal/
@@ -46,9 +47,9 @@ const SPRITE_PATH_CANDIDATES = {
   crystal: ['assets/items/crystal.png'],
   crystal_shard: ['assets/items/crystal_shard.png'],
   crystal_gem: ['assets/items/crystal_gem.png'],
-  machine_recycle: ['recycle.png', 'assets/machines/recycle.png', 'assets/recycle.png'],
-  machine_press: ['press.png', 'assets/machines/press.png', 'assets/press.png'],
-  machine_furnace: ['piechutniczy.png', 'assets/machines/piechutniczy.png', 'assets/piechutniczy.png'],
+  machine_recycle: ['assets/machines/recycle.png'],
+  machine_press: ['assets/machines/press.png'],
+  machine_furnace: ['assets/machines/piechutniczy.png'],
   // Faza kosmicznego reskinu maszyn (machines.js, _drawRecycleMachine/
   // _drawPressMachine/_drawFurnaceMachine) - prawdziwe teksturki poświaty z
   // Kenney "Particle Pack" (CC0), białe/szare więc TINTOWALNE na dowolny
