@@ -197,22 +197,31 @@ const ROCK_VARIANT_SRC = ['assets/decor/rock_var2.png', 'assets/decor/rock_var3.
 // zamiast dodawać kolejne obiekty na mapie zastąp trochę istniejących
 // skrzynek/tabliczek nowymi rzeczami") - część egzemplarzy typu crate/sign
 // (patrz item.useAltProp w _generateDecorations, losowane RAZ per
-// egzemplarz) rysuje się tym obrazkiem zamiast obrazka z aktywnego
-// DECOR_SETS - CAŁKOWICIE NOWY rekwizyt (oba z Kenney Platformer Pack
-// Industrial: beczka + zębatka), nie kolejny wariant tego samego kształtu.
-// Dwie poprzednie wersje znaku odrzucone: tabliczka ostrzegawcza z
-// wykrzyknikiem ("co to są za ekrany z wykrzyknikiem, wyrzuć to i daj coś
-// fajnego") i pochodnia ("wybierz coś co pasuje do biomu a nie bo wygląda
-// ciekawie, do ash") - zębatka to porzucona maszyneria, pasuje do
-// popiołowo-industrialnej Strefy C tak samo jak beczka, w przeciwieństwie
-// do pochodni. BEZ rotacji (w przeciwieństwie do ROCK_VARIANT_SRC) - Tomek:
-// "bez losowego obrotu, bo jak tabliczka czy skrzynia do góry nogami" - to
+// egzemplarz) rysuje się jednym z tych obrazków zamiast obrazka z
+// aktywnego DECOR_SETS - CAŁKOWICIE NOWE rekwizyty (Kenney Platformer Pack
+// Industrial + Remastered), nie kolejne warianty tego samego kształtu.
+// Każdy typ to TABLICA (nie pojedynczy plik) - "sign" ma teraz 4 warianty
+// (patrz item.altPropVariant), wybrane przez Tomka po obejrzeniu kilku rund
+// propozycji ("043, 057, zniszczone ogrodzenie są git, gruz też"):
+// pas ostrzegawczy / zaślepiony panel z X / zniszczone ogrodzenie / gruz -
+// scenografia opuszczonej instalacji, nie pojedynczy rekwizyt-gadżet
+// (wcześniej odrzucone: piła/dźwignia/przycisk - "wyglądają jak gadżet do
+// kliknięcia, nie jak scenografia"; tabliczka z wykrzyknikiem i pochodnia -
+// patrz historia w komitach). "crate" zostaje przy JEDNYM wariancie
+// (beczka) - tablica i tak, dla jednolitego kodu wczytywania/losowania
+// niżej. BEZ rotacji (w przeciwieństwie do ROCK_VARIANT_SRC) - Tomek: "bez
+// losowego obrotu, bo jak tabliczka czy skrzynia do góry nogami" - to
 // "zaprojektowane" obiekty z czytelną górą/dołem, tak samo jak oryginalne
-// crate/sign. Współdzielone między wszystkimi trzema DECOR_SETS (ta sama
-// beczka/zębatka niezależnie od planety), tak jak ROCK_VARIANT_SRC wyżej.
+// crate/sign. Współdzielone między wszystkimi trzema DECOR_SETS (te same
+// rekwizyty niezależnie od planety), tak jak ROCK_VARIANT_SRC wyżej.
 const EXTRA_PROP_VARIANT_SRC = {
-  crate: 'assets/decor/crate_var2.png',
-  sign: 'assets/decor/sign_var2.png' // zębatka (przemysłowa, Strefa C = popiół)
+  crate: ['assets/decor/crate_var2.png'],
+  sign: [
+    'assets/decor/sign_var2.png', // pas ostrzegawczy
+    'assets/decor/sign_var3.png', // zaślepiony panel z X
+    'assets/decor/sign_var4.png', // zniszczone ogrodzenie
+    'assets/decor/sign_var5.png'  // gruz/płyta
+  ]
 };
 
 // Sejdy PRNG narzutu na podłoże per zestaw dekoracji (patrz
@@ -532,20 +541,23 @@ class Game {
     });
 
     // Zamienniki skrzyni/tabliczki (patrz EXTRA_PROP_VARIANT_SRC) - ten sam
-    // wzorzec co warianty kamienia wyżej, tylko klucz to TYP (crate/sign),
-    // nie indeks (każdy typ ma dokładnie jeden zamiennik).
+    // wzorzec co warianty kamienia wyżej, tylko zagnieżdżony: klucz to TYP
+    // (crate/sign), wartość to TABLICA obrazków (każdy typ może mieć inną
+    // liczbę wariantów - "sign" ma 4, "crate" 1).
     this._extraPropImages = {};
     Object.keys(EXTRA_PROP_VARIANT_SRC).forEach((type) => {
-      const img = new Image();
-      readyPromises.push(new Promise((resolve) => {
-        img.onload = () => resolve();
-        img.onerror = () => {
-          console.warn(`[Game] Nie udało się wczytać zamiennika ${type} (${EXTRA_PROP_VARIANT_SRC[type]}).`);
-          resolve();
-        };
-      }));
-      img.src = EXTRA_PROP_VARIANT_SRC[type];
-      this._extraPropImages[type] = img;
+      this._extraPropImages[type] = EXTRA_PROP_VARIANT_SRC[type].map((src, i) => {
+        const img = new Image();
+        readyPromises.push(new Promise((resolve) => {
+          img.onload = () => resolve();
+          img.onerror = () => {
+            console.warn(`[Game] Nie udało się wczytać zamiennika ${type} #${i} (${src}).`);
+            resolve();
+          };
+        }));
+        img.src = src;
+        return img;
+      });
     });
 
     // Ekran ładowania (main.js) czeka na to, ZANIM w ogóle pokaże grę - żeby
@@ -1485,7 +1497,7 @@ class Game {
       const img = set[type];
       return img && img.complete;
     })) && this._rockVariantImages.every((img) => img.complete)
-      && Object.values(this._extraPropImages).every((img) => img.complete);
+      && Object.values(this._extraPropImages).every((imgs) => imgs.every((img) => img.complete));
   }
 
   /**
@@ -1526,7 +1538,8 @@ class Game {
       // item.useAltProp) -> normalny obrazek z aktywnego DECOR_SETS.
       const img = d.type === 'rock'
         ? this._rockVariantImages[d.rockVariant]
-        : (d.useAltProp && this._extraPropImages[d.type]) || this._decorImages[d.type];
+        : (d.useAltProp && this._extraPropImages[d.type] && this._extraPropImages[d.type][d.altPropVariant])
+          || this._decorImages[d.type];
       if (!img || !img.complete || !img.naturalWidth) return;
 
       const h = DECOR_BASE_HEIGHT * d.scale * (DECOR_TYPE_SCALE[d.type] || 1);
@@ -1934,10 +1947,17 @@ class Game {
       // Zamiennik skrzyni/tabliczki (patrz EXTRA_PROP_VARIANT_SRC) - Tomek:
       // "zastąp trochę skrzynek i tablic nowymi rzeczami" - 1/3 egzemplarzy
       // (nie połowa - "trochę", nie "większość") rysuje się NOWYM rekwizytem
-      // (beczka/zębatka) zamiast obrazka z aktywnego DECOR_SETS.
+      // zamiast obrazka z aktywnego DECOR_SETS. altPropVariant wybiera
+      // KTÓRY z rekwizytów w puli danego typu (np. sign ma 4 - patrz
+      // EXTRA_PROP_VARIANT_SRC) - liczony ZAWSZE (nie tylko gdy useAltProp
+      // wypadnie), żeby liczba wywołań rand() nie zależała od losowanego
+      // wyniku (ten sam powód co przy scale/radius wyżej w tej funkcji).
       // Losowane RAZ tu, tym samym mulberry32 - stałe między przeliczeniami
       // tła, tak jak rockVariant wyżej.
-      if (type === 'crate' || type === 'sign') item.useAltProp = rand() < (1 / 3);
+      if (type === 'crate' || type === 'sign') {
+        item.useAltProp = rand() < (1 / 3);
+        item.altPropVariant = Math.floor(rand() * EXTRA_PROP_VARIANT_SRC[type].length);
+      }
 
       // BUGFIX (przycinanie na telefonie): _drawFlowerDecor/_drawPuddleDecor
       // odbudowywały swój kształt OD ZERA co klatkę - dla kwiatka to ~50
@@ -2116,7 +2136,8 @@ class Game {
       // item.useAltProp) -> normalny obrazek z aktywnego DECOR_SETS.
       const img = d.type === 'rock'
         ? this._rockVariantImages[d.rockVariant]
-        : (d.useAltProp && this._extraPropImages[d.type]) || this._decorImages[d.type];
+        : (d.useAltProp && this._extraPropImages[d.type] && this._extraPropImages[d.type][d.altPropVariant])
+          || this._decorImages[d.type];
       if (!img || !img.complete || !img.naturalWidth) return;
 
       const h = DECOR_BASE_HEIGHT * d.scale * (DECOR_TYPE_SCALE[d.type] || 1);
