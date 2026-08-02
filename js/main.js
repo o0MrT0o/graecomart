@@ -286,11 +286,43 @@ function startGame() {
             } else {
                 console.log('[DEBUG] Brak nagrody - albo za krótko (< 2 min), albo tempo zarobku = 0 (nic jeszcze nie sprzedane w tym przebiegu).');
             }
+        },
+
+        /** PRAWDZIWY prestige (kasa->rdzenie, reset przebiegu, +1 planetNumber,
+         * nowy activeModifier) - normalnie zablokowany, dopóki statek nie jest
+         * w pełni złożony (isReadyToPrestige()). Do testów tymczasowo podmienia
+         * tę metodę na "zawsze gotowy", woła prawdziwe economyManager.prestige()
+         * (więc liczy się TAK SAMO jak w grze - żadnej osobnej "testowej"
+         * ścieżki), i od razu przywraca oryginalny warunek. Zwraca to samo co
+         * prestige() - {coresEarned, totalCores, planetNumber} albo null. */
+        forcePrestige() {
+            if (!window.economyManager) return null;
+            const em = window.economyManager;
+            const originalCheck = em.isReadyToPrestige;
+            em.isReadyToPrestige = () => true;
+            const result = em.prestige();
+            em.isReadyToPrestige = originalCheck;
+            return result;
+        },
+
+        /** Podgląd wyglądu DOWOLNEJ planety BEZ prawdziwego prestige - kasa/
+         * rdzenie/ulepszenia/activeModifier zostają jak są, zmienia się TYLKO
+         * planetNumber (steruje wyborem DECOR_SETS - patrz _currentDecorSetIndex
+         * w game.js) + wymuszone przepieczenie tła świata, tak jak po
+         * PRESTIGE_DONE. Do szybkiego porównania zestawów dekoracji/filtrów
+         * (indeks = (n-1) % 3: 1/4/7... domyślny, 2/5/8... zimowy, 3/6/9...
+         * pustynny) bez przechodzenia całego przebiegu za każdym razem. */
+        setPlanet(n = 1) {
+            if (!window.economyManager || !window.game) return;
+            window.economyManager.planetNumber = n;
+            window.game._worldBackgroundBaked = false;
+            window.game._worldBackgroundCanvas = null;
         }
     };
     console.log(
         '🛠️ DEBUG dostępne: DEBUG.addMoney(n), DEBUG.giveItems(typeId, n), ' +
-        'DEBUG.giveShipMaterials(), DEBUG.resetSave(), DEBUG.simulateOffline(godziny)'
+        'DEBUG.giveShipMaterials(), DEBUG.resetSave(), DEBUG.simulateOffline(godziny), ' +
+        'DEBUG.forcePrestige(), DEBUG.setPlanet(n)'
     );
 }
 
