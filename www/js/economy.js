@@ -499,6 +499,29 @@ const DAILY_CHALLENGE_TEMPLATES = [
 // niezależnie od bieżących ulepszeń.
 const ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK = 0.01;
 
+// Lokalna tablica wyników (Tomek: "najlepsze przebiegi - zarobek, czas do
+// prestiżu, liczba planet - lepsza alternatywa dla auto-kupowania, daje
+// powód do rywalizacji z samym sobą"). Ile najlepszych przebiegów trzymamy
+// NA LISTĘ (dwie osobne listy, patrz bestRunsByEarned/bestRunsByTime w
+// konstruktorze) - 10 wystarcza, żeby było "o co grać" bez rozdymania save'a.
+const LEADERBOARD_MAX_ENTRIES = 10;
+
+// Format czasu przebiegu dla tablicy wyników - w SEKUNDACH przy krótszych
+// czasach (typowy przedział pojedynczego przebiegu), bo minutowa
+// granularność (jak fmtPlaytime w getStatsCatalog, myślana dla łącznego
+// czasu gry liczonego w godzinach) zlewałaby blisko siebie leżące, ale
+// realnie różne wyniki ("5min" dla 5:02 I 5:58 to nie to samo miejsce w
+// rankingu najszybszych przelotów).
+const _formatRunTime = (totalSeconds) => {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}min`;
+  if (m > 0) return `${m}min ${sec}s`;
+  return `${sec}s`;
+};
+
 // Ikonka-plakietka z PRAWDZIWEGO assetu Kenney (kółko tła + .ui-icon maska,
 // ten sam wzorzec co kenneyIcon() w getStatsCatalog niżej) - dla tier-3
 // osiągnięć (późna gra) NIE rysujemy już kolejnych ręcznych SVG (Tomek:
@@ -847,6 +870,16 @@ class EconomyManager {
     // wyglądu postaci.
     this.selectedSkin = 'default';
     this.unlockedSkins = new Set(['default']);
+
+    // Lokalna tablica wyników - TEŻ meta-postęp, NIE zerowana prestiżem
+    // (ten sam powód co unlockedSkins wyżej: przebiegi z CAŁEJ historii
+    // gracza, nie tylko bieżącej planety). Dwie NIEZALEŻNE listy top-N
+    // zamiast jednej wspólnej z sortowaniem w locie - przebieg może być
+    // jednocześnie "wolny, ale bogaty" (trafia tylko do listy zarobku) albo
+    // "szybki, ale ubogi" (trafia tylko do listy czasu), więc każda lista
+    // pilnuje WŁASNEGO topu niezależnie (patrz _recordRun/prestige niżej).
+    this.bestRunsByEarned = [];
+    this.bestRunsByTime = [];
 
     // Liczniki LIFETIME dla osiągnięć (patrz ACHIEVEMENTS) - meta-postęp,
     // NIE zerowane prestiżem (jak unlockedIds/cores), inaczej "zbierz 1000
@@ -1775,12 +1808,68 @@ class EconomyManager {
    * @returns {{coresEarned:number, totalCores:number, planetNumber:number}|null}
    *   null, gdy statek jeszcze nie jest gotowy (nic nie zostaje zresetowane).
    */
+  /**
+   * Wpisuje właśnie ukończony przebieg do lokalnej tablicy wyników (patrz
+   * bestRunsByEarned/bestRunsByTime w konstruktorze) - do KAŻDEJ z dwóch list
+   * niezależnie, tylko jeśli przebieg faktycznie łapie się do topu
+   * LEADERBOARD_MAX_ENTRIES. Zwraca, czy to nowy rekord (pozycja #1) w
+   * którejś liście - ui.js pokazuje na tej podstawie osobny toast.
+   */
+  _recordRun(entry) {
+    const record = { ...entry, ts: Date.now() };
+    return {
+      earned: this._insertIntoLeaderboard(this.bestRunsByEarned, record, (a, b) => b.earned - a.earned),
+      time: this._insertIntoLeaderboard(this.bestRunsByTime, record, (a, b) => a.timeSeconds - b.timeSeconds)
+    };
+  }
+
+  /** Wstawia wpis w odpowiednie miejsce posortowanej listy i przycina do
+   * LEADERBOARD_MAX_ENTRIES. Zwraca true, gdy wpis wylądował na #1 ORAZ
+   * lista miała już wcześniej jakąś zawartość (pierwszy przebieg w historii
+   * trywialnie "wygrywa" pustą listę - to nie jest pobity rekord, tylko
+   * pierwszy punkt danych, więc nie zasługuje na toast "Nowy rekord!"). */
+  _insertIntoLeaderboard(list, entry, compareFn) {
+    const hadPriorEntries = list.length > 0;
+    list.push(entry);
+    list.sort(compareFn);
+    const brokeRecord = hadPriorEntries && list[0] === entry;
+    list.length = Math.min(list.length, LEADERBOARD_MAX_ENTRIES);
+    return brokeRecord;
+  }
+
+  /**
+   * Katalog tablicy wyników dla UI (LeaderboardPanel w ui.js) - ten sam
+   * wzorzec co getStatsCatalog()/getSkinCatalog(): gotowe do wyświetlenia
+   * stringi (kwota z ikoną waluty, czas sformatowany), nie surowe liczby.
+   * @param {'earned'|'time'} mode - którą listę zwrócić.
+   */
+  getLeaderboard(mode) {
+    const list = mode === 'time' ? this.bestRunsByTime : this.bestRunsByEarned;
+    return list.map((entry, i) => ({
+      rank: i + 1,
+      planetNumber: entry.planetNumber,
+      earnedLabel: `${Math.round(entry.earned).toLocaleString('pl-PL')}${ECONOMY_CREDIT_ICON_SVG}`,
+      timeLabel: _formatRunTime(entry.timeSeconds)
+    }));
+  }
+
   prestige() {
     if (!this.isReadyToPrestige()) return null;
 
     const coresEarned = this.previewPrestigeCores();
     this.cores += coresEarned;
     this.stats.coresEarned += coresEarned;
+
+    // Migawka PRZED resetem niżej - reset zeruje totalEarned/
+    // totalPlaytimeSeconds, a inkrement planetNumber (dalej w tej metodzie)
+    // zmieniłby, KTÓREJ planety ten wpis właściwie dotyczy (ma być numer
+    // planety, którą gracz WŁAŚNIE ukończył, nie tej, na którą dopiero leci).
+    const newRecords = this._recordRun({
+      planetNumber: this.planetNumber,
+      earned: this.totalEarned,
+      timeSeconds: this.totalPlaytimeSeconds,
+      coresEarned
+    });
 
     // --- Reset przebiegu -----------------------------------------------------
     this.money = 0;
@@ -1855,7 +1944,8 @@ class EconomyManager {
       coresEarned,
       totalCores: this.cores,
       planetNumber: this.planetNumber,
-      modifier: this.activeModifier
+      modifier: this.activeModifier,
+      newRecords
     };
     Bus.publish(Events.PRESTIGE_DONE, result);
     return result;
@@ -2157,6 +2247,20 @@ class EconomyManager {
     if (typeof data.selectedSkin === 'string' && this.unlockedSkins.has(data.selectedSkin)) {
       this.selectedSkin = data.selectedSkin;
     }
+    // Lokalna tablica wyników (meta, trwała jak unlockedSkins) - filtr na
+    // kształt wpisu (nie samo Array.isArray) na wypadek uszkodzonego/ręcznie
+    // edytowanego zapisu, .slice na koniec dla zapisów sprzed ewentualnej
+    // zmiany LEADERBOARD_MAX_ENTRIES na mniejszą wartość.
+    if (Array.isArray(data.bestRunsByEarned)) {
+      this.bestRunsByEarned = data.bestRunsByEarned
+        .filter((e) => e && typeof e.earned === 'number' && typeof e.timeSeconds === 'number')
+        .slice(0, LEADERBOARD_MAX_ENTRIES);
+    }
+    if (Array.isArray(data.bestRunsByTime)) {
+      this.bestRunsByTime = data.bestRunsByTime
+        .filter((e) => e && typeof e.earned === 'number' && typeof e.timeSeconds === 'number')
+        .slice(0, LEADERBOARD_MAX_ENTRIES);
+    }
     // Osiągnięcia + liczniki lifetime (meta, trwałe jak unlockedIds). Merge
     // per-klucz (nie podmiana całego obiektu), żeby zapis SPRZED dodania
     // jakiegoś licznika nie zerował go do undefined - brakujące klucze
@@ -2210,7 +2314,9 @@ class EconomyManager {
       stats: { ...this.stats },
       unlockedAchievements: Array.from(this.unlockedAchievements),
       selectedSkin: this.selectedSkin,
-      unlockedSkins: Array.from(this.unlockedSkins)
+      unlockedSkins: Array.from(this.unlockedSkins),
+      bestRunsByEarned: this.bestRunsByEarned.map((e) => ({ ...e })),
+      bestRunsByTime: this.bestRunsByTime.map((e) => ({ ...e }))
     };
   }
 

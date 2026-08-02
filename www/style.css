@@ -906,6 +906,29 @@ canvas {
     border-radius: 50%;
 }
 
+/* Przełącznik Zarobek/Czas (LeaderboardPanel, ui.js) - dwa zwykłe UIButton
+   rozciągnięte na równą szerokość zamiast osobnego komponentu segmented
+   control - zero nowego JS-owego widgetu, tylko układ. */
+.ui-leaderboard-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.ui-leaderboard-tabs .ui-btn {
+    flex: 1;
+}
+
+/* Stan pustej tablicy wyników (przed pierwszym prestiżem) - wyśrodkowany,
+   przygaszony tekst zamiast pustej listy bez żadnego wyjaśnienia. */
+.ui-leaderboard-empty {
+    margin: 18px 0;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--ui-text-muted);
+    line-height: 1.4;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .ui-shop-sheet,
     .ui-shop-backdrop {

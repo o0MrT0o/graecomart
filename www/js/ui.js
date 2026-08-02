@@ -108,6 +108,10 @@ const WRENCH_ICON_SVG = '<span class="ui-icon ui-icon--wrench" aria-hidden="true
 const PLANET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B39DDB" stroke-width="1.8"><circle cx="11" cy="12" r="6" fill="#B39DDB" fill-opacity="0.25"/><ellipse cx="11" cy="12" rx="10" ry="3.2" transform="rotate(-18 11 12)"/></svg>';
 const FLAME_ICON_SVG = '<span class="ui-icon ui-icon--fire" aria-hidden="true" style="color:#FF7043"></span>';
 const SHIRT_ICON_SVG = '<span class="ui-icon ui-icon--brush" aria-hidden="true" style="color:#90CAF9"></span>';
+// Tytuł LeaderboardPanel (medal, nie trophy/chart - te dwa już zajęte przez
+// Osiągnięcia/Statystyki, patrz TROPHY_ICON_SVG/CHART_ICON_SVG wyżej -
+// inny motyw, żeby trzy panele w Menu dało się odróżnić na pierwszy rzut oka).
+const MEDAL_ICON_SVG = '<span class="ui-icon ui-icon--medal1" aria-hidden="true" style="color:#FFD54F"></span>';
 
 // --- Bazowy komponent -------------------------------------------------------
 
@@ -1198,11 +1202,12 @@ class SettingsPanel {
    * nie potrzebuje (dawniej synchronizował ikonę osobnego przycisku Wycisz
    * w fabRow - ten przycisk usunięty, patrz komentarz w UIManager._render:
    * dźwięk włącza/wyłącza się TYLKO stąd, z Menu, nie z ekranu gry). */
-  constructor(onChange, onOpenAchievements, onOpenSkins, onOpenStats) {
+  constructor(onChange, onOpenAchievements, onOpenSkins, onOpenStats, onOpenLeaderboard) {
     this.onChange = onChange;
     this.onOpenAchievements = onOpenAchievements;
     this.onOpenSkins = onOpenSkins;
     this.onOpenStats = onOpenStats;
+    this.onOpenLeaderboard = onOpenLeaderboard;
     this.el = null;
     this.bodyEl = null;
     this.isOpen = false;
@@ -1272,7 +1277,7 @@ class SettingsPanel {
   refresh() {
     if (!this.bodyEl) return;
     this.bodyEl.innerHTML = '';
-    this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildStatsRow()]));
+    this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
     this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildTutorialRow(), this._buildFpsRow()]));
     this.bodyEl.appendChild(this._buildSection('Dane', [this._buildResetRow()]));
     this.bodyEl.appendChild(this._buildSection('O grze', [this._buildAboutRow()]));
@@ -1326,6 +1331,21 @@ class SettingsPanel {
       }
     });
     return this._buildRow(CHART_ICON_SVG, 'Statystyki', 'Podsumowanie postępów w grze', btn.mount());
+  }
+
+  /** Wiersz "Tablica wyników" - ten sam wzorzec co Osiągnięcia/Skiny/
+   * Statystyki wyżej, otwiera osobny panel (LeaderboardPanel, patrz
+   * onOpenLeaderboard w UIManager). */
+  _buildLeaderboardRow() {
+    const btn = new UIButton({
+      label: 'Pokaż',
+      variant: 'ghost',
+      onClick: () => {
+        this.close();
+        if (typeof this.onOpenLeaderboard === 'function') this.onOpenLeaderboard();
+      }
+    });
+    return this._buildRow(MEDAL_ICON_SVG, 'Tablica wyników', 'Twoje najlepsze przebiegi', btn.mount());
   }
 
   /** Ten sam trzykolumnowy układ (ikona/opis/akcja) co ShopPanel._buildRow,
@@ -1703,6 +1723,171 @@ class StatsPanel {
   }
 }
 
+// --- Lokalna tablica wyników --------------------------------------------------
+// Tomek: "najlepsze przebiegi (zarobek, czas do prestiżu, liczba planet) -
+// lepsza alternatywa dla auto-kupowania, daje powód do rywalizacji z samym
+// sobą". Ten sam bottom-sheet co StatsPanel wyżej (.ui-shop*, zero nowego
+// CSS na sam panel), z DODANYM przełącznikiem trybu (Zarobek/Czas) na górze -
+// economy.js trzyma DWIE niezależne listy top-N (bestRunsByEarned/
+// bestRunsByTime), więc panel tylko wybiera, którą pokazać (getLeaderboard).
+class LeaderboardPanel {
+  constructor(economyManager) {
+    this.economyManager = economyManager;
+    this.el = null;
+    this.bodyEl = null;
+    this.isOpen = false;
+    // 'earned' domyślnie - zarobek to główny zasób gry, najbardziej
+    // intuicyjna oś rankingu przy pierwszym otwarciu panelu.
+    this.mode = 'earned';
+
+    this._onKeyDown = (e) => {
+      if (e.key === 'Escape' && this.isOpen) this.close();
+    };
+  }
+
+  mount(parent) {
+    if (!this.el) this._render();
+    if (parent && this.el.parentNode !== parent) parent.appendChild(this.el);
+    return this.el;
+  }
+
+  _render() {
+    this.el = document.createElement('div');
+    this.el.className = 'ui-shop';
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'ui-shop-backdrop';
+    backdrop.addEventListener('click', () => this.close());
+
+    const sheet = document.createElement('div');
+    sheet.className = 'ui-shop-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', 'Tablica wyników');
+    sheet.innerHTML = `
+      <div class="ui-shop-sheet__handle"></div>
+      <header class="ui-shop-sheet__header">
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${MEDAL_ICON_SVG}</span> Tablica wyników</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij tablicę wyników">${CLOSE_ICON_SVG}</button>
+      </header>
+      <div class="ui-shop-sheet__body"></div>
+    `;
+    sheet.querySelector('.ui-shop-sheet__close').addEventListener('click', () => this.close());
+    sheet.addEventListener('click', (e) => e.stopPropagation());
+
+    this.bodyEl = sheet.querySelector('.ui-shop-sheet__body');
+
+    this.el.appendChild(backdrop);
+    this.el.appendChild(sheet);
+
+    this.refresh();
+  }
+
+  open() {
+    if (!this.el) this._render();
+    this.isOpen = true;
+    this.el.classList.add('ui-shop--open');
+    document.addEventListener('keydown', this._onKeyDown);
+    this.refresh();
+  }
+
+  close() {
+    this.isOpen = false;
+    if (this.el) this.el.classList.remove('ui-shop--open');
+    document.removeEventListener('keydown', this._onKeyDown);
+  }
+
+  toggle() {
+    if (this.isOpen) this.close();
+    else this.open();
+  }
+
+  /** Dwa przyciski Zarobek/Czas - odtwarzane od zera przy KAŻDYM refresh()
+   * (ten sam "przebuduj całość" wzorzec co reszta panelu, żadnego ręcznego
+   * przełączania klas), przycisk BIEŻĄCEGO trybu dostaje wariant 'accent'
+   * (wyróżniony), drugi 'ghost' - czytelne bez osobnego znacznika "aktywne". */
+  _buildTabs() {
+    const wrap = document.createElement('div');
+    wrap.className = 'ui-leaderboard-tabs';
+    const tabs = [
+      { mode: 'earned', label: 'Zarobek' },
+      { mode: 'time', label: 'Czas' }
+    ];
+    tabs.forEach(({ mode, label }) => {
+      const btn = new UIButton({
+        label,
+        variant: this.mode === mode ? 'accent' : 'ghost',
+        onClick: () => {
+          if (this.mode === mode) return;
+          this.mode = mode;
+          this.refresh();
+        }
+      });
+      wrap.appendChild(btn.mount());
+    });
+    return wrap;
+  }
+
+  refresh() {
+    if (!this.bodyEl || !this.economyManager || typeof this.economyManager.getLeaderboard !== 'function') return;
+    const rows = this.economyManager.getLeaderboard(this.mode);
+
+    this.bodyEl.innerHTML = '';
+    this.bodyEl.appendChild(this._buildTabs());
+
+    const section = document.createElement('div');
+    section.className = 'ui-shop-section';
+
+    if (rows.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'ui-leaderboard-empty';
+      empty.textContent = 'Zrób pierwszy odlot na nową planetę, żeby zapisać tu swój przebieg.';
+      section.appendChild(empty);
+    } else {
+      const list = document.createElement('div');
+      list.className = 'ui-shop-list';
+      rows.forEach((r) => list.appendChild(this._buildRow(r)));
+      section.appendChild(list);
+    }
+
+    this.bodyEl.appendChild(section);
+  }
+
+  /** Kolor plakietki rangi - top 3 w barwach medali (złoto/srebro/brąz),
+   * reszta neutralna jak zwykła ikonka wiersza gdzie indziej w grze. */
+  _rankColor(rank) {
+    if (rank === 1) return '#FFD54F';
+    if (rank === 2) return '#CFD8DC';
+    if (rank === 3) return '#D7A46A';
+    return 'rgba(255,255,255,0.5)';
+  }
+
+  _buildRow(r) {
+    const row = document.createElement('article');
+    row.className = 'ui-shop-item';
+    const color = this._rankColor(r.rank);
+    // Poboczna metryka pod nazwą - odwrotność trybu (w widoku "Zarobek"
+    // pokazujemy czas tego przebiegu i na odwrót), żeby oba wymiary były
+    // widoczne naraz mimo że lista jest posortowana tylko po jednym z nich.
+    const secondaryLabel = this.mode === 'earned' ? `Czas: ${r.timeLabel}` : `Zarobek: ${r.earnedLabel}`;
+    const primaryLabel = this.mode === 'earned' ? r.earnedLabel : r.timeLabel;
+    row.innerHTML = `
+      <div class="ui-shop-item__icon" aria-hidden="true" style="background:${color}26;color:${color};font-weight:800;font-size:0.95rem">#${r.rank}</div>
+      <div class="ui-shop-item__info">
+        <span class="ui-shop-item__name">Planeta #${r.planetNumber}</span>
+        <span class="ui-shop-item__desc">${secondaryLabel}</span>
+      </div>
+      <div class="ui-shop-item__action"><span class="ui-shop-item__stat-value">${primaryLabel}</span></div>
+    `;
+    return row;
+  }
+
+  destroy() {
+    document.removeEventListener('keydown', this._onKeyDown);
+    if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
+  }
+}
+
 // --- Skiny postaci -----------------------------------------------------------
 // Ta sama struktura co AchievementsPanel wyżej (bottom sheet, .ui-shop-item
 // wiersze) - czysto kosmetyczny katalog (economy.js: PLAYER_SKINS/
@@ -2000,6 +2185,7 @@ class UIManager {
     this.achievementsPanel = null;
     this.skinsPanel = null;
     this.statsPanel = null;
+    this.leaderboardPanel = null;
     this.offlineModal = null;
     this.notifications = null;
     this.tooltip = null;
@@ -2116,6 +2302,7 @@ class UIManager {
       if (this.achievementsPanel) this.achievementsPanel.close();
       if (this.skinsPanel) this.skinsPanel.close();
       if (this.statsPanel) this.statsPanel.close();
+      if (this.leaderboardPanel) this.leaderboardPanel.close();
       if (this.prestigePanel) this.prestigePanel.open();
     };
 
@@ -2149,6 +2336,20 @@ class UIManager {
           duration: 4600
         });
       }
+      // Lokalna tablica wyników (economy.js: bestRunsByEarned/bestRunsByTime) -
+      // osobny toast TYLKO gdy przebieg faktycznie pobił poprzedni rekord
+      // (d.newRecords, patrz _recordRun w economy.js) - to właśnie ten
+      // moment ma dawać "powód do rywalizacji z samym sobą".
+      const nr = d && d.newRecords;
+      if (nr && (nr.earned || nr.time)) {
+        const what = nr.earned && nr.time ? 'zarobku i czasu' : (nr.earned ? 'zarobku' : 'najszybszego przelotu');
+        this.notifications.show(`${MEDAL_ICON_SVG} Nowy rekord ${what}!`, {
+          type: 'success',
+          icon: MEDAL_ICON_SVG,
+          duration: 4200
+        });
+      }
+      if (this.leaderboardPanel) this.leaderboardPanel.refresh();
     };
 
     this._onCoreUpgrade = () => this._refreshPrestige();
@@ -2225,6 +2426,7 @@ class UIManager {
     this.achievementsPanel = new AchievementsPanel(economy);
     this.skinsPanel = new SkinsPanel(economy);
     this.statsPanel = new StatsPanel(economy);
+    this.leaderboardPanel = new LeaderboardPanel(economy);
     // Dźwięk włącza/wyłącza się TYLKO z Menu (SettingsPanel._buildSoundRow) -
     // brak osobnego przycisku Wycisz na ekranie gry (patrz usunięty
     // muteToggleBtn niżej), więc nie ma już nic do zsynchronizowania po
@@ -2233,7 +2435,8 @@ class UIManager {
       null,
       () => this.achievementsPanel.open(),
       () => this.skinsPanel.open(),
-      () => this.statsPanel.open()
+      () => this.statsPanel.open(),
+      () => this.leaderboardPanel.open()
     );
 
     const toastContainer = document.createElement('div');
@@ -2259,6 +2462,7 @@ class UIManager {
         if (this.achievementsPanel) this.achievementsPanel.close();
         if (this.skinsPanel) this.skinsPanel.close();
         if (this.statsPanel) this.statsPanel.close();
+        if (this.leaderboardPanel) this.leaderboardPanel.close();
         this.shopPanel.toggle();
       }
     });
@@ -2277,6 +2481,7 @@ class UIManager {
         if (this.achievementsPanel) this.achievementsPanel.close();
         if (this.skinsPanel) this.skinsPanel.close();
         if (this.statsPanel) this.statsPanel.close();
+        if (this.leaderboardPanel) this.leaderboardPanel.close();
         this.prestigePanel.toggle();
       }
     });
@@ -2296,6 +2501,7 @@ class UIManager {
         if (this.achievementsPanel) this.achievementsPanel.close();
         if (this.skinsPanel) this.skinsPanel.close();
         if (this.statsPanel) this.statsPanel.close();
+        if (this.leaderboardPanel) this.leaderboardPanel.close();
         this.settingsPanel.toggle();
       }
     });
@@ -2340,6 +2546,7 @@ class UIManager {
     this.root.appendChild(this.achievementsPanel.mount());
     this.root.appendChild(this.skinsPanel.mount());
     this.root.appendChild(this.statsPanel.mount());
+    this.root.appendChild(this.leaderboardPanel.mount());
     this.offlineModal = new OfflineRewardModal(window.economyManager, () => this._syncMoney(true));
     this.root.appendChild(this.offlineModal.mount());
 
@@ -2416,6 +2623,7 @@ class UIManager {
     if (this.achievementsPanel) this.achievementsPanel.close();
     if (this.skinsPanel) this.skinsPanel.close();
     if (this.statsPanel) this.statsPanel.close();
+    if (this.leaderboardPanel) this.leaderboardPanel.close();
     if (this.offlineModal) this.offlineModal.open(data);
   }
 
@@ -2516,6 +2724,7 @@ class UIManager {
     if (this.achievementsPanel) this.achievementsPanel.destroy();
     if (this.skinsPanel) this.skinsPanel.destroy();
     if (this.statsPanel) this.statsPanel.destroy();
+    if (this.leaderboardPanel) this.leaderboardPanel.destroy();
     if (this.offlineModal) this.offlineModal.destroy();
     if (this.root && this.root.parentNode) this.root.parentNode.removeChild(this.root);
   }
