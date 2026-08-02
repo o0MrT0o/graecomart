@@ -34,9 +34,21 @@ const AUDIO_SRC = {
   // machine_feed/machine_complete/hazard PODMIENIONE na Kenney Sci-Fi Sounds
   // (Tomek: "sci fi sound") - gra jest o kosmitach/statku, generyczne
   // kliknięcia/brzęki nie pasowały tematycznie:
-  //   machine_feed     - computerNoise_000 - krótki, cichy "bip" konsoli,
-  //                       pasuje do częstego zdarzenia (surowiec wrzucony do
-  //                       maszyny, kilka razy na sekundę przy aktywnej grze).
+  //   machine_feed     - BUGFIX (Tomek: "jak się daje wiele śmieci na raz to
+  //                       nie dość że jest głośny to jeszcze nakłada się na
+  //                       siebie"): był tu computerNoise_000, opisany w
+  //                       poprzednim komentarzu jako "krótki, cichy bip" -
+  //                       w RZECZYWISTOŚCI to ~5-sekundowy, stale głośny szum
+  //                       (zmierzone przez Web Audio decodeAudioData, nie
+  //                       samą nazwę pliku). Maszyny auto-karmią się co 150ms
+  //                       (MACHINE_UNLOAD_INTERVAL_MS, machines.js) - przy
+  //                       serii przedmiotów odpalało to dziesiątki 5-sekundowych
+  //                       klipów NA SIEBIE, stąd i głośność, i nakładanie.
+  //                       Zamiast tego impactMetal_000 - krótki, ostry "stuk"
+  //                       (peak w pierwszych ~30ms, cisza po ~200ms wg tej
+  //                       samej analizy) - surowiec fizycznie uderza o komorę
+  //                       maszyny, kolejne karmienia nakładają się już tylko
+  //                       wygasającymi "ogonami", nie pełną głośnością.
   //   machine_complete - doorOpen_000 - syczący odgłos otwieranej śluzy/luku -
   //                       czyta się jako "produkt gotowy, klapa się otwiera"
   //                       lepiej niż zwykły dzwonek.
@@ -123,7 +135,11 @@ const AUDIO_SRC = {
 // szybkich zdarzeń nie zagłuszała wszystkiego innego.
 const AUDIO_VOLUME = {
   pickup: 0.32,
-  machine_feed: 0.38,
+  // BUGFIX: obniżone z 0.38 razem z podmianą pliku (patrz AUDIO_SRC.machine_feed)
+  // - impactMetal_000 ma ostrzejszy, wyższy peak (~0.9) niż stary, płaski szum,
+  // więc trochę niżej tu, żeby seria szybkich karmień dalej brzmiała jak
+  // "częste/drobne", nie głośniej niż pickup mimo krótszego czasu trwania.
+  machine_feed: 0.3,
   machine_complete: 0.5,
   coin: 0.42,
   purchase: 0.48,
