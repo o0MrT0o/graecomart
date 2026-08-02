@@ -144,8 +144,9 @@ const DECOR_SETS = [
     shrub: 'assets/decor/shrub.png',
     crate: 'assets/decor/crate.png',
     sign: 'assets/decor/sign.png',
-    grass_tuft: 'assets/decor/grass_tuft.png',
-    fern: 'assets/decor/fern.png'
+    grass_tuft: 'assets/decor/grass_tuft.png'
+    // fern USUNIĘTY stąd (patrz FERN_VARIANT_SRC niżej) - dostał WŁASNY
+    // mechanizm wariantów kształtu, ten sam duch co rock (ROCK_VARIANT_SRC).
   },
   {
     // Zestaw 1 - "iglasty/mroźny" (Kenney Background Elements Remastered dla
@@ -164,8 +165,7 @@ const DECOR_SETS = [
     shrub: 'assets/decor/shrub_alt1.png',
     crate: 'assets/decor/crate_alt1.png',
     sign: 'assets/decor/sign.png',
-    grass_tuft: 'assets/decor/grass_tuft_alt1.png',
-    fern: 'assets/decor/fern_alt1.png'
+    grass_tuft: 'assets/decor/grass_tuft_alt1.png'
   },
   {
     // Zestaw 2 - "pustynny" (palma z Background Elements Remastered, inna
@@ -185,13 +185,30 @@ const DECOR_SETS = [
     shrub: 'assets/decor/shrub_alt2.png',
     crate: 'assets/decor/crate_alt2.png',
     sign: 'assets/decor/sign.png',
-    grass_tuft: 'assets/decor/grass_tuft_alt2.png',
-    fern: 'assets/decor/fern_alt2.png'
+    grass_tuft: 'assets/decor/grass_tuft_alt2.png'
   }
 ];
 // Typy wczytywane/sprawdzane PER ZESTAW (patrz _decorImageSets/_decorImagesReady)
-// - "rock" celowo pominięty, ma własną, wspólną pulę (ROCK_VARIANT_SRC niżej).
-const DECOR_SET_IMAGE_TYPES = DECOR_TYPES.filter((type) => type !== 'rock');
+// - "rock"/"fern" celowo pominięte, mają WŁASNE pule wariantów kształtu
+// (ROCK_VARIANT_SRC/FERN_VARIANT_SRC niżej).
+const DECOR_SET_IMAGE_TYPES = DECOR_TYPES.filter((type) => type !== 'rock' && type !== 'fern');
+
+// Warianty KSZTAŁTU paproci, PER ZESTAW dekoracji (Tomek: "Paproć [...] bez
+// wariantów [...] nie ten sam zestaw poprawek co reszta" - rock dostał
+// ROCK_VARIANT_SRC, teraz fern dostaje analogiczny mechanizm). W
+// przeciwieństwie do roku paproć NIE MOŻE mieć jednej wspólnej puli
+// niezależnej od planety - jej KOLOR (oliwkowy/turkusowy/piaskowy) jest
+// częścią tożsamości danego DECOR_SETS, więc wariant jest tablicą TABLIC:
+// [zestaw][wariant]. Oba kształty ("wijąca się łodyga" i "kępka listków")
+// już wcześniej istniały osobno w projekcie (zestaw zimowy miał inny
+// kształt niż 0/2) - teraz KAŻDY zestaw dostaje OBA, przetintowane offline
+// w SWOIM odcieniu (ten sam dwustopniowy gradient co oryginalny plik tego
+// zestawu, zmierzony wprost z pikseli i odtworzony na drugim kształcie).
+const FERN_VARIANT_SRC = [
+  ['assets/decor/fern.png', 'assets/decor/fern_var2.png'],
+  ['assets/decor/fern_alt1.png', 'assets/decor/fern_alt1_var2.png'],
+  ['assets/decor/fern_alt2.png', 'assets/decor/fern_alt2_var2.png']
+];
 // BUGFIX (Tomek: "Strefa D [...] wygląda pusto" - okazało się DUŻO gorsze
 // niż "mało wariantów"): 'crystal' NIGDY nie było tu wpisane, mimo że
 // _drawProceduralDecor (niżej) od zawsze umie je narysować i
@@ -553,6 +570,25 @@ class Game {
     // (_decorImagesReady/_bakeStaticDecorations/_drawDecorations) używa
     // wyłącznie this._decorImages, bez wiedzy o istnieniu innych zestawów.
     this._decorImages = this._decorImageSets[this._currentDecorSetIndex()];
+
+    // Warianty kształtu paproci (patrz FERN_VARIANT_SRC) - PER ZESTAW, w
+    // przeciwieństwie do ROCK_VARIANT_SRC niżej (kolor paproci musi zostać
+    // zgodny z aktywnym DECOR_SETS) - stąd tablica TABLIC, nie płaska lista.
+    // this._activeFernVariants (jak this._decorImages wyżej) wskazuje na
+    // AKTYWNY zestaw wariantów - reszta kodu go używa bez wiedzy o innych.
+    this._fernVariantImageSets = FERN_VARIANT_SRC.map((variants, setIdx) => variants.map((src, i) => {
+      const img = new Image();
+      readyPromises.push(new Promise((resolve) => {
+        img.onload = () => resolve();
+        img.onerror = () => {
+          console.warn(`[Game] Nie udało się wczytać wariantu paproci ${setIdx}/${i} (${src}).`);
+          resolve();
+        };
+      }));
+      img.src = src;
+      return img;
+    }));
+    this._activeFernVariants = this._fernVariantImageSets[this._currentDecorSetIndex()];
 
     // Warianty kamienia (patrz ROCK_VARIANT_SRC) - WSPÓLNE dla wszystkich
     // trzech DECOR_SETS (rock i tak jest tam identyczny w każdym), więc
@@ -1319,6 +1355,7 @@ class Game {
     // jeden zestaw = jedna spójna tożsamość biomu (rośliny + ziemia pod nimi).
     const decorSetIndex = this._currentDecorSetIndex();
     this._decorImages = this._decorImageSets[decorSetIndex];
+    this._activeFernVariants = this._fernVariantImageSets[decorSetIndex];
 
     this._renderZoneFills(wctx, 0, 0, this.worldWidth, this.worldHeight);
     this._drawGroundOverlay(wctx, decorSetIndex);
@@ -1542,6 +1579,7 @@ class Game {
       const img = set[type];
       return img && img.complete;
     })) && this._rockVariantImages.every((img) => img.complete)
+      && this._fernVariantImageSets.every((variants) => variants.every((img) => img.complete))
       && Object.values(this._extraPropImages).every((imgs) => imgs.every((img) => img.complete));
   }
 
@@ -1591,8 +1629,10 @@ class Game {
       // item.useAltProp) -> normalny obrazek z aktywnego DECOR_SETS.
       const img = d.type === 'rock'
         ? this._rockVariantImages[d.rockVariant]
-        : (d.useAltProp && this._extraPropImages[d.type] && this._extraPropImages[d.type][d.altPropVariant])
-          || this._decorImages[d.type];
+        : d.type === 'fern'
+          ? this._activeFernVariants[d.fernVariant]
+          : (d.useAltProp && this._extraPropImages[d.type] && this._extraPropImages[d.type][d.altPropVariant])
+            || this._decorImages[d.type];
       if (!img || !img.complete || !img.naturalWidth) return;
 
       const h = DECOR_BASE_HEIGHT * d.scale * (DECOR_TYPE_SCALE[d.type] || 1);
@@ -1605,18 +1645,19 @@ class Game {
       // typów (drzewo/krzak/kamień/skrzynia/tabliczka) zostaje bez zmian -
       // to bryły, którym cień faktycznie kotwiczy je do ziemi.
       //
-      // BUGFIX (Tomek: "niech pod trawą tą nową też będzie mały cień") - fern
-      // zostaje bez cienia (jeszcze cieńsza/rzadsza sylwetka niż grass_tuft),
-      // ale grass_tuft dostaje WŁASNY, wyraźnie mniejszy/słabszy cień niż
-      // reszta typów (nie ten sam pełny owal - patrz uzasadnienie wyżej,
-      // wciąż aktualne dla samego rozmiaru, tylko "wcale" zmienione na
-      // "odrobinę").
-      if (d.type === 'grass_tuft') {
-        wctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      // BUGFIX (Tomek: "niech pod trawą tą nową też będzie mały cień",
+      // potem: "Paproć bez cienia [...] nie ten sam zestaw poprawek co
+      // reszta") - fern dostaje TERAZ WŁASNY cień, jeszcze mniejszy/słabszy
+      // niż grass_tuft (cieńsza, rzadsza sylwetka - uzasadnienie z
+      // pierwszego fixu wciąż aktualne dla ROZMIARU, tylko "wcale" znów
+      // zmienione na "odrobinę mniej niż grass_tuft" zamiast "wcale").
+      if (d.type === 'grass_tuft' || d.type === 'fern') {
+        const isFern = d.type === 'fern';
+        wctx.fillStyle = isFern ? 'rgba(0, 0, 0, 0.14)' : 'rgba(0, 0, 0, 0.18)';
         wctx.beginPath();
-        wctx.ellipse(d.x, d.y, w * 0.22, Math.max(2, h * 0.07), 0, 0, Math.PI * 2);
+        wctx.ellipse(d.x, d.y, w * (isFern ? 0.16 : 0.22), Math.max(2, h * (isFern ? 0.05 : 0.07)), 0, 0, Math.PI * 2);
         wctx.fill();
-      } else if (d.type !== 'fern') {
+      } else {
         // Kamień dostaje węższy/ciaśniejszy owal niż drzewo/krzak/skrzynia/
         // tabliczka (Tomek: "cienie niech będą bliżej nich") - rock.png ma
         // sporo "powietrza" wokół samej bryły (nieregularny, zaokrąglony
@@ -2021,6 +2062,14 @@ class Game {
         item.altPropVariant = Math.floor(rand() * EXTRA_PROP_VARIANT_SRC[type].length);
       }
 
+      // Wariant kształtu paproci (patrz FERN_VARIANT_SRC) - losowany RAZ tu,
+      // ten sam powód co rockVariant wyżej (stały kształt między
+      // przeliczeniami tła). Tomek: "paproć bez wariantów - nie ten sam
+      // zestaw poprawek co reszta".
+      if (type === 'fern') {
+        item.fernVariant = Math.floor(rand() * 2);
+      }
+
       // BUGFIX (przycinanie na telefonie): _drawFlowerDecor/_drawPuddleDecor
       // odbudowywały swój kształt OD ZERA co klatkę - dla kwiatka to ~50
       // osobnych fill()/stroke() (3 kwiatuszki × 5 płatków + łodyżki +
@@ -2207,8 +2256,10 @@ class Game {
       // item.useAltProp) -> normalny obrazek z aktywnego DECOR_SETS.
       const img = d.type === 'rock'
         ? this._rockVariantImages[d.rockVariant]
-        : (d.useAltProp && this._extraPropImages[d.type] && this._extraPropImages[d.type][d.altPropVariant])
-          || this._decorImages[d.type];
+        : d.type === 'fern'
+          ? this._activeFernVariants[d.fernVariant]
+          : (d.useAltProp && this._extraPropImages[d.type] && this._extraPropImages[d.type][d.altPropVariant])
+            || this._decorImages[d.type];
       if (!img || !img.complete || !img.naturalWidth) return;
 
       const h = DECOR_BASE_HEIGHT * d.scale * (DECOR_TYPE_SCALE[d.type] || 1);
@@ -2220,19 +2271,20 @@ class Game {
       // wyżej wciąż mały) te 2px to spory procent całej wysokości obiektu,
       // więc cień wizualnie "odjeżdżał" od kamienia. Środek teraz DOKŁADNIE
       // na d.y. Minimalna wysokość (Math.max), żeby przy małych dekoracjach
-      // nie ścieńczał się do niewidocznej kreski. Rozmiar per-typ (grass_tuft
-      // mniejszy/słabszy, fern brak, rock ciaśniejszy - patrz _bakeStaticDecorations,
+      // nie ścieńczał się do niewidocznej kreski. Rozmiar per-typ (grass_tuft/
+      // fern mniejsze/słabsze, rock ciaśniejszy - patrz _bakeStaticDecorations,
       // TA SAMA logika, zduplikowana tu bo to inny kontekst rysowania)
       // - "cienie bliżej nich" (Tomek).
       // Po bake'u cień jest już w tle (patrz _bakeStaticDecorations) - tu
       // rysujemy go tylko w krótkim oknie PRZED bakiem.
-      if (!staticBaked && d.type !== 'fern') {
+      if (!staticBaked) {
         const isGrass = d.type === 'grass_tuft';
-        const widthMult = isGrass ? 0.22 : d.type === 'rock' ? 0.3 : 0.42;
-        const heightMult = isGrass ? 0.07 : d.type === 'rock' ? 0.1 : 0.14;
-        ctx.fillStyle = isGrass ? 'rgba(0, 0, 0, 0.18)' : 'rgba(0, 0, 0, 0.3)';
+        const isFern = d.type === 'fern';
+        const widthMult = isGrass ? 0.22 : isFern ? 0.16 : d.type === 'rock' ? 0.3 : 0.42;
+        const heightMult = isGrass ? 0.07 : isFern ? 0.05 : d.type === 'rock' ? 0.1 : 0.14;
+        ctx.fillStyle = (isGrass || isFern) ? `rgba(0, 0, 0, ${isFern ? 0.14 : 0.18})` : 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.ellipse(d.x, d.y, w * widthMult, Math.max(isGrass ? 2 : 3, h * heightMult), 0, 0, Math.PI * 2);
+        ctx.ellipse(d.x, d.y, w * widthMult, Math.max(isGrass || isFern ? 2 : 3, h * heightMult), 0, 0, Math.PI * 2);
         ctx.fill();
       }
 
