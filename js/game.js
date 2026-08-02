@@ -151,7 +151,9 @@ const DECOR_SETS = [
     // Zestaw 1 - "iglasty/mroźny" (Kenney Background Elements Remastered dla
     // tree/bush/shrub, Platformer Pack Remastered dla crate/sign - ten sam
     // pakiet co crate/sign zestawu 0, ale inne pliki - i Foliage Sprites,
-    // dotintowane offline chłodną zielenią, dla grass_tuft/fern).
+    // dotintowane offline chłodną zielenią, dla grass_tuft/fern). sign_alt1
+    // to strzałka (signRight.png) - BYŁA tabliczka "EXIT" (signExit.png),
+    // Tomek: "te tabliczki exit też wyrzuć".
     tree: 'assets/decor/tree_alt1.png',
     bush: 'assets/decor/bush_alt1.png',
     shrub: 'assets/decor/shrub_alt1.png',
@@ -196,16 +198,21 @@ const ROCK_VARIANT_SRC = ['assets/decor/rock_var2.png', 'assets/decor/rock_var3.
 // skrzynek/tabliczek nowymi rzeczami") - część egzemplarzy typu crate/sign
 // (patrz item.useAltProp w _generateDecorations, losowane RAZ per
 // egzemplarz) rysuje się tym obrazkiem zamiast obrazka z aktywnego
-// DECOR_SETS - CAŁKOWICIE NOWY rekwizyt (beczka/znak ostrzegawczy z Kenney
-// Platformer Pack Industrial), nie kolejny wariant tego samego kształtu.
-// BEZ rotacji (w przeciwieństwie do ROCK_VARIANT_SRC) - Tomek: "bez
-// losowego obrotu, bo jak tabliczka czy skrzynia do góry nogami" - to
+// DECOR_SETS - CAŁKOWICIE NOWY rekwizyt (oba z Kenney Platformer Pack
+// Industrial: beczka + zębatka), nie kolejny wariant tego samego kształtu.
+// Dwie poprzednie wersje znaku odrzucone: tabliczka ostrzegawcza z
+// wykrzyknikiem ("co to są za ekrany z wykrzyknikiem, wyrzuć to i daj coś
+// fajnego") i pochodnia ("wybierz coś co pasuje do biomu a nie bo wygląda
+// ciekawie, do ash") - zębatka to porzucona maszyneria, pasuje do
+// popiołowo-industrialnej Strefy C tak samo jak beczka, w przeciwieństwie
+// do pochodni. BEZ rotacji (w przeciwieństwie do ROCK_VARIANT_SRC) - Tomek:
+// "bez losowego obrotu, bo jak tabliczka czy skrzynia do góry nogami" - to
 // "zaprojektowane" obiekty z czytelną górą/dołem, tak samo jak oryginalne
 // crate/sign. Współdzielone między wszystkimi trzema DECOR_SETS (ta sama
-// beczka/znak niezależnie od planety), tak jak ROCK_VARIANT_SRC wyżej.
+// beczka/zębatka niezależnie od planety), tak jak ROCK_VARIANT_SRC wyżej.
 const EXTRA_PROP_VARIANT_SRC = {
   crate: 'assets/decor/crate_var2.png',
-  sign: 'assets/decor/sign_var2.png'
+  sign: 'assets/decor/sign_var2.png' // zębatka (przemysłowa, Strefa C = popiół)
 };
 
 // Sejdy PRNG narzutu na podłoże per zestaw dekoracji (patrz
@@ -1354,9 +1361,12 @@ class Game {
         const x = rand() * w;
         const y = rand() * h;
         const r = 45 + rand() * 100;
+        // Dwa stopnie (środek->przezroczysty), nie trzy - "plateau" z
+        // dawnego środkowego stopnia (0.7) dawało twardszą, bardziej
+        // widoczną krawędź niż czysty, ciągły spadek do zera (Tomek:
+        // "wygładź krawędzie tej mgły").
         const grad = pctx.createRadialGradient(x, y, 0, x, y, r);
         grad.addColorStop(0, 'rgba(232, 244, 250, 0.5)');
-        grad.addColorStop(0.7, 'rgba(232, 244, 250, 0.22)');
         grad.addColorStop(1, 'rgba(232, 244, 250, 0)');
         pctx.fillStyle = grad;
         pctx.beginPath();
@@ -1368,7 +1378,13 @@ class Game {
       // zresetowania tego TU, ten drawImage (już w pikselach małego
       // canvasu, nie współrzędnych świata) narysowałby się 5x za mały.
       pctx.setTransform(1, 0, 0, 1, 0, 0);
-      pctx.filter = `blur(${8 * overlayScale}px)`;
+      // Tomek: "wygładź krawędzie tej mgły bo źle wygląda" - 8px->28px na
+      // małym canvasie (po przeskalowaniu w górę odpowiednik ~140px w
+      // świecie) - poprzednia wartość ledwo zmiękczała krawędź gradientu,
+      // przy odrobinę większych/gęstszych plamach nadal było widać gdzie
+      // się kończą. Nadal tanio (mały canvas, patrz komentarz przy
+      // overlayScale wyżej).
+      pctx.filter = `blur(${28 * overlayScale}px)`;
       pctx.drawImage(patchLayer, 0, 0); // rozmyj SAM SIEBIE - tani na małym canvasie
       ctx.drawImage(patchLayer, 0, 0, smallW, smallH, 0, 0, w, h);
     } else if (setIndex === 2) {
@@ -1384,9 +1400,10 @@ class Game {
         const x = rand() * w;
         const y = rand() * h;
         const r = 40 + rand() * 90;
+        // Dwa stopnie, nie trzy - patrz komentarz przy analogicznym
+        // gradiencie szronu wyżej.
         const grad = pctx.createRadialGradient(x, y, 0, x, y, r);
         grad.addColorStop(0, 'rgba(213, 178, 112, 0.46)');
-        grad.addColorStop(0.7, 'rgba(213, 178, 112, 0.2)');
         grad.addColorStop(1, 'rgba(213, 178, 112, 0)');
         pctx.fillStyle = grad;
         pctx.beginPath();
@@ -1394,7 +1411,13 @@ class Game {
         pctx.fill();
       }
       pctx.setTransform(1, 0, 0, 1, 0, 0);
-      pctx.filter = `blur(${8 * overlayScale}px)`;
+      // Tomek: "wygładź krawędzie tej mgły bo źle wygląda" - 8px->28px na
+      // małym canvasie (po przeskalowaniu w górę odpowiednik ~140px w
+      // świecie) - poprzednia wartość ledwo zmiękczała krawędź gradientu,
+      // przy odrobinę większych/gęstszych plamach nadal było widać gdzie
+      // się kończą. Nadal tanio (mały canvas, patrz komentarz przy
+      // overlayScale wyżej).
+      pctx.filter = `blur(${28 * overlayScale}px)`;
       pctx.drawImage(patchLayer, 0, 0);
       ctx.drawImage(patchLayer, 0, 0, smallW, smallH, 0, 0, w, h);
       ctx.strokeStyle = 'rgba(84, 60, 30, 0.4)';
@@ -1911,7 +1934,7 @@ class Game {
       // Zamiennik skrzyni/tabliczki (patrz EXTRA_PROP_VARIANT_SRC) - Tomek:
       // "zastąp trochę skrzynek i tablic nowymi rzeczami" - 1/3 egzemplarzy
       // (nie połowa - "trochę", nie "większość") rysuje się NOWYM rekwizytem
-      // (beczka/znak ostrzegawczy) zamiast obrazka z aktywnego DECOR_SETS.
+      // (beczka/zębatka) zamiast obrazka z aktywnego DECOR_SETS.
       // Losowane RAZ tu, tym samym mulberry32 - stałe między przeliczeniami
       // tła, tak jak rockVariant wyżej.
       if (type === 'crate' || type === 'sign') item.useAltProp = rand() < (1 / 3);
