@@ -1665,12 +1665,28 @@ class Game {
         // 0.42*w owal wystawał wizualnie POZA widoczne krawędzie kamienia.
         const widthMult = d.type === 'rock' ? 0.3 : 0.42;
         const heightMult = d.type === 'rock' ? 0.1 : 0.14;
+        const shadowRy = Math.max(3, h * heightMult);
+        // BUGFIX (Tomek: "dodaj cień tam gdzie go nie ma, a gdzie trzeba to
+        // popraw"): zmierzone wprost w pikselach (dolne 8% wysokości każdego
+        // obrazka) - crate.png/crate_alt1/crate_alt2 (~93% nieprzezroczyste
+        // w tym pasie) i WSZYSTKIE rekwizyty EXTRA_PROP_VARIANT_SRC
+        // (d.useAltProp - pas ostrzegawczy, panel z X, ogrodzenie, gruz,
+        // beczka, 81-100%) wypełniają obrazek "na styk", w przeciwieństwie
+        // do sign.png (17% - wąski słupek zostawia mnóstwo pustego miejsca).
+        // Sprite kończy się DOKŁADNIE na d.y (groundOffset=0), więc owal
+        // wyśrodkowany na d.y miał górną połowę schowaną pod nieprzezroczystym
+        // sprite'em, a widoczna dolna połówka (kilka px) ginęła w oku - w
+        // praktyce WYGLĄDAŁO na brak cienia (zweryfikowane bezpośrednim
+        // renderem - normalna skrzynia/tabliczka miały wyraźny owal, te NIE).
+        // Przesuwamy środek owalu w dół o jego własny promień, żeby CAŁY
+        // owal był pod sprite'em, tak jak u reszty typów.
+        const shadowY = (d.type === 'crate' || d.useAltProp) ? d.y + shadowRy : d.y;
         // Ten sam kształt/pozycja cienia co dawniej w _drawDecorations (patrz
         // komentarz "kamienie latają" tam) - tylko przeniesiony tutaj, do
         // jednorazowego pieczenia zamiast rysowania co klatkę.
         wctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         wctx.beginPath();
-        wctx.ellipse(d.x, d.y, w * widthMult, Math.max(3, h * heightMult), 0, 0, Math.PI * 2);
+        wctx.ellipse(d.x, shadowY, w * widthMult, shadowRy, 0, 0, Math.PI * 2);
         wctx.fill();
       }
 
@@ -2282,9 +2298,15 @@ class Game {
         const isFern = d.type === 'fern';
         const widthMult = isGrass ? 0.22 : isFern ? 0.16 : d.type === 'rock' ? 0.3 : 0.42;
         const heightMult = isGrass ? 0.07 : isFern ? 0.05 : d.type === 'rock' ? 0.1 : 0.14;
+        const shadowRy = Math.max(isGrass || isFern ? 2 : 3, h * heightMult);
+        // Ten sam fix co w _bakeStaticDecorations (patrz komentarz tam) -
+        // crate i rekwizyty EXTRA_PROP_VARIANT_SRC wypełniają obrazek "na
+        // styk", więc owal trzeba zsunąć w dół, inaczej ginie pod
+        // nieprzezroczystym sprite'em.
+        const shadowY = (d.type === 'crate' || d.useAltProp) ? d.y + shadowRy : d.y;
         ctx.fillStyle = (isGrass || isFern) ? `rgba(0, 0, 0, ${isFern ? 0.14 : 0.18})` : 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.ellipse(d.x, d.y, w * widthMult, Math.max(isGrass || isFern ? 2 : 3, h * heightMult), 0, 0, Math.PI * 2);
+        ctx.ellipse(d.x, shadowY, w * widthMult, shadowRy, 0, 0, Math.PI * 2);
         ctx.fill();
       }
 
