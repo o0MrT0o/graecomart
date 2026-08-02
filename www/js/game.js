@@ -1204,6 +1204,11 @@ class Game {
       // technika łamanych linii co _bakeCrystalGroundTexture).
       ctx.fillStyle = 'rgba(205, 170, 105, 0.14)';
       ctx.fillRect(0, 0, w, h);
+      // Plamy piasku pod tym samym blur() co szron (Tomek: "te rozmyte plamy
+      // pustynne, niech mają tak samo rozmyte krawędzie") - filtr zdejmowany
+      // PRZED pęknięciami ziemi niżej, żeby te zostały ostre/czytelne (linia
+      // pęknięcia rozmyta na 26px byłaby praktycznie niewidoczna).
+      ctx.filter = 'blur(26px)';
       for (let i = 0; i < patchCount; i++) {
         const x = rand() * w;
         const y = rand() * h;
@@ -1217,6 +1222,7 @@ class Game {
         ctx.ellipse(x, y, r, r * (0.55 + rand() * 0.3), rand() * Math.PI, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.filter = 'none';
       ctx.strokeStyle = 'rgba(84, 60, 30, 0.4)';
       ctx.lineWidth = 2.5;
       const crackCount = Math.round(patchCount / 2);
