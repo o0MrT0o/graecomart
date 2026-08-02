@@ -1392,6 +1392,14 @@ canvas {
 .ui-icon--target { -webkit-mask-image: url('assets/ui/icons/target.png'); mask-image: url('assets/ui/icons/target.png'); }
 .ui-icon--diamond { -webkit-mask-image: url('assets/ui/icons/diamond.png'); mask-image: url('assets/ui/icons/diamond.png'); }
 
+/* Ujednolicenie Sklepu/Statku (SHOP_UPGRADES/PRESTIGE_UPGRADES/MACHINE_UPGRADE_KINDS)
+   i pierwszych 13 osiągnięć (economy.js) - te ostatnie ręcznie rysowane SVG
+   w całej grze, reszta ikon dawno przeszła na prawdziwe maski Kenney (patrz
+   komentarze wyżej). Tomek: "żeby każde miało ten sam styl". */
+.ui-icon--backpack { -webkit-mask-image: url('assets/ui/icons/backpack.png'); mask-image: url('assets/ui/icons/backpack.png'); }
+.ui-icon--shield { -webkit-mask-image: url('assets/ui/icons/shield.png'); mask-image: url('assets/ui/icons/shield.png'); }
+.ui-icon--trashcan { -webkit-mask-image: url('assets/ui/icons/trashcan.png'); mask-image: url('assets/ui/icons/trashcan.png'); }
+
 /* ==========================================================================
    Tooltip
    ========================================================================== */

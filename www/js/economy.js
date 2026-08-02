@@ -44,10 +44,31 @@ const GOLD_BONUS_MIN_REWARD = 15;
 // jako sufiks w opisach wyzwań/osiągnięć/ulepszeń zamiast dawnego "180$".
 const ECONOMY_CREDIT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px" fill="#FFD54F" stroke="none"><path fill-rule="evenodd" d="M21 12 16.5 19.79 7.5 19.79 3 12 7.5 4.21 16.5 4.21Z M14.2 12A2.2 2.2 0 1 1 9.8 12A2.2 2.2 0 1 1 14.2 12Z"/></svg>';
 
+// Ikonka-plakietka z PRAWDZIWEGO assetu Kenney (kółko tła + .ui-icon maska) -
+// JEDEN wspólny helper dla WSZYSTKICH katalogów w tym pliku (Sklep/Statek/
+// Ulepszenia maszyn/Osiągnięcia), żeby każdy panel w grze miał TEN SAM styl
+// ikon (Tomek: "żeby każde miało ten sam styl, sprawdź paczki i lecisz").
+// Wcześniej istniał TYLKO dla ACHIEVEMENTS (tier 3, jako _achKenneyIcon) -
+// SHOP_UPGRADES/PRESTIGE_UPGRADES/MACHINE_UPGRADE_KINDS i pierwsze 13
+// osiągnięć dalej rysowały ręczne, wielokolorowe SVG. Zdefiniowany TU (przed
+// SHOP_UPGRADES), nie przy ACHIEVEMENTS jak poprzednio - wszystkie trzy
+// katalogi go potrzebują, a SHOP_UPGRADES jest zdefiniowany pierwszy w pliku.
+const _kenneyIcon = (maskClass, color) =>
+  `<span class="ui-shop-item__icon-badge" style="background:${color}26"><span class="ui-icon ui-icon--${maskClass}" style="color:${color}" aria-hidden="true"></span></span>`;
+
+// Wyjątek od powyższego - "magnes" to JEDYNA koncepcja w tych katalogach, dla
+// której żadna z przejrzanych paczek Kenney (Game Icons, Game Icons
+// Expansion, Board Game Icons, Generic Items) nie miała pasującego kształtu.
+// Płaski, jednokolorowy SVG w TEJ SAMEJ plakietce co _kenneyIcon wyżej - ten
+// sam "custom SVG gdy paczka nie ma odpowiednika" wyjątek co PLANET/core w
+// getStatsCatalog niżej (tam udokumentowany podobnie).
+const _magnetIcon = (color) =>
+  `<span class="ui-shop-item__icon-badge" style="background:${color}26"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round"><path d="M7 4 v7 a5 5 0 0 0 10 0 V4"/><path d="M7 4 h4 M13 4 h4"/><path d="M7 9 h4 M13 9 h4"/></svg></span>`;
+
 const SHOP_UPGRADES = [
   {
     id: 'capacity',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2"><rect x="5" y="9" width="14" height="12" rx="3"/><path d="M9 9 V6 a3 3 0 0 1 6 0 v3"/><rect x="9.5" y="12.5" width="5" height="4" rx="1" fill="#E8EAF6" stroke="none"/></svg>',
+    icon: _kenneyIcon('backpack', '#E8EAF6'),
     name: 'Większy plecak',
     description: '+2 miejsca na stosie',
     baseCost: 40,
@@ -59,7 +80,7 @@ const SHOP_UPGRADES = [
   },
   {
     id: 'speed',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2.2" stroke-linecap="round"><path d="M3 7 H9"/><path d="M2 12 H13"/><path d="M3 17 H9"/><path d="M14 6 L21 12 L14 18 Z" fill="#E8EAF6" stroke="none"/></svg>',
+    icon: _kenneyIcon('star', '#FFEE58'),
     name: 'Szybsze buty',
     description: '+15% prędkości ruchu',
     baseCost: 60,
@@ -71,7 +92,7 @@ const SHOP_UPGRADES = [
   },
   {
     id: 'pickup',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke-width="2.4" stroke-linecap="round"><path d="M6 4 V13 a6 6 0 0 0 12 0 V4" stroke="#E8EAF6"/><path d="M6 4 H10" stroke="#EF5350"/><path d="M14 4 H18" stroke="#64B5F6"/></svg>',
+    icon: _magnetIcon('#EF5350'),
     name: 'Magnes na śmieci',
     description: '+10 px zasięgu podnoszenia',
     baseCost: 35,
@@ -83,7 +104,7 @@ const SHOP_UPGRADES = [
   },
   {
     id: 'stage_paper',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3 H15 L19 7 V21 H6 Z"/><path d="M15 3 V7 H19"/><path d="M9 12 H16 M9 16 H15"/></svg>',
+    icon: _kenneyIcon('book', '#E8EAF6'),
     name: 'Licencja: Papier',
     description: 'Odblokowuje papierowe odpady na mapie',
     baseCost: 150,
@@ -99,7 +120,7 @@ const SHOP_UPGRADES = [
     // pełnej odporności (patrz player.js _getHazardSpeedMult). Widoczny na
     // postaci jako kask nad głową (_drawHelmet w player.js).
     id: 'headlamp',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14 Q4 5 12 5 Q20 5 20 14"/><path d="M3 14 H21"/><circle cx="12" cy="9.5" r="2" fill="#FFD54F" stroke="none"/></svg>',
+    icon: _kenneyIcon('shield', '#FFD54F'),
     name: 'Kask z Latarką',
     description: 'Mniejsza kara prędkości w strefach skażenia bez pełnej ochrony',
     baseCost: 130,
@@ -115,7 +136,7 @@ const SHOP_UPGRADES = [
     // _getHazardLossThreshold). Widoczny na postaci jako buty przy stopach
     // (_drawBoots w player.js).
     id: 'boots',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M8 3 V12.5 Q8 14 9.5 14.5 L17 17 Q19 17.7 19 19 Q19 20 17.5 20 H6 Q5 20 5 19 V3 Z"/><path d="M8 12 H13"/></svg>',
+    icon: _kenneyIcon('shield', '#A1887F'),
     name: 'Robocze Buty',
     description: 'Więcej czasu, zanim stracisz przedmiot w hazardzie bez pełnej ochrony',
     baseCost: 100,
@@ -127,7 +148,7 @@ const SHOP_UPGRADES = [
   },
   {
     id: 'toxic_filter',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2" stroke-linejoin="round"><path d="M4 11 Q4 6 12 6 Q20 6 20 11 Q20 16 12 17.5 Q4 16 4 11 Z"/><circle cx="9" cy="11" r="1.6" fill="#E8EAF6" stroke="none"/><circle cx="15" cy="11" r="1.6" fill="#E8EAF6" stroke="none"/></svg>',
+    icon: _kenneyIcon('shield', '#66BB6A'),
     name: 'Filtr Toksyn',
     description: 'Bez spowolnienia ani utraty przedmiotów w Strefie Skażenia (szkło)',
     baseCost: 250,
@@ -139,7 +160,7 @@ const SHOP_UPGRADES = [
   },
   {
     id: 'radiation_suit',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26"><circle cx="12" cy="12" r="10" fill="#FFC107"/><path d="M12 12 L12 4 A8 8 0 0 1 18.93 8 Z" fill="#212121"/><path d="M12 12 L12 4 A8 8 0 0 1 18.93 8 Z" fill="#212121" transform="rotate(120 12 12)"/><path d="M12 12 L12 4 A8 8 0 0 1 18.93 8 Z" fill="#212121" transform="rotate(240 12 12)"/><circle cx="12" cy="12" r="2" fill="#212121"/></svg>',
+    icon: _kenneyIcon('shield', '#FFC107'),
     name: 'Kombinezon Radiacyjny',
     description: 'Bez spowolnienia ani utraty przedmiotów w Strefie Atomowej (metal)',
     baseCost: 500,
@@ -157,7 +178,7 @@ const SHOP_UPGRADES = [
     // z tym, czym to ulepszenie faktycznie jest - patrz też SHIP_MODULE_PERKS
     // (free_minimap) niżej.
     id: 'minimap',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="1.6" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 5 L8 17 L16 19 L16 7 Z"/><path d="M8 5 L16 7" stroke-dasharray="1.5 1.5"/><circle cx="12" cy="12" r="1.4" fill="#FFD54F" stroke="none"/></svg>',
+    icon: _kenneyIcon('target', '#FFD54F'),
     name: 'Minimapa',
     description: 'Mały radar w rogu ekranu - pokazuje pobliskie maszyny, statek, terminal i surowce',
     baseCost: 350,
@@ -205,7 +226,7 @@ const CORE_TIER2_UNLOCK_PLANET = 5;
 const PRESTIGE_UPGRADES = [
   {
     id: 'core_income',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M9.5 10.5 Q9.5 9 12 9 Q14.5 9 14.5 10.7 Q14.5 12 12 12.5 Q9.5 13 9.5 14.8 Q9.5 17 12 17 Q14.5 17 14.5 15.5"/><path d="M12 8 V9 M12 17 V18"/><path d="M12 1.5 L14.2 5 H9.8 Z" fill="#FFD54F" stroke="none"/></svg>',
+    icon: _kenneyIcon('coin', '#FFD54F'),
     name: 'Wzmacniacz Zarobku',
     description: '+10% do każdej wypłaty, na zawsze - NIE zeruje się na nowej planecie',
     baseCost: 3,
@@ -217,7 +238,7 @@ const PRESTIGE_UPGRADES = [
   },
   {
     id: 'core_headstart',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81D4FA" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3 C16 6 17 11 15 16 L9 16 C7 11 8 6 12 3 Z" fill="#81D4FA" fill-opacity="0.25"/><path d="M9 16 L7 20 M15 16 L17 20 M10.5 16 L10.5 21 M13.5 16 L13.5 21"/><circle cx="12" cy="9.5" r="1.6" fill="#81D4FA" stroke="none"/></svg>',
+    icon: _kenneyIcon('pouch', '#81D4FA'),
     name: 'Zapasy Startowe',
     description: '+200 gotówki na start każdej nowej planety',
     baseCost: 2,
@@ -235,7 +256,7 @@ const PRESTIGE_UPGRADES = [
   // przetwarzanie, zbieranie, ceny i start przebiegu.
   {
     id: 'core_machine_speed',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#66BB6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5 V12 l3 2"/><path d="M19 5.5 L21 3.5 M5 5.5 L3 3.5"/></svg>',
+    icon: _kenneyIcon('gear', '#66BB6A'),
     name: 'Turbo Maszyn',
     description: 'Wszystkie maszyny przetwarzają o 8% szybciej za poziom',
     baseCost: 3,
@@ -249,7 +270,7 @@ const PRESTIGE_UPGRADES = [
   },
   {
     id: 'core_magnet',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#EF5350" stroke-width="2" stroke-linecap="round"><path d="M7 4 v7 a5 5 0 0 0 10 0 V4"/><path d="M7 4 h4 M13 4 h4" stroke-width="2.4"/><path d="M7 9 h4 M13 9 h4" stroke="#B0BEC5"/></svg>',
+    icon: _magnetIcon('#FF8A80'),
     name: 'Magnes Kwantowy',
     description: '+12 px zasięgu podnoszenia za poziom - działa od razu na nowej planecie',
     baseCost: 2,
@@ -261,7 +282,7 @@ const PRESTIGE_UPGRADES = [
   },
   {
     id: 'core_prices',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 L9 11 L13 15 L21 7"/><path d="M15 7 h6 v6"/></svg>',
+    icon: _kenneyIcon('chart', '#FFD54F'),
     name: 'Kontrakty Handlowe',
     description: '+6% do ceny KAŻDEGO surowca na targu za poziom',
     baseCost: 4,
@@ -273,7 +294,7 @@ const PRESTIGE_UPGRADES = [
   },
   {
     id: 'core_backpack',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#AB47BC" stroke-width="2" stroke-linejoin="round"><rect x="5" y="8" width="14" height="13" rx="3"/><path d="M9 8 V6 a3 3 0 0 1 6 0 v2"/><path d="M9 13 h6" stroke-width="2.2"/><path d="M12 11 v4" stroke-width="2.2"/></svg>',
+    icon: _kenneyIcon('backpack', '#AB47BC'),
     name: 'Wymiarowy Plecak',
     description: '+3 miejsca na stosie na start każdej nowej planety',
     baseCost: 3,
@@ -297,7 +318,7 @@ const PRESTIGE_UPGRADES = [
   // już jest.
   {
     id: 'core_combo_master',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FF7043" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 C9 6 7 9 7 13 a5 5 0 0 0 10 0 C17 10.5 15.5 9.5 15.5 9.5 C15.7 12 14 13 14 13 C15 8.5 12 2.5 12 2.5 Z" fill="#FF7043" fill-opacity="0.3"/></svg>',
+    icon: _kenneyIcon('fire', '#FF7043'),
     name: 'Mistrz Combo',
     description: '+1 do maks. poziomu combo za poziom - dłuższe serie sprzedaży, zanim mnożnik przestanie rosnąć',
     baseCost: 6,
@@ -310,7 +331,7 @@ const PRESTIGE_UPGRADES = [
   },
   {
     id: 'core_offline_master',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#26C6DA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13 A10 10 0 0 1 13 3" fill="#26C6DA" fill-opacity="0.15"/><path d="M3 13 L10.5 20.5"/><circle cx="3" cy="13" r="1.8" fill="#26C6DA" stroke="none"/><path d="M13 3 V9 M13 3 H19" stroke-dasharray="1.6 1.6"/><circle cx="19" cy="17" r="2.4"/></svg>',
+    icon: _kenneyIcon('hourglass', '#26C6DA'),
     name: 'Zdalne Zarządzanie',
     description: '+5% skuteczności produkcji offline za poziom',
     baseCost: 8,
@@ -323,7 +344,7 @@ const PRESTIGE_UPGRADES = [
   },
   {
     id: 'core_daily_master',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#EC407A" stroke-width="2" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 9.5 H20"/><path d="M8 3 V6.5 M16 3 V6.5" stroke-linecap="round"/><path d="M12 12 L13 14.2 L15.4 14.5 L13.6 16.2 L14.1 18.6 L12 17.3 L9.9 18.6 L10.4 16.2 L8.6 14.5 L11 14.2 Z" fill="#EC407A" stroke="none"/></svg>',
+    icon: _kenneyIcon('award', '#EC407A'),
     name: 'Stały Bywalec',
     description: '+8% do nagrody za passę codziennego logowania za poziom',
     baseCost: 6,
@@ -336,7 +357,7 @@ const PRESTIGE_UPGRADES = [
   },
   {
     id: 'core_prestige_boost',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#7E57C2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="7"/><path d="M15.5 15.5 L21 21"/><path d="M10.5 7 L11.4 9.6 L14 10.5 L11.4 11.4 L10.5 14 L9.6 11.4 L7 10.5 L9.6 9.6 Z" fill="#7E57C2" stroke="none"/></svg>',
+    icon: _kenneyIcon('diamond', '#7E57C2'),
     name: 'Głębsza Analiza',
     description: '+10% Rdzeni z każdego odlotu za poziom',
     baseCost: 10,
@@ -368,7 +389,7 @@ const MACHINE_UPGRADE_KINDS = [
     id: 'speed',
     name: 'Przyspieszenie',
     description: 'Skraca czas przetwarzania o 12%',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#4FC3F7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 L5 13 h5 l-1 9 8-11 h-5 Z" fill="#4FC3F7" fill-opacity="0.25"/></svg>',
+    icon: _kenneyIcon('gear', '#4FC3F7'),
     maxLevel: 4,
     // Mnożnik czasu: 1.0 -> 0.52 przy maksie (prawie 2x szybciej).
     getValue(level) {
@@ -379,7 +400,7 @@ const MACHINE_UPGRADE_KINDS = [
     id: 'yield',
     name: 'Zwiększona Produkcja',
     description: '+1 sztuka na każdym cyklu przetwarzania',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFB74D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8 L12 4 l8 4 v8 l-8 4 -8-4 Z" fill="#FFB74D" fill-opacity="0.2"/><path d="M12 4 v16 M4 8 l8 4 8-4"/></svg>',
+    icon: _kenneyIcon('award', '#FFB74D'),
     maxLevel: 2,
     // Ile sztuk wypada z jednego cyklu: 1 -> 3 przy maksie.
     getValue(level) {
@@ -522,45 +543,38 @@ const _formatRunTime = (totalSeconds) => {
   return `${sec}s`;
 };
 
-// Ikonka-plakietka z PRAWDZIWEGO assetu Kenney (kółko tła + .ui-icon maska,
-// ten sam wzorzec co kenneyIcon() w getStatsCatalog niżej) - dla tier-3
-// osiągnięć (późna gra) NIE rysujemy już kolejnych ręcznych SVG (Tomek:
-// "użyj paczek do tego"), tylko sięgamy po realne tekstury tam, gdzie
-// pasujący kształt istnieje w już pobranych paczkach.
-const _achKenneyIcon = (maskClass, color) =>
-  `<span class="ui-shop-item__icon-badge" style="background:${color}26"><span class="ui-icon ui-icon--${maskClass}" style="color:${color}" aria-hidden="true"></span></span>`;
 
 const ACHIEVEMENTS = [
-  { id: 'first_pickup', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81C784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V11"/><path d="M12 11C12 6 8 5 5 5c0 4 2 6.5 7 6Z" fill="#81C784" fill-opacity="0.3"/><path d="M12 14C12 10 15 8.5 18 8c0 3.5-1.5 6-6 6Z" fill="#81C784" fill-opacity="0.3"/></svg>', name: 'Pierwszy krok', desc: 'Zbierz pierwszy surowiec', stat: 'itemsCollected', target: 1 },
-  { id: 'collector_100', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#66BB6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.9-5.4"/><path d="M20 3v5h-5"/><path d="M20 12a8 8 0 0 1-13.9 5.4"/><path d="M4 21v-5h5"/></svg>', name: 'Recyklingowicz', desc: 'Zbierz łącznie 100 surowców', stat: 'itemsCollected', target: 100 },
-  { id: 'collector_1000', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#4FC3F7" stroke-width="1.8"><circle cx="12" cy="12" r="9" fill="#4FC3F7" fill-opacity="0.2"/><path d="M3.5 9.5h17M3.5 14.5h17"/><path d="M9.5 3c-2.5 4-2.5 14 0 18M14.5 3c2.5 4 2.5 14 0 18"/></svg>', name: 'Strażnik planety', desc: 'Zbierz łącznie 1000 surowców', stat: 'itemsCollected', target: 1000 },
-  { id: 'feeder_50', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFB74D" stroke-width="2" stroke-linejoin="round"><path d="M3 20V11l5 3v-3l5 3v-3l5 3v6Z" fill="#FFB74D" fill-opacity="0.25"/><path d="M6 11V8M11 11V8M16 11V7 a1 1 0 0 1 2 0v1h1V7"/></svg>', name: 'Taśmowa produkcja', desc: 'Nakarm maszyny 50 razy', stat: 'machinesFed', target: 50 },
-  { id: 'feeder_500', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="1.8" stroke-linejoin="round"><path d="M4 9 7 4l5 3 5-3 3 5-2 3v6H6v-6Z" fill="#FFD54F" fill-opacity="0.25"/><circle cx="12" cy="15" r="2.4"/></svg>', name: 'Król fabryki', desc: 'Nakarm maszyny 500 razy', stat: 'machinesFed', target: 500 },
-  { id: 'earn_500', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#A5D6A7" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="1.5" fill="#A5D6A7" fill-opacity="0.2"/><circle cx="12" cy="12" r="3"/></svg>', name: 'Pierwsze zarobki', desc: `Zarób łącznie 500${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 500 },
-  { id: 'earn_10000', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.5 2 6 6 5 10-.7 3-3 6-5 6s-4.3-3-5-6c-1-4 .5-8 5-10Z" fill="#FFD54F" fill-opacity="0.3"/><path d="M10.3 11.5Q10.3 10 12 10Q13.8 10 13.8 11.3Q13.8 12.5 12 13Q10.3 13.5 10.3 14.8Q10.3 16 12 16Q13.8 16 13.8 14.6"/></svg>', name: 'Magnat odpadów', desc: `Zarób łącznie 10 000${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 10000 },
-  { id: 'shopper_10', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFE082" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2A2 2 0 0 0 9.35 17H18a2 2 0 0 0 1.95-1.57L21.5 8H6"/><circle cx="10" cy="20.5" r="1.3" fill="#FFE082" stroke="none"/><circle cx="18" cy="20.5" r="1.3" fill="#FFE082" stroke="none"/></svg>', name: 'Zakupoholik', desc: 'Kup 10 ulepszeń', stat: 'upgradesBought', target: 10 },
-  { id: 'first_planet', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81D4FA" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5c4 3 5 8 3 13H9c-2-5-1-10 3-13Z" fill="#81D4FA" fill-opacity="0.3"/><path d="M9 15.5 6.5 19M15 15.5l2.5 3.5M10 15.5V20M14 15.5V20"/><circle cx="12" cy="9.5" r="1.6" fill="#81D4FA" stroke="none"/></svg>', name: 'Odlot', desc: 'Ukończ pierwszą planetę', stat: 'planetsCompleted', target: 1 },
-  { id: 'planets_3', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#B39DDB" stroke-width="1.8"><circle cx="9" cy="12" r="4.5" fill="#B39DDB" fill-opacity="0.25"/><ellipse cx="9" cy="12" rx="7.5" ry="2.4" transform="rotate(-18 9 12)"/><path d="M18 5 18.6 6.6 20.2 7.2 18.6 7.8 18 9.4 17.4 7.8 15.8 7.2 17.4 6.6Z" fill="#B39DDB" stroke="none"/><path d="M20 15 20.4 16 21.4 16.4 20.4 16.8 20 17.8 19.6 16.8 18.6 16.4 19.6 16Z" fill="#B39DDB" stroke="none"/></svg>', name: 'Podróżnik', desc: 'Ukończ 3 planety', stat: 'planetsCompleted', target: 3 },
-  { id: 'modules_5', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#B0BEC5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 4.5a4.5 4.5 0 0 0-5.9 5L4 15l2 2 5.5-5.6a4.5 4.5 0 0 0 5-5.9l-2.9 2.9-2-2Z" fill="#B0BEC5" fill-opacity="0.2"/></svg>', name: 'Mechanik', desc: 'Ukończ 5 modułów statku', stat: 'shipModulesCompleted', target: 5 },
-  { id: 'streak_3', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="#FF7043" stroke="none"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c1 1 1.5 2.3 1.5 3.5A4.5 4.5 0 0 1 12 18a5.5 5.5 0 0 1-5.5-5.5C6.5 8 9 6 12 2Z"/></svg>', name: 'Codzienny gracz', desc: 'Zaloguj się 3 dni z rzędu', stat: 'maxLoginStreak', target: 3 },
-  { id: 'challenges_5', icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#CE93D8" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2" fill="#CE93D8" fill-opacity="0.15"/><path d="M4 9.5h16"/><path d="M8 3v6.5M16 3v6.5" stroke-linecap="round"/><path d="M8.5 15 10.5 17 15.5 12" stroke-linecap="round" stroke-linejoin="round"/></svg>', name: 'Wyzwaniowiec', desc: 'Odbierz 5 wyzwań dnia', stat: 'challengesClaimed', target: 5 },
+  { id: 'first_pickup', icon: _kenneyIcon('trashcan', '#81C784'), name: 'Pierwszy krok', desc: 'Zbierz pierwszy surowiec', stat: 'itemsCollected', target: 1 },
+  { id: 'collector_100', icon: _kenneyIcon('trashcan', '#66BB6A'), name: 'Recyklingowicz', desc: 'Zbierz łącznie 100 surowców', stat: 'itemsCollected', target: 100 },
+  { id: 'collector_1000', icon: _kenneyIcon('trashcan', '#4FC3F7'), name: 'Strażnik planety', desc: 'Zbierz łącznie 1000 surowców', stat: 'itemsCollected', target: 1000 },
+  { id: 'feeder_50', icon: _kenneyIcon('wrench', '#FFB74D'), name: 'Taśmowa produkcja', desc: 'Nakarm maszyny 50 razy', stat: 'machinesFed', target: 50 },
+  { id: 'feeder_500', icon: _kenneyIcon('wrench', '#FFD54F'), name: 'Król fabryki', desc: 'Nakarm maszyny 500 razy', stat: 'machinesFed', target: 500 },
+  { id: 'earn_500', icon: _kenneyIcon('coin', '#A5D6A7'), name: 'Pierwsze zarobki', desc: `Zarób łącznie 500${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 500 },
+  { id: 'earn_10000', icon: _kenneyIcon('coin', '#FFD54F'), name: 'Magnat odpadów', desc: `Zarób łącznie 10 000${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 10000 },
+  { id: 'shopper_10', icon: _kenneyIcon('cart', '#FFE082'), name: 'Zakupoholik', desc: 'Kup 10 ulepszeń', stat: 'upgradesBought', target: 10 },
+  { id: 'first_planet', icon: _kenneyIcon('flag', '#81D4FA'), name: 'Odlot', desc: 'Ukończ pierwszą planetę', stat: 'planetsCompleted', target: 1 },
+  { id: 'planets_3', icon: _kenneyIcon('flag', '#B39DDB'), name: 'Podróżnik', desc: 'Ukończ 3 planety', stat: 'planetsCompleted', target: 3 },
+  { id: 'modules_5', icon: _kenneyIcon('wrench', '#B0BEC5'), name: 'Mechanik', desc: 'Ukończ 5 modułów statku', stat: 'shipModulesCompleted', target: 5 },
+  { id: 'streak_3', icon: _kenneyIcon('fire', '#FF7043'), name: 'Codzienny gracz', desc: 'Zaloguj się 3 dni z rzędu', stat: 'maxLoginStreak', target: 3 },
+  { id: 'challenges_5', icon: _kenneyIcon('target', '#CE93D8'), name: 'Wyzwaniowiec', desc: 'Odbierz 5 wyzwań dnia', stat: 'challengesClaimed', target: 5 },
   // --- Tier 3 (późna gra) - dla graczy, którzy ograli komplet powyższych.
   // Progi wielokrotnie wyższe niż tier 2, żeby dać sens dalszemu, wielo-
   // planetowemu grindowi (patrz balans previewPrestigeCores - pełne
   // zmaksowanie ulepszeń Rdzeni to i tak ~60-100 odlotów).
-  { id: 'collector_10000', icon: _achKenneyIcon('medal1', '#FFD54F'), name: 'Legenda recyklingu', desc: 'Zbierz łącznie 10 000 surowców', stat: 'itemsCollected', target: 10000 },
-  { id: 'feeder_2000', icon: _achKenneyIcon('medal2', '#FFA726'), name: 'Mistrz fabryki', desc: 'Nakarm maszyny 2000 razy', stat: 'machinesFed', target: 2000 },
-  { id: 'earn_100000', icon: _achKenneyIcon('crown', '#FFCA28'), name: 'Potentat odpadów', desc: `Zarób łącznie 100 000${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 100000 },
-  { id: 'shopper_50', icon: _achKenneyIcon('gear', '#B0BEC5'), name: 'Inżynier ulepszeń', desc: 'Kup 50 ulepszeń', stat: 'upgradesBought', target: 50 },
-  { id: 'planets_10', icon: _achKenneyIcon('flag', '#B39DDB'), name: 'Odkrywca galaktyki', desc: 'Ukończ 10 planet', stat: 'planetsCompleted', target: 10 },
-  { id: 'modules_25', icon: _achKenneyIcon('wrench', '#CFD8DC'), name: 'Konstruktor floty', desc: 'Ukończ łącznie 25 modułów statku', stat: 'shipModulesCompleted', target: 25 },
+  { id: 'collector_10000', icon: _kenneyIcon('medal1', '#FFD54F'), name: 'Legenda recyklingu', desc: 'Zbierz łącznie 10 000 surowców', stat: 'itemsCollected', target: 10000 },
+  { id: 'feeder_2000', icon: _kenneyIcon('medal2', '#FFA726'), name: 'Mistrz fabryki', desc: 'Nakarm maszyny 2000 razy', stat: 'machinesFed', target: 2000 },
+  { id: 'earn_100000', icon: _kenneyIcon('crown', '#FFCA28'), name: 'Potentat odpadów', desc: `Zarób łącznie 100 000${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 100000 },
+  { id: 'shopper_50', icon: _kenneyIcon('gear', '#B0BEC5'), name: 'Inżynier ulepszeń', desc: 'Kup 50 ulepszeń', stat: 'upgradesBought', target: 50 },
+  { id: 'planets_10', icon: _kenneyIcon('flag', '#B39DDB'), name: 'Odkrywca galaktyki', desc: 'Ukończ 10 planet', stat: 'planetsCompleted', target: 10 },
+  { id: 'modules_25', icon: _kenneyIcon('wrench', '#CFD8DC'), name: 'Konstruktor floty', desc: 'Ukończ łącznie 25 modułów statku', stat: 'shipModulesCompleted', target: 25 },
   // DAILY_STREAK_CAP_DAYS (economy.js) = 20 - powyżej tego dalsze dni nie
   // podbijają już nagrody streaka, więc 20 to naturalny "pełny" próg.
-  { id: 'streak_20', icon: _achKenneyIcon('fire', '#FF5722'), name: 'Weteran', desc: 'Zaloguj się 20 dni z rzędu', stat: 'maxLoginStreak', target: 20 },
-  { id: 'challenges_30', icon: _achKenneyIcon('target', '#CE93D8'), name: 'Perfekcjonista', desc: 'Odbierz 30 wyzwań dnia', stat: 'challengesClaimed', target: 30 },
+  { id: 'streak_20', icon: _kenneyIcon('fire', '#FF5722'), name: 'Weteran', desc: 'Zaloguj się 20 dni z rzędu', stat: 'maxLoginStreak', target: 20 },
+  { id: 'challenges_30', icon: _kenneyIcon('target', '#CE93D8'), name: 'Perfekcjonista', desc: 'Odbierz 30 wyzwań dnia', stat: 'challengesClaimed', target: 30 },
   // Jedyny nowy licznik (stats.coresEarned) - patrz komentarz przy nim w
   // konstruktorze i przy prestige() (rośnie tam obok this.cores).
-  { id: 'cores_100', icon: _achKenneyIcon('diamond', '#81D4FA'), name: 'Kolekcjoner Rdzeni', desc: 'Zdobądź łącznie 100 Rdzeni Prestiżu', stat: 'coresEarned', target: 100 }
+  { id: 'cores_100', icon: _kenneyIcon('diamond', '#81D4FA'), name: 'Kolekcjoner Rdzeni', desc: 'Zdobądź łącznie 100 Rdzeni Prestiżu', stat: 'coresEarned', target: 100 }
 ];
 
 // --- Progresywne odblokowania (walka z "martwo - wszystko dostępne od razu") --
@@ -681,7 +695,7 @@ const SHOP_UPGRADES_SUPERSEDED_BY_PERK = {
 const PLANET_MODIFIERS = [
   {
     id: 'bountiful',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#C5E1A5" stroke-width="1.8" stroke-linecap="round"><path d="M12 21V9"/><path d="M12 9C12 4 8 3 5 3c0 4 2 6.5 7 6Z" fill="#C5E1A5" fill-opacity="0.3"/><path d="M12 12C12 8 15 6.5 18 6c0 3.5-1.5 6-6 6Z" fill="#C5E1A5" fill-opacity="0.3"/><path d="M12 16C12 12.5 15 11 18 10.5c0 3.2-1.5 5.5-6 5.5Z" fill="#C5E1A5" fill-opacity="0.3"/></svg>',
+    icon: _kenneyIcon('star', '#C5E1A5'),
     name: 'Obfite Złoża',
     desc: 'Surowce pojawiają się o 40% częściej, ale targ płaci o 15% mniej',
     spawnMult: 1.4,
@@ -689,7 +703,7 @@ const PLANET_MODIFIERS = [
   },
   {
     id: 'scarce',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#D7B98E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3-1 6 1 9 0s6-1 9 0" fill="none"/><path d="M3 17 9 17 12 6l3 11 6 0" fill="#D7B98E" fill-opacity="0.25"/><path d="M12 6v5"/></svg>',
+    icon: _kenneyIcon('diamond', '#D7B98E'),
     name: 'Jałowa Gleba',
     desc: 'Surowce pojawiają się o 30% rzadziej, za to targ płaci o 25% więcej',
     spawnMult: 0.7,
@@ -697,14 +711,14 @@ const PLANET_MODIFIERS = [
   },
   {
     id: 'efficient_factory',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#66BB6A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10l5 3v-3l5 3v-3l5 3v6Z" fill="#66BB6A" fill-opacity="0.2"/><path d="M9 8V6M14 8V6" /><path d="M17 4 18 5.5 19.5 6 18 6.5 17 8 16 6.5 14.5 6 16 5.5Z" fill="#66BB6A" stroke="none"/></svg>',
+    icon: _kenneyIcon('gear', '#66BB6A'),
     name: 'Sprawna Fabryka',
     desc: 'Wszystkie maszyny przetwarzają o 20% szybciej',
     machineSpeedMult: 0.8
   },
   {
     id: 'rusty_gear',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#D08A5C" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5 13.4 5.7 16 5 16.7 7.6 19.3 8.3 18.6 10.9 20.8 12.3 19.1 14.4 20 17 17.4 17.6 16.9 20.3 14.2 19.7 12.6 21.8 10.5 20.2 8 21 7.1 18.5 4.5 18.7 4 16 5.6 14 3.9 12 5.7 9.5 3.6 8.6 4.4 6 2.1 5.6 2.6 3 5.2 2.6 5.9"/><circle cx="12" cy="12" r="3"/><path d="M4 20 20 4" stroke="#B71C1C" stroke-width="1.4"/></svg>',
+    icon: _kenneyIcon('wrench', '#D08A5C'),
     name: 'Zardzewiały Sprzęt',
     desc: 'Maszyny przetwarzają o 15% wolniej, ale surowce pojawiają się o 25% częściej',
     machineSpeedMult: 1.15,
@@ -712,14 +726,14 @@ const PLANET_MODIFIERS = [
   },
   {
     id: 'gold_rush',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="1.8" stroke-linejoin="round"><path d="M8 4h5l4 5v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" fill="#FFD54F" fill-opacity="0.25"/><path d="M13 4v5h4"/><circle cx="10.5" cy="14" r="2.3"/></svg>',
+    icon: _kenneyIcon('coin', '#FFD54F'),
     name: 'Gorączka Złota',
     desc: 'Targ płaci o 20% więcej za wszystko',
     priceMult: 1.2
   },
   {
     id: 'soft_landing',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#90CAF9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9a7 7 0 0 1 14 0" fill="#90CAF9" fill-opacity="0.2"/><path d="M5 9 3 12M19 9l2 3M9 9l1 6M15 9l-1 6"/><path d="M8 15h8l-1.5 5h-5Z" fill="#90CAF9" fill-opacity="0.25"/></svg>',
+    icon: _kenneyIcon('pouch', '#90CAF9'),
     name: 'Miękkie Lądowanie',
     desc: `+150${ECONOMY_CREDIT_ICON_SVG} gotówki na start tej planety`,
     cashBonus: 150
