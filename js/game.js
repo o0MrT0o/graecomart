@@ -175,6 +175,15 @@ const DECOR_SETS = [
   }
 ];
 const DECOR_PROCEDURAL_TYPES = ['flower', 'puddle'];
+
+// Sejdy PRNG narzutu na podłoże per zestaw dekoracji (patrz
+// _drawGroundOverlay) - 0 = brak narzutu (zestaw domyślny, ziemia zostaje
+// bez zmian, tak samo jak pierwsza planeta zostaje bez GAME_PLANET_VISUAL_
+// FILTERS). Deterministyczne, stałe wartości (nie losowane per-planeta) -
+// każda planeta z tym samym zestawem dekoracji dostaje identyczny narzut,
+// spójnie z resztą upieczonego tła (tekstury/dekoracje też nie losują się
+// od nowa przy każdym prestige, tylko WYBÓR zestawu/modyfikatora się zmienia).
+const GROUND_OVERLAY_SEEDS = [0, 0x46524f53, 0x53414e44]; // 0, 'FROS', 'SAND'
 // Ile dekoracji rozrzucamy łącznie po całej mapie. Podniesione z 55 - przy
 // świecie 1400x2000 to zostawiało spore puste połacie ("nudna, pusta mapa").
 // 175, było 140 - poszerzenie mapy pod Strefę D (GAME_WORLD_WIDTH) podniosło
@@ -1084,16 +1093,124 @@ class Game {
     // odczytany z zapisu planetNumber) jeszcze nie istnieje w momencie
     // tworzenia Game() (main.js tworzy go dopiero PO Game() - patrz
     // _currentDecorSetIndex). Pieczenie i tak czeka na _decorImagesReady(),
-    // czyli zawsze wypada już PO pełnej inicjalizacji main.js.
-    this._decorImages = this._decorImageSets[this._currentDecorSetIndex()];
+    // czyli zawsze wypada już PO pełnej inicjalizacji main.js. Ten sam
+    // indeks steruje TEŻ narzutem na podłoże (patrz _drawGroundOverlay) -
+    // jeden zestaw = jedna spójna tożsamość biomu (rośliny + ziemia pod nimi).
+    const decorSetIndex = this._currentDecorSetIndex();
+    this._decorImages = this._decorImageSets[decorSetIndex];
 
     this._renderZoneFills(wctx, 0, 0, this.worldWidth, this.worldHeight);
+    this._drawGroundOverlay(wctx, decorSetIndex);
     this._bakeStaticDecorations(wctx);
 
     if (planetFilter) wctx.filter = 'none';
 
     this._worldBackgroundCanvas = canvas;
     this._worldBackgroundBaked = true;
+  }
+
+  /**
+   * Narzut na CAŁE upieczone podłoże (Tomek: "zmieńmy na innych prestigach
+   * wygląd podłoża jeszcze bardziej") - dorzuca WŁASNY, tematyczny wzór
+   * (miękkie płaty szronu / piaszczyste plamy + pęknięcia suchej ziemi)
+   * NA WIERZCH już wypełnionych stref, więc różnica między planetami jest
+   * widoczna nie tylko w rozstawionych obiektach (DECOR_SETS) i globalnym
+   * przebarwieniu (GAME_PLANET_VISUAL_FILTERS), ale i w samej fakturze
+   * ziemi pod stopami. Wołane WEWNĄTRZ _bakeWorldBackground (PRZED
+   * wctx.filter = 'none'), więc dostaje też przebarwienie modyfikatora
+   * planety jak reszta tła - koszt jednorazowy, ten sam wzorzec co reszta
+   * pieczenia tła.
+   *
+   * setIndex to DOKŁADNIE ten sam indeks co wybór DECOR_SETS (patrz wywołanie
+   * w _bakeWorldBackground) - jeden zestaw = jedna spójna tożsamość biomu,
+   * zamiast dwóch niezależnych, mogących się nie zgrywać loterii. Zestaw 0
+   * (GROUND_OVERLAY_SEEDS[0] === 0) celowo nic nie rysuje - pierwsza planeta
+   * (i co trzecia kolejna) zostaje z oryginalną, nietkniętą ziemią.
+   *
+   * mulberry32 z deterministycznym seedem per zestaw (nie per-planeta) -
+   * ten sam PRNG co dekoracje/chmury/kryształowy grunt gdzie indziej w tym
+   * pliku, więc wzór jest stabilny między przeładowaniami, nie migoczący.
+   */
+  _drawGroundOverlay(ctx, setIndex) {
+    const seed = GROUND_OVERLAY_SEEDS[setIndex];
+    if (!seed) return;
+
+    let s = seed;
+    const rand = () => {
+      s |= 0;
+      s = (s + 0x6d2b79f5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+
+    const w = this.worldWidth;
+    const h = this.worldHeight;
+    // Gęstość liczona względem powierzchni świata (jak DECOR_COUNT) - te
+    // same plamy wyglądają identycznie gęsto niezależnie od GAME_WORLD_
+    // WIDTH/HEIGHT, gdyby kiedyś jeszcze urosły. 26000 (nie 45000) - Tomek:
+    // "zmieńmy wygląd podłoża jeszcze bardziej" - pierwsza wersja z rzadszymi/
+    // słabszymi plamami ledwo było widać pod kamerą gry, ta gęstsza + mocniej
+    // kryjąca (wyższe alpha niżej) faktycznie czyta się jako inny teren, nie
+    // tylko pojedyncze plamki.
+    const patchCount = Math.round((w * h) / 26000);
+
+    ctx.save();
+    if (setIndex === 1) {
+      // "Iglasty/mroźny" - słaby ogólny wybiel całej ziemi (jak cienka warstwa
+      // szronu wszędzie) + mocniejsze, miękkie płaty NA WIERZCH (jak grubszy
+      // nawiany śnieg w miejscach).
+      ctx.fillStyle = 'rgba(225, 240, 248, 0.12)';
+      ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < patchCount; i++) {
+        const x = rand() * w;
+        const y = rand() * h;
+        const r = 45 + rand() * 100;
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+        grad.addColorStop(0, 'rgba(232, 244, 250, 0.5)');
+        grad.addColorStop(0.7, 'rgba(232, 244, 250, 0.22)');
+        grad.addColorStop(1, 'rgba(232, 244, 250, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.ellipse(x, y, r, r * (0.55 + rand() * 0.3), rand() * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (setIndex === 2) {
+      // "Pustynny" - słaby ogólny piaszczysty nalot na całej ziemi + mocniejsze
+      // plamy suchego piasku + wyraźne pęknięcia spieczonej ziemi (ta sama
+      // technika łamanych linii co _bakeCrystalGroundTexture).
+      ctx.fillStyle = 'rgba(205, 170, 105, 0.14)';
+      ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < patchCount; i++) {
+        const x = rand() * w;
+        const y = rand() * h;
+        const r = 40 + rand() * 90;
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+        grad.addColorStop(0, 'rgba(213, 178, 112, 0.46)');
+        grad.addColorStop(0.7, 'rgba(213, 178, 112, 0.2)');
+        grad.addColorStop(1, 'rgba(213, 178, 112, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.ellipse(x, y, r, r * (0.55 + rand() * 0.3), rand() * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = 'rgba(84, 60, 30, 0.4)';
+      ctx.lineWidth = 2.5;
+      const crackCount = Math.round(patchCount / 2);
+      for (let i = 0; i < crackCount; i++) {
+        let x = rand() * w;
+        let y = rand() * h;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        for (let j = 0; j < 4; j++) {
+          x += (rand() - 0.5) * 70;
+          y += (rand() - 0.5) * 70;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
   }
 
   /** CSS Canvas 2D filter (hue-rotate/saturate/brightness) dla bieżącej
