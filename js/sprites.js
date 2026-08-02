@@ -25,6 +25,27 @@ const SPRITE_PATH_CANDIDATES = {
   metal: ['metal.png', 'assets/items/metal.png', 'assets/metal.png'],
   glass: ['glass.png', 'assets/items/glass.png', 'assets/glass.png'],
   product: ['product.png', 'assets/items/product.png', 'assets/product.png'],
+  // Tomek: "te ikony kryształów itd też podmień na lepsze z tej nowej
+  // paczki" - alloy/crystal/crystal_shard/crystal_gem NIE miały pliku PNG
+  // w projekcie (patrz komentarze przy ItemRenderer._drawIngot/_drawCrystal/
+  // _drawPolishedGem w items.js - proceduralne bryły, bo Tomek nigdy nie
+  // dostarczył dla nich grafiki). _drawSpriteOrLabel już PRZED tym sprawdza
+  // spriteLoader jako pierwszy wybór, więc samo dodanie kluczy tutaj
+  // wystarcza - procedury zostają w kodzie jako fallback (gdyby plik się
+  // nie wczytał), bez zmian w items.js. Ikony z Free-Cyberpunk-Resource-
+  // Pixel-Art-32x32-Icons (ta sama paczka co trash/plastic/.../product
+  // wyżej) - w tej czysto technologicznej paczce nie ma fioletowych
+  // kryształów jak w starych proceduralnych bryłach, więc zamiast trzech
+  // odcieni fioletu (trudnych do odróżnienia na liście cen Terminalu)
+  // trzy WYRAŹNIE różne, rosnące "od surowego do wypolerowanego": różowy
+  // klaster (surowy odłamek) -> pojedynczy świecący klejnot (kryształ po
+  // Oczyszczalni) -> biała polerowana kula (crystal_gem, najdroższy towar
+  // w grze). Bez dawnej ścieżki-widmo w katalogu głównym (patrz reszta tej
+  // listy) - nowe wpisy, nie ma sensu kopiować znanego martwego wzorca.
+  alloy: ['assets/items/alloy.png'],
+  crystal: ['assets/items/crystal.png'],
+  crystal_shard: ['assets/items/crystal_shard.png'],
+  crystal_gem: ['assets/items/crystal_gem.png'],
   machine_recycle: ['recycle.png', 'assets/machines/recycle.png', 'assets/recycle.png'],
   machine_press: ['press.png', 'assets/machines/press.png', 'assets/press.png'],
   machine_furnace: ['piechutniczy.png', 'assets/machines/piechutniczy.png', 'assets/piechutniczy.png'],
