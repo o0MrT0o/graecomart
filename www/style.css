@@ -101,11 +101,15 @@ canvas {
 }
 
 .loading-screen__badge {
-    font-size: 2.6rem;
-    line-height: 1;
     margin-bottom: 4px;
     animation: loading-screen-bob 2.2s ease-in-out infinite;
     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
+}
+
+.loading-screen__badge img {
+    display: block;
+    width: 84px;
+    height: auto;
 }
 
 @keyframes loading-screen-bob {
