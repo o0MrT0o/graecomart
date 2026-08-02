@@ -2086,6 +2086,19 @@ class Game {
         item.fernVariant = Math.floor(rand() * 2);
       }
 
+      // Losowe lustrzane odbicie (Tomek: "krzaki/krzewy zawsze w tej samej
+      // orientacji - tanie do zrobienia (losowe lustrzane odbicie)") - ten
+      // sam pomysł co rotation dla rock, ale zamiast pełnego obrotu (który
+      // dla asymetrycznej sylwetki krzaka/krzewu wyglądałby na "przewrócony",
+      // nie "inny egzemplarz") zwykłe odbicie w poziomie - tanie (jeden
+      // ctx.scale(-1,1) przy rysowaniu, patrz _drawDecorations), a przy
+      // stylizowanej, w miarę symetrycznej sylwetce bush/shrub daje
+      // wystarczającą wizualną odmianę bez ryzyka "do góry nogami" (bez
+      // problemu crate/sign - te MAJĄ czytelną górę/dół, bush/shrub nie).
+      if (type === 'bush' || type === 'shrub') {
+        item.flipX = rand() < 0.5;
+      }
+
       // BUGFIX (przycinanie na telefonie): _drawFlowerDecor/_drawPuddleDecor
       // odbudowywały swój kształt OD ZERA co klatkę - dla kwiatka to ~50
       // osobnych fill()/stroke() (3 kwiatuszki × 5 płatków + łodyżki +
@@ -2322,6 +2335,10 @@ class Game {
         ctx.save();
         ctx.translate(d.x, d.y);
         ctx.rotate(sway);
+        // Lustrzane odbicie bush/shrub (patrz item.flipX w _generateDecorations) -
+        // PO rotate (kołysanie), więc oba efekty się nie gryzą - odbity
+        // egzemplarz kołysze się tak samo, tylko w "swoją" stronę.
+        if (d.flipX) ctx.scale(-1, 1);
         ctx.drawImage(img, -w / 2, -h + groundOffset, w, h);
         ctx.restore();
       } else if (d.type === 'rock' && d.rotation) {
