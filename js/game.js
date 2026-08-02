@@ -255,6 +255,26 @@ const GAME_ZONE_CORE_WIDTH = 1400;
 // nastrojowym stref - patrz _getZoneBlend.
 const GAME_ZONE_TINT_FADE = 260;
 
+// Wizualna odmiana planety (Tomek: "wizualna różnorodność między planetami -
+// te same 4 strefy na każdej kolejnej planecie, tylko liczby się zmieniają").
+// Zamiast nowych tekstur/assetów - jeden globalny filtr CSS Canvas 2D
+// (hue-rotate/saturate/brightness) nałożony na CAŁE upieczone tło świata,
+// kluczowany DOKŁADNIE tym samym modyfikatorem planety, który gracz już
+// widzi w toaście "Nowa planeta" (economy.js: PLANET_MODIFIERS/
+// activeModifier) - liczby I kolory mówią to samo za jednym razem ("to jest
+// Gorączka Złota" = złocisty odcień + wyższe ceny), zero nowego stanu do
+// synchronizowania. Pierwsza planeta (activeModifier === null) zostaje BEZ
+// filtra - oryginalny, znany wygląd na start, żeby samouczek nie tłumaczył
+// świata, który wygląda inaczej niż wszystkie zrzuty ekranu/materiały gry.
+const GAME_PLANET_VISUAL_FILTERS = {
+  bountiful: 'hue-rotate(15deg) saturate(1.15)',
+  scarce: 'hue-rotate(-20deg) saturate(0.65) brightness(0.95)',
+  efficient_factory: 'hue-rotate(150deg) saturate(1.05)',
+  rusty_gear: 'hue-rotate(-50deg) saturate(1.15) brightness(0.95)',
+  gold_rush: 'hue-rotate(35deg) saturate(1.25) brightness(1.08)',
+  soft_landing: 'hue-rotate(190deg) saturate(0.85) brightness(1.05)'
+};
+
 // --- Jakość renderowania (dawniej "adaptacyjna", patrz _trackPerformance) ---
 // BUGFIX ("20 FPS i słaba rozdzielczość", "usuń to zmniejszenie rozdzielczości
 // bo to nie działa"): adaptacyjne obniżanie dpr (Faza wydajności, kilka
@@ -473,6 +493,19 @@ class Game {
     Bus.subscribe(Events.FX_SHAKE, (data) => {
       this.triggerShake(data);
     });
+
+    // Nowy modyfikator planety (economy.js: _rollPlanetModifier, wołane
+    // WEWNĄTRZ prestige() przed publikacją tego eventu) - upieczone tło
+    // trzeba przepiec z nowym filtrem koloru (patrz GAME_PLANET_VISUAL_FILTERS/
+    // _bakeWorldBackground). Zerowanie canvasu też - inaczej stary bake
+    // zostałby narysowany JESZCZE RAZ w _drawBackground w klatce między
+    // resetem flagi a końcem nowego _bakeWorldBackground.
+    if (Events.PRESTIGE_DONE) {
+      Bus.subscribe(Events.PRESTIGE_DONE, () => {
+        this._worldBackgroundBaked = false;
+        this._worldBackgroundCanvas = null;
+      });
+    }
   }
 
   /**
@@ -983,11 +1016,34 @@ class Game {
     canvas.height = this.worldHeight;
     const wctx = canvas.getContext('2d');
 
+    // Filtr koloru bieżącej planety (patrz GAME_PLANET_VISUAL_FILTERS) -
+    // ustawiony PRZED wypełnieniem/dekoracjami, więc obejmuje CAŁY upieczony
+    // obraz (tereny + cienie + rock/crate/sign) w jednym, tanim przebiegu -
+    // koszt jednorazowy przy pieczeniu, zero dodatkowego kosztu na klatkę
+    // (w przeciwieństwie do filtrowania przy każdym rysowaniu).
+    const planetFilter = this._currentPlanetFilter();
+    if (planetFilter) wctx.filter = planetFilter;
+
     this._renderZoneFills(wctx, 0, 0, this.worldWidth, this.worldHeight);
     this._bakeStaticDecorations(wctx);
 
+    if (planetFilter) wctx.filter = 'none';
+
     this._worldBackgroundCanvas = canvas;
     this._worldBackgroundBaked = true;
+  }
+
+  /** CSS Canvas 2D filter (hue-rotate/saturate/brightness) dla bieżącej
+   * planety, albo null na pierwszej planecie (brak modyfikatora) - patrz
+   * komentarz przy GAME_PLANET_VISUAL_FILTERS. Jedno miejsce z tym
+   * odczytem - używane zarówno przy pieczeniu tła (_bakeWorldBackground,
+   * koszt jednorazowy) jak i przy rysowaniu kołyszących się dekoracji
+   * (_drawDecorations, koszt co klatkę, ale tylko dla NIEupieczonej,
+   * zwykle nielicznej części sceny) - bez tego drzewa/krzaki zostałyby w
+   * oryginalnym kolorze, podczas gdy ziemia pod nimi już by się przebarwiła. */
+  _currentPlanetFilter() {
+    const modifier = window.economyManager && window.economyManager.activeModifier;
+    return (modifier && GAME_PLANET_VISUAL_FILTERS[modifier.id]) || null;
   }
 
   /** true, gdy WSZYSTKIE obrazki dekoracji sprite'owych (patrz DECOR_TYPES)
@@ -1537,6 +1593,14 @@ class Game {
     const nowSec = performance.now() / 1000;
     const staticBaked = this._worldBackgroundBaked;
 
+    // Ten sam filtr koloru planety co upieczone tło (patrz _currentPlanetFilter/
+    // _bakeWorldBackground) - USTAWIONY RAZ przed pętlą, nie per-dekoracja
+    // (jedna zmiana stanu canvasu na klatkę, nie dziesiątki) - bez tego
+    // kołyszące się drzewa/krzaki zostałyby w oryginalnym kolorze, podczas
+    // gdy ziemia pod nimi już jest przebarwiona (upieczona z filtrem).
+    const planetFilter = this._currentPlanetFilter();
+    if (planetFilter) ctx.filter = planetFilter;
+
     this._decorations.forEach((d) => {
       if (d.x < camX - margin || d.x > camX + viewW + margin) return;
       if (d.y < camY - margin || d.y > camY + viewH + margin) return;
@@ -1591,6 +1655,8 @@ class Game {
         ctx.drawImage(img, d.x - w / 2, d.y - h + groundOffset, w, h);
       }
     });
+
+    if (planetFilter) ctx.filter = 'none';
   }
 
   /**
