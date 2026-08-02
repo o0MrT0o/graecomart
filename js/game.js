@@ -1441,13 +1441,32 @@ class Game {
       // względem tego, jak niewiele piksela faktycznie zasłaniają. Reszta
       // typów (drzewo/krzak/kamień/skrzynia/tabliczka) zostaje bez zmian -
       // to bryły, którym cień faktycznie kotwiczy je do ziemi.
-      if (d.type !== 'grass_tuft' && d.type !== 'fern') {
+      //
+      // BUGFIX (Tomek: "niech pod trawą tą nową też będzie mały cień") - fern
+      // zostaje bez cienia (jeszcze cieńsza/rzadsza sylwetka niż grass_tuft),
+      // ale grass_tuft dostaje WŁASNY, wyraźnie mniejszy/słabszy cień niż
+      // reszta typów (nie ten sam pełny owal - patrz uzasadnienie wyżej,
+      // wciąż aktualne dla samego rozmiaru, tylko "wcale" zmienione na
+      // "odrobinę").
+      if (d.type === 'grass_tuft') {
+        wctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+        wctx.beginPath();
+        wctx.ellipse(d.x, d.y, w * 0.22, Math.max(2, h * 0.07), 0, 0, Math.PI * 2);
+        wctx.fill();
+      } else if (d.type !== 'fern') {
+        // Kamień dostaje węższy/ciaśniejszy owal niż drzewo/krzak/skrzynia/
+        // tabliczka (Tomek: "cienie niech będą bliżej nich") - rock.png ma
+        // sporo "powietrza" wokół samej bryły (nieregularny, zaokrąglony
+        // kształt w kwadratowo-prostokątnym oknie obrazka), więc pełny
+        // 0.42*w owal wystawał wizualnie POZA widoczne krawędzie kamienia.
+        const widthMult = d.type === 'rock' ? 0.3 : 0.42;
+        const heightMult = d.type === 'rock' ? 0.1 : 0.14;
         // Ten sam kształt/pozycja cienia co dawniej w _drawDecorations (patrz
         // komentarz "kamienie latają" tam) - tylko przeniesiony tutaj, do
         // jednorazowego pieczenia zamiast rysowania co klatkę.
         wctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         wctx.beginPath();
-        wctx.ellipse(d.x, d.y, w * 0.42, Math.max(3, h * 0.14), 0, 0, Math.PI * 2);
+        wctx.ellipse(d.x, d.y, w * widthMult, Math.max(3, h * heightMult), 0, 0, Math.PI * 2);
         wctx.fill();
       }
 
@@ -1457,7 +1476,20 @@ class Game {
       // klatkę w _drawDecorations.
       if (d.type === 'rock' || d.type === 'crate' || d.type === 'sign') {
         const groundOffset = h * (DECOR_GROUND_OFFSET[d.type] || 0);
-        wctx.drawImage(img, d.x - w / 2, d.y - h + groundOffset, w, h);
+        if (d.type === 'rock' && d.rotation) {
+          // Obrót WOKÓŁ punktu podstawy (d.x, d.y+groundOffset), NIE środka
+          // obrazka - kamień "obraca się w miejscu, na ziemi", zamiast
+          // zjeżdżać w bok przy każdym innym kącie. Dzięki temu cień (wyżej,
+          // wciąż na sztywno w d.x/d.y) zostaje pod kamieniem niezależnie od
+          // wylosowanego obrotu, zamiast z czasem "odjeżdżać" od bryły.
+          wctx.save();
+          wctx.translate(d.x, d.y + groundOffset);
+          wctx.rotate(d.rotation);
+          wctx.drawImage(img, -w / 2, -h, w, h);
+          wctx.restore();
+        } else {
+          wctx.drawImage(img, d.x - w / 2, d.y - h + groundOffset, w, h);
+        }
       }
     });
   }
@@ -1785,6 +1817,16 @@ class Game {
       // za każdym odświeżeniem (ta sama filozofia co DECOR_SEED).
       const item = { x: px, y: py, type, scale, seed: rand() };
 
+      // Kamienie obrócone w różne strony (Tomek: "kamienie niech będą
+      // obrócone w różne strony a nie tylko w jedną") - losowana TU (RAZ,
+      // deterministycznie, ten sam mulberry32 co reszta), nie w
+      // _bakeStaticDecorations, żeby kamień miał tę samą orientację za
+      // każdym przeliczeniem tła (przebarwienie/nowy zestaw dekoracji przy
+      // prestige'u NIE powinno "obrócić" kamieni na nowo). Tylko rock -
+      // crate/sign zostają proste (skrzynia/tabliczka to "zaprojektowane"
+      // obiekty z czytelną górą/dołem, obrócone wyglądałyby na przewrócone).
+      if (type === 'rock') item.rotation = rand() * Math.PI * 2;
+
       // BUGFIX (przycinanie na telefonie): _drawFlowerDecor/_drawPuddleDecor
       // odbudowywały swój kształt OD ZERA co klatkę - dla kwiatka to ~50
       // osobnych fill()/stroke() (3 kwiatuszki × 5 płatków + łodyżki +
@@ -1966,16 +2008,20 @@ class Game {
       // niezauważalne, ale przy najmniejszym typie (kamień, po fixie skali
       // wyżej wciąż mały) te 2px to spory procent całej wysokości obiektu,
       // więc cień wizualnie "odjeżdżał" od kamienia. Środek teraz DOKŁADNIE
-      // na d.y. Cień też szerszy i mocniejszy niż wcześniej (0.3->0.42,
-      // 0.2->0.3 alpha) - lepiej "kotwiczy" obiekt do podłoża, z minimalną
-      // wysokością (Math.max), żeby przy małych dekoracjach nie ścieńczał
-      // się do niewidocznej kreski.
+      // na d.y. Minimalna wysokość (Math.max), żeby przy małych dekoracjach
+      // nie ścieńczał się do niewidocznej kreski. Rozmiar per-typ (grass_tuft
+      // mniejszy/słabszy, fern brak, rock ciaśniejszy - patrz _bakeStaticDecorations,
+      // TA SAMA logika, zduplikowana tu bo to inny kontekst rysowania)
+      // - "cienie bliżej nich" (Tomek).
       // Po bake'u cień jest już w tle (patrz _bakeStaticDecorations) - tu
       // rysujemy go tylko w krótkim oknie PRZED bakiem.
-      if (!staticBaked) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      if (!staticBaked && d.type !== 'fern') {
+        const isGrass = d.type === 'grass_tuft';
+        const widthMult = isGrass ? 0.22 : d.type === 'rock' ? 0.3 : 0.42;
+        const heightMult = isGrass ? 0.07 : d.type === 'rock' ? 0.1 : 0.14;
+        ctx.fillStyle = isGrass ? 'rgba(0, 0, 0, 0.18)' : 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
-        ctx.ellipse(d.x, d.y, w * 0.42, Math.max(3, h * 0.14), 0, 0, Math.PI * 2);
+        ctx.ellipse(d.x, d.y, w * widthMult, Math.max(isGrass ? 2 : 3, h * heightMult), 0, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -1992,6 +2038,15 @@ class Game {
         ctx.translate(d.x, d.y);
         ctx.rotate(sway);
         ctx.drawImage(img, -w / 2, -h + groundOffset, w, h);
+        ctx.restore();
+      } else if (d.type === 'rock' && d.rotation) {
+        // Ten sam obrót "wokół podstawy" co w _bakeStaticDecorations - patrz
+        // komentarz tam. Tylko w krótkim oknie PRZED bakiem (potem kamień
+        // rysuje się już z upieczonego tła).
+        ctx.save();
+        ctx.translate(d.x, d.y + groundOffset);
+        ctx.rotate(d.rotation);
+        ctx.drawImage(img, -w / 2, -h, w, h);
         ctx.restore();
       } else {
         ctx.drawImage(img, d.x - w / 2, d.y - h + groundOffset, w, h);
