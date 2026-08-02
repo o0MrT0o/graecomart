@@ -1157,24 +1157,31 @@ class Game {
 
     ctx.save();
     if (setIndex === 1) {
-      // "Iglasty/mroźny" - słaby ogólny wybiel całej ziemi (jak cienka warstwa
-      // szronu wszędzie) + mocniejsze, miękkie płaty NA WIERZCH (jak grubszy
-      // nawiany śnieg w miejscach).
-      ctx.fillStyle = 'rgba(225, 240, 248, 0.12)';
+      // "Iglasty/mroźny" (Tomek: "niech wszystko będzie bardziej niebieskie,
+      // a ta mgła niech ma o wiele bardziej rozmyte krawędzie") - wyraźnie
+      // niebieski odcień (nie prawie-biały jak w pierwszej wersji) + płaty
+      // rysowane pod ctx.filter = blur(...) - canvasowy rozmyk PO gradiencie
+      // radialnym rozmywa krawędź dużo mocniej niż sam gradient (im większy
+      // promień rozmycia, tym bardziej "mgiełka" zamiast wyraźnej plamy) -
+      // ten sam mechanizm co GAME_PLANET_VISUAL_FILTERS (Canvas 2D filter),
+      // tylko blur zamiast hue-rotate/saturate.
+      ctx.fillStyle = 'rgba(150, 197, 235, 0.16)';
       ctx.fillRect(0, 0, w, h);
+      ctx.filter = 'blur(26px)';
       for (let i = 0; i < patchCount; i++) {
         const x = rand() * w;
         const y = rand() * h;
         const r = 45 + rand() * 100;
         const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
-        grad.addColorStop(0, 'rgba(232, 244, 250, 0.5)');
-        grad.addColorStop(0.7, 'rgba(232, 244, 250, 0.22)');
-        grad.addColorStop(1, 'rgba(232, 244, 250, 0)');
+        grad.addColorStop(0, 'rgba(110, 175, 230, 0.6)');
+        grad.addColorStop(0.7, 'rgba(110, 175, 230, 0.28)');
+        grad.addColorStop(1, 'rgba(110, 175, 230, 0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.ellipse(x, y, r, r * (0.55 + rand() * 0.3), rand() * Math.PI, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.filter = 'none';
     } else if (setIndex === 2) {
       // "Pustynny" - słaby ogólny piaszczysty nalot na całej ziemi + mocniejsze
       // plamy suchego piasku + wyraźne pęknięcia spieczonej ziemi (ta sama
