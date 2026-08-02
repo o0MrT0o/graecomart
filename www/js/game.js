@@ -327,6 +327,17 @@ const GAME_PLANET_VISUAL_FILTERS = {
   soft_landing: 'hue-rotate(190deg) saturate(0.85) brightness(1.05)'
 };
 
+// Filtr koloru KLUCZOWANY ZESTAWEM DEKORACJI (patrz DECOR_SETS/
+// _currentDecorSetIndex), nie modyfikatorem planety - Tomek: "filtr świata
+// miał być niebieski na zimowym świecie, a nie szron" (poprawka po tym, jak
+// pierwsza próba przebarwiła same plamy szronu w _drawGroundOverlay zamiast
+// całego świata). Indeks 0 (domyślny) i 2 (pustynny) celowo bez własnego
+// filtra - tylko "zimowy" (indeks 1, sosny/szron) dostaje wyraźnie
+// niebieski hue-rotate, łączony w _currentPlanetFilter() z filtrem
+// modyfikatora planety (dwie NIEZALEŻNE, jednocześnie aktywne warstwy
+// przebarwienia - patrz komentarz tam).
+const GAME_DECOR_SET_FILTERS = [null, 'hue-rotate(100deg) saturate(0.9) brightness(1.05)', null];
+
 // --- Jakość renderowania (dawniej "adaptacyjna", patrz _trackPerformance) ---
 // BUGFIX ("20 FPS i słaba rozdzielczość", "usuń to zmniejszenie rozdzielczości
 // bo to nie działa"): adaptacyjne obniżanie dpr (Faza wydajności, kilka
@@ -1157,15 +1168,15 @@ class Game {
 
     ctx.save();
     if (setIndex === 1) {
-      // "Iglasty/mroźny" (Tomek: "niech wszystko będzie bardziej niebieskie,
-      // a ta mgła niech ma o wiele bardziej rozmyte krawędzie") - wyraźnie
-      // niebieski odcień (nie prawie-biały jak w pierwszej wersji) + płaty
-      // rysowane pod ctx.filter = blur(...) - canvasowy rozmyk PO gradiencie
-      // radialnym rozmywa krawędź dużo mocniej niż sam gradient (im większy
-      // promień rozmycia, tym bardziej "mgiełka" zamiast wyraźnej plamy) -
-      // ten sam mechanizm co GAME_PLANET_VISUAL_FILTERS (Canvas 2D filter),
-      // tylko blur zamiast hue-rotate/saturate.
-      ctx.fillStyle = 'rgba(150, 197, 235, 0.16)';
+      // "Iglasty/mroźny" - biało-szara warstwa szronu (NIE niebieska - o
+      // niebieski odcień całej planety dba teraz GAME_DECOR_SET_FILTERS/
+      // _currentPlanetFilter, patrz tam - Tomek: "filtr świata miał być
+      // niebieski na zimowym świecie, a nie szron"), płaty rysowane pod
+      // ctx.filter = blur(...) zamiast samego gradientu radialnego - dużo
+      // miększe, "mglistsze" krawędzie plam zamiast wyraźnych okrągłych
+      // kształtów (ten sam mechanizm co planet-filter, tylko blur zamiast
+      // hue-rotate/saturate).
+      ctx.fillStyle = 'rgba(225, 240, 248, 0.12)';
       ctx.fillRect(0, 0, w, h);
       ctx.filter = 'blur(26px)';
       for (let i = 0; i < patchCount; i++) {
@@ -1173,9 +1184,9 @@ class Game {
         const y = rand() * h;
         const r = 45 + rand() * 100;
         const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
-        grad.addColorStop(0, 'rgba(110, 175, 230, 0.6)');
-        grad.addColorStop(0.7, 'rgba(110, 175, 230, 0.28)');
-        grad.addColorStop(1, 'rgba(110, 175, 230, 0)');
+        grad.addColorStop(0, 'rgba(232, 244, 250, 0.5)');
+        grad.addColorStop(0.7, 'rgba(232, 244, 250, 0.22)');
+        grad.addColorStop(1, 'rgba(232, 244, 250, 0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.ellipse(x, y, r, r * (0.55 + rand() * 0.3), rand() * Math.PI, 0, Math.PI * 2);
@@ -1221,16 +1232,24 @@ class Game {
   }
 
   /** CSS Canvas 2D filter (hue-rotate/saturate/brightness) dla bieżącej
-   * planety, albo null na pierwszej planecie (brak modyfikatora) - patrz
-   * komentarz przy GAME_PLANET_VISUAL_FILTERS. Jedno miejsce z tym
-   * odczytem - używane zarówno przy pieczeniu tła (_bakeWorldBackground,
-   * koszt jednorazowy) jak i przy rysowaniu kołyszących się dekoracji
-   * (_drawDecorations, koszt co klatkę, ale tylko dla NIEupieczonej,
-   * zwykle nielicznej części sceny) - bez tego drzewa/krzaki zostałyby w
-   * oryginalnym kolorze, podczas gdy ziemia pod nimi już by się przebarwiła. */
+   * planety, albo null gdy żadna z dwóch NIEZALEŻNYCH warstw przebarwienia
+   * nie ma nic do dodania - patrz komentarz przy GAME_PLANET_VISUAL_FILTERS
+   * (kluczowane loterią activeModifier) i GAME_DECOR_SET_FILTERS (kluczowane
+   * DECOR_SETS/_currentDecorSetIndex, np. niebieski odcień "zimowego"
+   * świata). Obie warstwy mogą być aktywne jednocześnie (złączone w jeden
+   * string CSS filter - kolejne funkcje filtra po prostu się składają) - to
+   * jedyne miejsce z tym odczytem, używane zarówno przy pieczeniu tła
+   * (_bakeWorldBackground, koszt jednorazowy) jak i przy rysowaniu
+   * kołyszących się dekoracji (_drawDecorations, koszt co klatkę, ale tylko
+   * dla NIEupieczonej, zwykle nielicznej części sceny) - bez tego drzewa/
+   * krzaki zostałyby w oryginalnym kolorze, podczas gdy ziemia pod nimi już
+   * by się przebarwiła. */
   _currentPlanetFilter() {
     const modifier = window.economyManager && window.economyManager.activeModifier;
-    return (modifier && GAME_PLANET_VISUAL_FILTERS[modifier.id]) || null;
+    const modifierFilter = (modifier && GAME_PLANET_VISUAL_FILTERS[modifier.id]) || null;
+    const decorSetFilter = GAME_DECOR_SET_FILTERS[this._currentDecorSetIndex()] || null;
+    const combined = [modifierFilter, decorSetFilter].filter(Boolean).join(' ');
+    return combined || null;
   }
 
   /** Który z DECOR_SETS jest aktywny na bieżącej planecie - cyklicznie z
