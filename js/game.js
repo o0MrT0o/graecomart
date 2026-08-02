@@ -113,6 +113,13 @@ const SWAMP_TEXTURE_SRC = 'assets/swamp.png';
 // sprite'owe (tree/bush/rock/shrub/crate/sign) też są "martwymi" bitmapami w
 // natywnym kolorze, nie tintowanymi w locie - runtime tinting (source-atop,
 // jak _getTintedFx w machines.js) byłby tu nową, niepotrzebną infrastrukturą.
+// BUGFIX (Tomek: "ta trawa dobrze wygląda? może zamienimy ją na inny
+// krzaczek"): grass_tuft.png BYŁO sprite_0002 z tej samej paczki - cienkie,
+// kłujące źdźbła, przy małym rozmiarze w grze czytały się jako "chwasty".
+// Podmienione na sprite_0009 - te same zaokrąglone liście zamiast ostrych
+// szpikulców, ale WCIĄŻ inny kształt niż bush.png/shrub.png (te są okrągłymi
+// "kulami" liści z Kenney RPG Pack) - żeby nie zdublować już istniejącego
+// typu dekoracji, tylko dać trawie własną, mniej kłującą tożsamość.
 const DECOR_TYPES = ['tree', 'bush', 'rock', 'shrub', 'crate', 'sign', 'grass_tuft', 'fern'];
 const DECOR_SRC = {
   tree: 'assets/decor/tree.png',
