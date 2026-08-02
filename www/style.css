@@ -1399,6 +1399,9 @@ canvas {
 .ui-icon--backpack { -webkit-mask-image: url('assets/ui/icons/backpack.png'); mask-image: url('assets/ui/icons/backpack.png'); }
 .ui-icon--shield { -webkit-mask-image: url('assets/ui/icons/shield.png'); mask-image: url('assets/ui/icons/shield.png'); }
 .ui-icon--trashcan { -webkit-mask-image: url('assets/ui/icons/trashcan.png'); mask-image: url('assets/ui/icons/trashcan.png'); }
+/* Samouczek (tutorial.js: TUTORIAL_STEPS "move") - dotykająca dłoń zamiast
+   ręcznie rysowanego gestu, dokończenie tego samego ujednolicenia stylu. */
+.ui-icon--pointer { -webkit-mask-image: url('assets/ui/icons/pointer.png'); mask-image: url('assets/ui/icons/pointer.png'); }
 
 /* ==========================================================================
    Tooltip

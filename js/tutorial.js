@@ -34,55 +34,63 @@ const TUTORIAL_COMPLETION_BONUS = 60;
 // Ikony SVG (nie emoji) - własna kopia stylu ui.js (konwencja projektu, brak
 // współdzielonych utili).
 const TUTORIAL_CLOSE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5 19 19M19 5 5 19"/></svg>';
-const TUTORIAL_GRADUATE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#FFD54F" stroke-width="1.8" stroke-linejoin="round"><path d="M2 9 12 4l10 5-10 5Z" fill="#FFD54F" fill-opacity="0.3"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5" /><path d="M21 9v6" stroke-linecap="round"/></svg>';
+// PODMIENIONE na prawdziwą maskę Kenney (Tomek: "dokończ ikony w
+// samouczku" - ostatnie miejsce w grze z ręcznie rysowanym SVG). Plain
+// .ui-icon span BEZ kolorowej plakietki (jak TROPHY_ICON_SVG/PARTY_ICON_SVG
+// w ui.js) - to ikonka toastu (NotificationManager), nie wiersz listy, więc
+// nie dostaje tła .ui-shop-item__icon-badge jak katalogi w economy.js.
+const TUTORIAL_GRADUATE_ICON_SVG = '<span class="ui-icon ui-icon--award" aria-hidden="true" style="color:#FFD54F"></span>';
 
 // Każdy krok: tekst hinta + event Bus, na który czekamy + funkcja matches()
 // decydująca czy AKURAT TEN konkretny event spełnia warunek (nie każdy
 // event tego typu musi się liczyć, patrz 'move' i 'sell' niżej). Ostatni
 // krok (id:'done') ma event:null - znika sam po kilku sekundach zamiast
 // czekać na kolejną akcję.
-// Ikony SVG (ten sam styl co reszta gry - viewBox 24x24, kreski) zamiast
-// dawnych emoji (👆/📦/⚙️/⏳/💹/🎉) - _goToStep w klasie niżej wstawia je
-// przez innerHTML (patrz BUGFIX tam).
+// Ikony - prawdziwe maski Kenney (ten sam _kenneyIcon-owy styl co katalogi
+// w economy.js, patrz Tomek: "dokończ ikony w samouczku") zamiast wcześniej
+// ręcznie rysowanych SVG, a jeszcze wcześniej emoji (👆/📦/⚙️/⏳/💹/🎉) -
+// _goToStep w klasie niżej wstawia je przez innerHTML (patrz BUGFIX tam).
+// Plain .ui-icon span bez kolorowej plakietki - .tutorial-window__icon to
+// mały, pojedynczy slot ikony (jak toast), nie wiersz listy .ui-shop-item.
 const TUTORIAL_STEPS = [
   {
     id: 'move',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#FFE082" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M13 12V4.5a1.5 1.5 0 0 1 3 0V12"/><path d="M16 12.5V6.5a1.5 1.5 0 0 1 3 0v8.5c0 3.5-2 6-6 6h-1c-2.5 0-3.5-1-5-3l-2.5-4c-.6-1 .1-2.3 1.3-2.2 .7 0 1.3.4 1.7 1l1.5 2.2V13a1.5 1.5 0 0 1 3-.5"/></svg>',
+    icon: '<span class="ui-icon ui-icon--pointer" aria-hidden="true" style="color:#FFE082"></span>',
     text: 'Dotknij ekranu i przeciągnij, żeby się poruszać',
     event: 'PLAYER_MOVED',
     matches: (d) => d.speed > TUTORIAL_MOVE_SPEED_THRESHOLD
   },
   {
     id: 'collect',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#A5D6A7" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3 21 7.5 12 12 3 7.5Z" fill="rgba(165,214,167,0.3)"/><path d="M3 12 12 16.5 21 12"/><path d="M3 16.5 12 21 21 16.5"/></svg>',
+    icon: '<span class="ui-icon ui-icon--trashcan" aria-hidden="true" style="color:#A5D6A7"></span>',
     text: 'Zbierz przedmioty widoczne na mapie',
     event: 'STACK_ADDED',
     matches: () => true
   },
   {
     id: 'feed',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#90CAF9" stroke-width="1.8" stroke-linejoin="round"><path d="M4 20V10l5 3v-3l5 3v-3l5 3v6Z" fill="#90CAF9" fill-opacity="0.25"/><path d="M6 11V8M11 11V8M16 11V7 a1 1 0 0 1 2 0v1h1V7"/></svg>',
+    icon: '<span class="ui-icon ui-icon--wrench" aria-hidden="true" style="color:#90CAF9"></span>',
     text: 'Zanieś je do pasującej maszyny (np. Recyklera) - nakarmi się sama, gdy staniesz obok',
     event: 'MACHINE_RECEIVED',
     matches: () => true
   },
   {
     id: 'process',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
+    icon: '<span class="ui-icon ui-icon--hourglass" aria-hidden="true" style="color:#FFD54F"></span>',
     text: 'Poczekaj, aż maszyna skończy przetwarzać surowiec na coś nowego',
     event: 'MACHINE_OUTPUT',
     matches: () => true
   },
   {
     id: 'sell',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#81C784" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9 11 13 15 21 7"/><path d="M15 7h6v6"/></svg>',
+    icon: '<span class="ui-icon ui-icon--coin" aria-hidden="true" style="color:#81C784"></span>',
     text: 'Zanieś gotowy produkt do Terminalu Handlowego i sprzedaj za gotówkę',
     event: 'MONEY_COLLECTED',
     matches: (d) => d.amount > 0
   },
   {
     id: 'done',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round"><path d="M4 20 9 9l6 6Z" fill="#FFD54F" fill-opacity="0.3"/><path d="M15 4v2M19 6l-1.4 1.4M21 10h-2M18 15l-2-2"/></svg>',
+    icon: '<span class="ui-icon ui-icon--flag" aria-hidden="true" style="color:#FFD54F"></span>',
     text: 'Świetnie, wiesz już jak grać! Sklep i Statek czekają, gdy będziesz gotów.',
     event: null,
     matches: null
