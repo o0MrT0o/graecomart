@@ -331,12 +331,17 @@ const GAME_PLANET_VISUAL_FILTERS = {
 // _currentDecorSetIndex), nie modyfikatorem planety - Tomek: "filtr świata
 // miał być niebieski na zimowym świecie, a nie szron" (poprawka po tym, jak
 // pierwsza próba przebarwiła same plamy szronu w _drawGroundOverlay zamiast
-// całego świata). Indeks 0 (domyślny) i 2 (pustynny) celowo bez własnego
-// filtra - tylko "zimowy" (indeks 1, sosny/szron) dostaje wyraźnie
-// niebieski hue-rotate, łączony w _currentPlanetFilter() z filtrem
-// modyfikatora planety (dwie NIEZALEŻNE, jednocześnie aktywne warstwy
-// przebarwienia - patrz komentarz tam).
-const GAME_DECOR_SET_FILTERS = [null, 'hue-rotate(100deg) saturate(0.9) brightness(1.05)', null];
+// całego świata). Indeks 0 (domyślny) celowo bez własnego filtra - tylko
+// "zimowy" (indeks 1, sosny/szron) dostaje wyraźnie niebieski hue-rotate, a
+// "pustynny" (indeks 2, palmy/kaktusy) - żółty/wypłowiały (Tomek: "na
+// pustynnym świecie niech wszystko będzie bardziej żółte, suche") - łączone
+// w _currentPlanetFilter() z filtrem modyfikatora planety (dwie NIEZALEŻNE,
+// jednocześnie aktywne warstwy przebarwienia - patrz komentarz tam).
+const GAME_DECOR_SET_FILTERS = [
+  null,
+  'hue-rotate(100deg) saturate(0.9) brightness(1.05)',
+  'hue-rotate(-35deg) saturate(1.05) brightness(1.08)'
+];
 
 // --- Jakość renderowania (dawniej "adaptacyjna", patrz _trackPerformance) ---
 // BUGFIX ("20 FPS i słaba rozdzielczość", "usuń to zmniejszenie rozdzielczości
