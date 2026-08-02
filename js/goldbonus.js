@@ -71,8 +71,14 @@ class GoldBonusManager {
     Bus.subscribe(Events.PLAYER_MOVED, this._onPlayerMoved);
   }
 
+  /** W trakcie wydarzenia sezonowego (events.js: "Deszcz Meteorytów") odstęp
+   * jest o połowę krótszy - żeby "deszcz" faktycznie było czuć w rozgrywce
+   * (częstsze okazje do zbierania), nie tylko widać po spadających gwiazdach
+   * na niebie. */
   _rollSpawnDelay() {
-    return GOLDBONUS_SPAWN_MIN_MS + Math.random() * (GOLDBONUS_SPAWN_MAX_MS - GOLDBONUS_SPAWN_MIN_MS);
+    const eventActive = window.seasonalEventManager && window.seasonalEventManager.isActive();
+    const factor = eventActive ? 0.5 : 1;
+    return (GOLDBONUS_SPAWN_MIN_MS + Math.random() * (GOLDBONUS_SPAWN_MAX_MS - GOLDBONUS_SPAWN_MIN_MS)) * factor;
   }
 
   /** Granice Strefy A (bezpiecznej) - własna, minimalna kopia z items.js

@@ -37,6 +37,9 @@ function startGame() {
 
     window.stackController = new StackController();
     window.itemManager = new ItemManager(gameplayCanvas);
+    // PRZED goldBonusManager - ten w _rollSpawnDelay() czyta
+    // window.seasonalEventManager.isActive() (patrz events.js).
+    window.seasonalEventManager = new SeasonalEventManager();
     window.goldBonusManager = new GoldBonusManager();
 
     const player = new PlayerController(gameplayCanvas);
@@ -67,6 +70,7 @@ function startGame() {
 
     game.registerModule(window.stackController);
     game.registerModule(window.itemManager);
+    game.registerModule(window.seasonalEventManager);
     game.registerModule(window.goldBonusManager);
     // Maszyny/Terminal/Statek PRZED graczem (moduły rysują się w kolejności
     // rejestracji, patrz game.js draw()) - Tomek: "postać niech wchodzi na
@@ -130,6 +134,16 @@ function startGame() {
         if (offlineElapsedMs !== null) {
             const offline = window.economyManager.computeOfflineReward(offlineElapsedMs);
             if (offline) window.uiManager.showOfflineReward(offline);
+        }
+
+        // Wydarzenie sezonowe (events.js) - jednorazowy toast przy starcie,
+        // bo jedynym innym sygnałem byłyby spadające gwiazdy na niebie,
+        // łatwe przeoczyć przy pierwszym spojrzeniu na ekran.
+        if (window.seasonalEventManager.isActive()) {
+            window.uiManager.notifications.show(
+                `${SPARKLE_ICON_SVG} Deszcz Meteorytów! Złoty Bonus częściej, ekskluzywny skin w Skinach.`,
+                { type: 'success', duration: 4200 }
+            );
         }
     } catch (err) {
         console.error('[main] UI/Save init failed — gra działa bez HUD:', err);

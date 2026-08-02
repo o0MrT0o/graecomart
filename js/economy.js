@@ -731,7 +731,12 @@ const PLAYER_SKINS = [
   // nagroda-nawiązanie do najtrudniej dostępnej strefy, nie wymaga jednak
   // faktycznego jej odblokowania (kupowana wyłącznie za Rdzenie, jak reszta).
   { id: 'crystal', name: 'Kryształowy', desc: 'W barwach Kryształowej Grani', tint: '#B388FF', cost: 8 },
-  { id: 'gold', name: 'Złoty', desc: 'Dla tych, którzy zebrali sporo Rdzeni', tint: '#FFD54F', cost: 15 }
+  { id: 'gold', name: 'Złoty', desc: 'Dla tych, którzy zebrali sporo Rdzeni', tint: '#FFD54F', cost: 15 },
+  // Wydarzenie sezonowe "Deszcz Meteorytów" (events.js) - kupowalny WYŁĄCZNIE
+  // gdy trwa (sobota/niedziela wg zegara urządzenia), ale raz kupiony
+  // zostaje NA STAŁE (unlockedSkins się nie zeruje) - jak każdy inny skin,
+  // po prostu okno zakupu jest ograniczone w czasie.
+  { id: 'meteor', name: 'Meteorytowy', desc: 'Dostępny tylko podczas Weekendowego Deszczu Meteorytów', tint: '#FF6E40', cost: 12, eventOnly: true }
 ];
 
 class EconomyManager {
@@ -1710,8 +1715,12 @@ class EconomyManager {
   }
 
   /** Katalog skinów do UI (patrz PLAYER_SKINS) - ten sam kształt danych co
-   * getCoreShopCatalog(), tylko z unlocked/selected zamiast level/maxed. */
+   * getCoreShopCatalog(), tylko z unlocked/selected zamiast level/maxed.
+   * `available` = false dla eventOnly skinów poza oknem wydarzenia (patrz
+   * events.js: SeasonalEventManager.isActive()) - JUŻ odblokowane zostają
+   * jednak zawsze available (kupiony raz, nie znika z listy do wyboru). */
   getSkinCatalog() {
+    const eventActive = !!(window.seasonalEventManager && window.seasonalEventManager.isActive());
     return PLAYER_SKINS.map((def) => ({
       id: def.id,
       name: def.name,
@@ -1719,7 +1728,9 @@ class EconomyManager {
       tint: def.tint,
       cost: def.cost,
       unlocked: this.unlockedSkins.has(def.id),
-      selected: this.selectedSkin === def.id
+      selected: this.selectedSkin === def.id,
+      eventOnly: !!def.eventOnly,
+      available: !def.eventOnly || eventActive || this.unlockedSkins.has(def.id)
     }));
   }
 
@@ -1729,6 +1740,7 @@ class EconomyManager {
     const def = PLAYER_SKINS.find((s) => s.id === skinId);
     if (!def) return false;
     if (this.unlockedSkins.has(skinId)) return false;
+    if (def.eventOnly && !(window.seasonalEventManager && window.seasonalEventManager.isActive())) return false;
     if (this.cores < def.cost) return false;
 
     this.cores -= def.cost;

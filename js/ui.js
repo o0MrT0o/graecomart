@@ -1861,6 +1861,19 @@ class SkinsPanel {
         }
       });
       actionEl.appendChild(btn.mount());
+    } else if (s.eventOnly && !s.available) {
+      // Wydarzenie ("Deszcz Meteorytów") aktualnie nieaktywne - zwykły
+      // przycisk kupna byłby mylący (klik i tak zostałby odrzucony przez
+      // buySkin()), więc zamiast niego stały, nieklikalny badge z
+      // wyjaśnieniem KIEDY wrócić, zamiast po prostu chować pozycję (gracz
+      // ma wiedzieć, że taki skin w ogóle istnieje).
+      const btn = new UIButton({
+        label: `${LOCK_ICON_SVG} Tylko w weekend`,
+        variant: 'ghost',
+        disabled: true,
+        title: 'Dostępny wyłącznie podczas Weekendowego Deszczu Meteorytów'
+      });
+      actionEl.appendChild(btn.mount());
     } else {
       const canBuy = this.economyManager.cores >= s.cost;
       // Kłódka gdy nie stać - patrz identyczny komentarz w ShopPanel._buildRow.

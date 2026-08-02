@@ -100,6 +100,9 @@
          ambient.js, przed game.js bo main.js rejestruje CrittersManager. -->
     <script src="js/critters.js"></script>
     <script src="js/items.js"></script>
+    <!-- Wydarzenie sezonowe (Deszcz Meteorytów) - przed goldbonus.js, bo ten
+         czyta window.seasonalEventManager.isActive() (częstszy spawn). -->
+    <script src="js/events.js"></script>
     <!-- Złoty Bonus (rzadki, zanikający pickup) - przed minimap.js, bo ten
          czyta window.goldBonusManager.active (kropka na radarze). -->
     <script src="js/goldbonus.js"></script>
