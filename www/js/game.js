@@ -1145,28 +1145,17 @@ class Game {
       // cienie/sprite'y dekoracji do tego samego bufora RAZ, więc muszą już
       // być wczytane, inaczej upieklibyśmy cień ze złym rozmiarem (liczonym
       // z img.naturalWidth/Height) albo w ogóle pominęli 'rock' na stałe.
-      if (this._grass.pattern && this._swamp.pattern && this._ash.pattern && this._decorImagesReady()) {
-        // Przepieczenie ŚRODKIEM gry (prestige/DEBUG.setPlanet - patrz
-        // _requestWorldRebake) - w odróżnieniu od PIERWSZEGO pieczenia przy
-        // starcie (osłoniętego #loading-screen, patrz index.html), TO
-        // dzieje się na oczach gracza. _bakeWorldBackground jest
-        // synchroniczne/blokujące - pokazujemy nakładkę i celowo NIE
-        // pieczemy jeszcze w TEJ klatce, żeby przeglądarka zdążyła ją
-        // faktycznie namalować PRZED ciężką pracą (inaczej DOM zmieniłby
-        // się "w locie" i nakładka nigdy by nie była widoczna - patrz
-        // _showWorldRebakeOverlay). Pieczenie dopiero klatkę później.
-        if (this._worldRebakePending && !this._worldRebakeOverlayShown) {
-          this._showWorldRebakeOverlay();
-          this._worldRebakeOverlayShown = true;
-          this._renderZoneFills(ctx, x, y, viewW, viewH);
-        } else {
-          this._bakeWorldBackground();
-          if (this._worldRebakePending) {
-            this._hideWorldRebakeOverlay();
-            this._worldRebakePending = false;
-            this._worldRebakeOverlayShown = false;
-          }
-        }
+      // Przepieczenie ŚRODKIEM gry (prestige/DEBUG.setPlanet - patrz
+      // _requestWorldRebake) trzyma _worldRebakeInFlight=true przez cały czas
+      // pieczenia i sama nim steruje (własny podwójny requestAnimationFrame,
+      // ŻEBY przeglądarka zdążyła faktycznie namalować nakładkę PRZED ciężką,
+      // synchroniczną pracą) - tutaj więc tylko czekamy (tani _renderZoneFills
+      // jako podkład pod nakładką), nigdy nie pieczemy sami w tej gałęzi.
+      if (!this._worldRebakeInFlight && this._grass.pattern && this._swamp.pattern && this._ash.pattern && this._decorImagesReady()) {
+        // PIERWSZE pieczenie przy starcie gry - osłonięte #loading-screen
+        // (patrz index.html), więc synchroniczny koszt tutaj jest niewidoczny
+        // dla gracza i nie potrzebuje nakładki/podwójnego rAF jak rebake wyżej.
+        this._bakeWorldBackground();
       } else {
         this._renderZoneFills(ctx, x, y, viewW, viewH);
       }
@@ -1187,18 +1176,45 @@ class Game {
   /**
    * Żąda przepieczenia tła świata (nowy zestaw dekoracji/filtr planety) PLUS
    * pokazania nakładki ładowania na czas tej pracy - JEDYNE miejsce, które
-   * powinno zerować _worldBackgroundBaked w trakcie gry (prestige, podgląd
-   * DEBUG.setPlanet - main.js). Sam _bakeWorldBackground zostaje bez zmian
-   * (dalej wołany wprost przy PIERWSZYM pieczeniu na starcie, gdzie nakładka
-   * jest zbędna - patrz #loading-screen w index.html), ale KAŻDE pieczenie
-   * W TRAKCIE gry powinno przechodzić przez to, żeby konsekwentnie pokazywać
-   * nakładkę (patrz _worldRebakePending w _drawBackground).
+   * powinno zerować _worldBackgroundBaked w trakcie gry (prestige). Sam
+   * _bakeWorldBackground zostaje bez zmian (dalej wołany wprost przy
+   * PIERWSZYM pieczeniu na starcie, gdzie nakładka jest zbędna - patrz
+   * #loading-screen w index.html), ale KAŻDE pieczenie W TRAKCIE gry
+   * powinno przechodzić przez to.
+   *
+   * BUGFIX v2 (Tomek: nakładka z poprzedniej wersji i tak "chujowo
+   * działała" - w praktyce nigdy się nie malowała): poprzednia wersja
+   * pokazywała nakładkę w JEDNEJ klatce (dodając klasę przez pojedynczy
+   * requestAnimationFrame), a ciężkie, synchroniczne pieczenie odpalała w
+   * NASTĘPNEJ - ale oba te kroki i tak leciały w tym samym cyklu rAF
+   * głównej pętli gry (_drawBackground jest wołane co klatkę), więc
+   * przeglądarka batchowała "pokaż nakładkę" + "zablokuj wątek pieczeniem"
+   * w JEDNO malowanie i nakładka nigdy faktycznie nie trafiała na ekran -
+   * gracz dalej widział "zamrożenie" (i podmieniające się tekstury pod
+   * spodem), tylko teraz bez żadnego wytłumaczenia czemu.
+   *
+   * Naprawione PODWÓJNYM requestAnimationFrame, niezależnym od pętli
+   * _drawBackground: pierwszy rAF odpala się PRZED najbliższym malowaniem
+   * (więc samo dodanie klasy --visible jeszcze nie gwarantuje niczego), ale
+   * DRUGI rAF (zagnieżdżony w pierwszym) odpala się dopiero PO tym, jak
+   * przeglądarka już wykonała to malowanie - dopiero wtedy gracz NAPRAWDĘ
+   * widzi nakładkę na ekranie, i dopiero wtedy bezpiecznie można zablokować
+   * główny wątek ciężkim _bakeWorldBackground. _worldRebakeInFlight w tym
+   * czasie każe _drawBackground pokazywać tani _renderZoneFills jako
+   * podkład (patrz wyżej) - świat i tak jest cały czas zakryty nakładką.
    */
   _requestWorldRebake() {
     this._worldBackgroundBaked = false;
     this._worldBackgroundCanvas = null;
-    this._worldRebakePending = true;
-    this._worldRebakeOverlayShown = false;
+    this._worldRebakeInFlight = true;
+    this._showWorldRebakeOverlay();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        this._bakeWorldBackground();
+        this._worldRebakeInFlight = false;
+        this._hideWorldRebakeOverlay();
+      });
+    });
   }
 
   /** Leniwie tworzy i pokazuje pełnoekranową nakładkę "Aktualizuję świat…"
@@ -1209,9 +1225,8 @@ class Game {
    * może zająć zauważalną chwilę na słabszym telefonie - bez tej nakładki
    * ekran po prostu "zamiera" bez żadnej wskazówki, że coś się w ogóle
    * dzieje, więc wygląda na zawieszenie/błąd zamiast normalnego ładowania.
-   * Wywoływane JEDNĄ klatkę PRZED _bakeWorldBackground (patrz
-   * _drawBackground/_worldRebakePending), żeby przeglądarka zdążyła ją
-   * faktycznie namalować. */
+   * Samo dodanie klasy nie gwarantuje malowania - o to dba dopiero podwójny
+   * rAF w _requestWorldRebake, który woła tę metodę. */
   _showWorldRebakeOverlay() {
     if (!this._rebakeOverlayEl) {
       const el = document.createElement('div');
@@ -1225,14 +1240,7 @@ class Game {
       document.body.appendChild(el);
       this._rebakeOverlayEl = el;
     }
-    // requestAnimationFrame - dodanie klasy w TEJ SAMEJ klatce, w której
-    // element dopiero co trafił do DOM, czasem nie zdąży się przełożyć na
-    // faktyczną tranzycję CSS (przeglądarka może zbatchować oba stany w
-    // jedno malowanie) - jedna klatka odstępu gwarantuje, że opacity:0 z
-    // .world-rebake-overlay faktycznie się namaluje ZANIM dojdzie do 1.
-    requestAnimationFrame(() => {
-      if (this._rebakeOverlayEl) this._rebakeOverlayEl.classList.add('world-rebake-overlay--visible');
-    });
+    this._rebakeOverlayEl.classList.add('world-rebake-overlay--visible');
   }
 
   /** Chowa nakładkę z _showWorldRebakeOverlay (element zostaje w DOM,

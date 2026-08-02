@@ -181,7 +181,10 @@ canvas {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(10, 16, 14, 0.55);
+    /* Prawie kryjące (nie 100%, żeby nie było twardego przeskoku, gdy
+       nakładka znika) - świat pod spodem PODMIENIA tekstury/dekoracje w
+       trakcie pieczenia, więc musi zostać schowany, nie tylko przyciemniony. */
+    background: rgba(10, 16, 14, 0.94);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s ease;
