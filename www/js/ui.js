@@ -1212,6 +1212,11 @@ class SettingsPanel {
     this.bodyEl = null;
     this.isOpen = false;
 
+    // Który zestaw dekoracji (patrz DECOR_SETS w game.js) pokazał ostatnio
+    // przycisk "Następna" w _buildDebugPlanetRow - TYLKO etykieta w opisie
+    // wiersza, nie prawdziwy stan gry (ten trzyma economyManager.planetNumber).
+    this._debugPlanetPreviewIndex = 0;
+
     this._onKeyDown = (e) => {
       if (e.key === 'Escape' && this.isOpen) this.close();
     };
@@ -1280,6 +1285,7 @@ class SettingsPanel {
     this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
     this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildTutorialRow(), this._buildFpsRow()]));
     this.bodyEl.appendChild(this._buildSection('Dane', [this._buildResetRow()]));
+    this.bodyEl.appendChild(this._buildSection('Debug', [this._buildDebugPrestigeRow(), this._buildDebugPlanetRow()]));
     this.bodyEl.appendChild(this._buildSection('O grze', [this._buildAboutRow()]));
   }
 
@@ -1465,6 +1471,55 @@ class SettingsPanel {
 
   _buildAboutRow() {
     return this._buildRow(INFO_ICON_SVG, 'Eco Mart', `Wersja ${SETTINGS_APP_VERSION}`, null);
+  }
+
+  /** Menu odpowiednik DEBUG.forcePrestige() (main.js) - Tomek: "na telefonie
+   * jak odpalić komendy [...] żebym do PC nie musiał iść". Ten sam wzorzec co
+   * _buildFpsRow wyżej: jeden przycisk zamiast wpisywania w konsoli - PRAWDZIWY
+   * prestige (kasa->rdzenie, reset przebiegu, nowa planeta), tylko bez
+   * wymogu złożonego statku. Zamyka Menu po wykonaniu, żeby od razu było
+   * widać nowy świat/toast "Nowa planeta" na ekranie gry. */
+  _buildDebugPrestigeRow() {
+    const btn = new UIButton({
+      label: 'Wymuś',
+      variant: 'ghost',
+      onClick: () => {
+        if (!window.DEBUG || typeof window.DEBUG.forcePrestige !== 'function') return;
+        const result = window.DEBUG.forcePrestige();
+        if (!result && window.uiManager && window.uiManager.notifications) {
+          window.uiManager.notifications.show('Prestige się nie udał (brak economyManager?)', { type: 'error' });
+        }
+        this.close();
+      }
+    });
+    return this._buildRow(ROCKET_ICON_SVG, 'Wymuś prestige', 'Prestige bez budowania statku - reset przebiegu, nowa planeta, +Rdzenie', btn.mount());
+  }
+
+  /** Menu odpowiednik DEBUG.setPlanet(n) (main.js) - cyklicznie przełącza
+   * podgląd między 3 zestawami dekoracji/filtrem świata (patrz DECOR_SETS/
+   * GAME_PLANET_VISUAL_FILTERS w game.js), BEZ prawdziwego prestige'u (kasa/
+   * rdzenie/ulepszenia zostają nietknięte - zmienia się tylko wygląd świata).
+   * Zamyka Menu po wykonaniu, żeby od razu było widać nowy wygląd. */
+  _buildDebugPlanetRow() {
+    const labels = ['Zwykła', 'Zimowa', 'Pustynna'];
+    const nextIndex = (this._debugPlanetPreviewIndex + 1) % labels.length;
+    const btn = new UIButton({
+      label: 'Następna',
+      variant: 'ghost',
+      onClick: () => {
+        if (!window.DEBUG || typeof window.DEBUG.setPlanet !== 'function') return;
+        this._debugPlanetPreviewIndex = nextIndex;
+        window.DEBUG.setPlanet(this._debugPlanetPreviewIndex + 1);
+        if (window.uiManager && window.uiManager.notifications) {
+          window.uiManager.notifications.show(
+            `${PLANET_ICON_SVG} Podgląd: świat ${labels[this._debugPlanetPreviewIndex]}`,
+            { type: 'info' }
+          );
+        }
+        this.close();
+      }
+    });
+    return this._buildRow(PLANET_ICON_SVG, 'Podgląd planety', `Następny podgląd: świat ${labels[nextIndex]} (bez prestige'u)`, btn.mount());
   }
 
   destroy() {
