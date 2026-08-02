@@ -308,15 +308,15 @@ function startGame() {
         /** Podgląd wyglądu DOWOLNEJ planety BEZ prawdziwego prestige - kasa/
          * rdzenie/ulepszenia/activeModifier zostają jak są, zmienia się TYLKO
          * planetNumber (steruje wyborem DECOR_SETS - patrz _currentDecorSetIndex
-         * w game.js) + wymuszone przepieczenie tła świata, tak jak po
-         * PRESTIGE_DONE. Do szybkiego porównania zestawów dekoracji/filtrów
-         * (indeks = (n-1) % 3: 1/4/7... domyślny, 2/5/8... zimowy, 3/6/9...
-         * pustynny) bez przechodzenia całego przebiegu za każdym razem. */
+         * w game.js) + wymuszone przepieczenie tła świata (_requestWorldRebake -
+         * ten sam mechanizm co po prawdziwym prestige'u, z nakładką ładowania).
+         * Do szybkiego porównania zestawów dekoracji/filtrów (indeks = (n-1) % 3:
+         * 1/4/7... domyślny, 2/5/8... zimowy, 3/6/9... pustynny) bez
+         * przechodzenia całego przebiegu za każdym razem. */
         setPlanet(n = 1) {
             if (!window.economyManager || !window.game) return;
             window.economyManager.planetNumber = n;
-            window.game._worldBackgroundBaked = false;
-            window.game._worldBackgroundCanvas = null;
+            window.game._requestWorldRebake();
         }
     };
     console.log(

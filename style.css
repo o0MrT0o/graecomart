@@ -169,6 +169,58 @@ canvas {
     text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
+/* Nakładka "Aktualizuję świat…" (Game._showWorldRebakeOverlay, game.js) -
+   pokazywana na czas przepieczenia tła w ŚRODKU gry (prestige, podgląd
+   DEBUG.setPlanet z Menu), w odróżnieniu od #loading-screen wyżej (tylko
+   pierwsze uruchomienie). Mniejsza/prostsza niż pełny splash - to chwilowa
+   przerwa w trwającej sesji, nie start gry od zera. */
+.world-rebake-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 16, 14, 0.55);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+.world-rebake-overlay--visible {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.world-rebake-overlay__box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 26px;
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg-solid);
+    border: 1px solid var(--ui-border);
+    box-shadow: var(--ui-shadow);
+    color: var(--ui-text);
+    font-family: var(--ui-font);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.world-rebake-overlay__spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--ui-accent);
+    border-radius: 50%;
+    animation: world-rebake-spin 0.8s linear infinite;
+}
+
+@keyframes world-rebake-spin {
+    to { transform: rotate(360deg); }
+}
+
 /* JEDEN canvas teraz (patrz index.html/game.js) - z-index niepotrzebny
    (nic obok niego się nie stackuje), pointer-events: auto zostaje, bo
    player.js wiesza na tym elemencie nasłuchy dotyku/myszy. */

@@ -577,13 +577,12 @@ class Game {
     // Nowy modyfikator planety (economy.js: _rollPlanetModifier, wołane
     // WEWNĄTRZ prestige() przed publikacją tego eventu) - upieczone tło
     // trzeba przepiec z nowym filtrem koloru (patrz GAME_PLANET_VISUAL_FILTERS/
-    // _bakeWorldBackground). Zerowanie canvasu też - inaczej stary bake
-    // zostałby narysowany JESZCZE RAZ w _drawBackground w klatce między
-    // resetem flagi a końcem nowego _bakeWorldBackground.
+    // _bakeWorldBackground) i nowym zestawem dekoracji (DECOR_SETS) - patrz
+    // _requestWorldRebake (pokazuje też nakładkę ładowania na czas pieczenia,
+    // BUGFIX "wszystko się zacięło" przy prestige'u w środku gry).
     if (Events.PRESTIGE_DONE) {
       Bus.subscribe(Events.PRESTIGE_DONE, () => {
-        this._worldBackgroundBaked = false;
-        this._worldBackgroundCanvas = null;
+        this._requestWorldRebake();
       });
     }
   }
@@ -1063,7 +1062,27 @@ class Game {
       // być wczytane, inaczej upieklibyśmy cień ze złym rozmiarem (liczonym
       // z img.naturalWidth/Height) albo w ogóle pominęli 'rock' na stałe.
       if (this._grass.pattern && this._swamp.pattern && this._ash.pattern && this._decorImagesReady()) {
-        this._bakeWorldBackground();
+        // Przepieczenie ŚRODKIEM gry (prestige/DEBUG.setPlanet - patrz
+        // _requestWorldRebake) - w odróżnieniu od PIERWSZEGO pieczenia przy
+        // starcie (osłoniętego #loading-screen, patrz index.html), TO
+        // dzieje się na oczach gracza. _bakeWorldBackground jest
+        // synchroniczne/blokujące - pokazujemy nakładkę i celowo NIE
+        // pieczemy jeszcze w TEJ klatce, żeby przeglądarka zdążyła ją
+        // faktycznie namalować PRZED ciężką pracą (inaczej DOM zmieniłby
+        // się "w locie" i nakładka nigdy by nie była widoczna - patrz
+        // _showWorldRebakeOverlay). Pieczenie dopiero klatkę później.
+        if (this._worldRebakePending && !this._worldRebakeOverlayShown) {
+          this._showWorldRebakeOverlay();
+          this._worldRebakeOverlayShown = true;
+          this._renderZoneFills(ctx, x, y, viewW, viewH);
+        } else {
+          this._bakeWorldBackground();
+          if (this._worldRebakePending) {
+            this._hideWorldRebakeOverlay();
+            this._worldRebakePending = false;
+            this._worldRebakeOverlayShown = false;
+          }
+        }
       } else {
         this._renderZoneFills(ctx, x, y, viewW, viewH);
       }
@@ -1079,6 +1098,63 @@ class Game {
 
     this._drawCloudShadows(ctx, x, y, viewW, viewH);
     this._drawDecorations(ctx, x, y, viewW, viewH);
+  }
+
+  /**
+   * Żąda przepieczenia tła świata (nowy zestaw dekoracji/filtr planety) PLUS
+   * pokazania nakładki ładowania na czas tej pracy - JEDYNE miejsce, które
+   * powinno zerować _worldBackgroundBaked w trakcie gry (prestige, podgląd
+   * DEBUG.setPlanet - main.js). Sam _bakeWorldBackground zostaje bez zmian
+   * (dalej wołany wprost przy PIERWSZYM pieczeniu na starcie, gdzie nakładka
+   * jest zbędna - patrz #loading-screen w index.html), ale KAŻDE pieczenie
+   * W TRAKCIE gry powinno przechodzić przez to, żeby konsekwentnie pokazywać
+   * nakładkę (patrz _worldRebakePending w _drawBackground).
+   */
+  _requestWorldRebake() {
+    this._worldBackgroundBaked = false;
+    this._worldBackgroundCanvas = null;
+    this._worldRebakePending = true;
+    this._worldRebakeOverlayShown = false;
+  }
+
+  /** Leniwie tworzy i pokazuje pełnoekranową nakładkę "Aktualizuję świat…"
+   * (spinner + tekst, ten sam ciemny/przezroczysty język co reszta HUD) -
+   * BUGFIX (Tomek: "jak chciałem włączyć następną planetę [...] wszystko
+   * się zacięło i nie mogłem wyjść z menu"): _bakeWorldBackground jest
+   * synchroniczne i (nawet PO naprawie kosztu blur() w _drawGroundOverlay)
+   * może zająć zauważalną chwilę na słabszym telefonie - bez tej nakładki
+   * ekran po prostu "zamiera" bez żadnej wskazówki, że coś się w ogóle
+   * dzieje, więc wygląda na zawieszenie/błąd zamiast normalnego ładowania.
+   * Wywoływane JEDNĄ klatkę PRZED _bakeWorldBackground (patrz
+   * _drawBackground/_worldRebakePending), żeby przeglądarka zdążyła ją
+   * faktycznie namalować. */
+  _showWorldRebakeOverlay() {
+    if (!this._rebakeOverlayEl) {
+      const el = document.createElement('div');
+      el.className = 'world-rebake-overlay';
+      el.innerHTML = `
+        <div class="world-rebake-overlay__box">
+          <div class="world-rebake-overlay__spinner" aria-hidden="true"></div>
+          <span>Aktualizuję świat…</span>
+        </div>
+      `;
+      document.body.appendChild(el);
+      this._rebakeOverlayEl = el;
+    }
+    // requestAnimationFrame - dodanie klasy w TEJ SAMEJ klatce, w której
+    // element dopiero co trafił do DOM, czasem nie zdąży się przełożyć na
+    // faktyczną tranzycję CSS (przeglądarka może zbatchować oba stany w
+    // jedno malowanie) - jedna klatka odstępu gwarantuje, że opacity:0 z
+    // .world-rebake-overlay faktycznie się namaluje ZANIM dojdzie do 1.
+    requestAnimationFrame(() => {
+      if (this._rebakeOverlayEl) this._rebakeOverlayEl.classList.add('world-rebake-overlay--visible');
+    });
+  }
+
+  /** Chowa nakładkę z _showWorldRebakeOverlay (element zostaje w DOM,
+   * ukryty przez CSS - taniej niż tworzyć/usuwać przy każdym prestige'u). */
+  _hideWorldRebakeOverlay() {
+    if (this._rebakeOverlayEl) this._rebakeOverlayEl.classList.remove('world-rebake-overlay--visible');
   }
 
   /**
@@ -1171,58 +1247,91 @@ class Game {
     // tylko pojedyncze plamki.
     const patchCount = Math.round((w * h) / 26000);
 
+    // BUGFIX (Tomek: "jak chciałem włączyć następną planetę [...] wszystko
+    // się zacięło"): ctx.filter = blur(...) na CAŁYM canvasie świata (nawet
+    // RAZ, nie >100x jak w pierwszej wersji tego BUGFIXa) to wciąż realny
+    // koszt - blur to konwolucja, jej cena rośnie z POWIERZCHNIĄ obrazu, a
+    // świat ma 1750x2000 = 3.5 MPx. Zmierzone (CPU throttling 6x, symulacja
+    // słabego telefonu): ~1.9s na SAMO to jedno rozmycie - dalej wystarczająco
+    // dużo, żeby zamrozić główny wątek na cały ten czas.
+    // Rozwiązanie: klasyczny "tani blur" z grafiki - rozmycie na obrazie
+    // 5x MNIEJSZYM (skala scale niżej, 1/25 powierzchni = ~25x tańsze
+    // rozmycie), potem SKALOWANIE W GÓRĘ z powrotem do pełnego rozmiaru
+    // świata jednym drawImage. Samo skalowanie w górę (interpolacja
+    // dwuliniowa canvasu) dokłada WŁASNE, dodatkowe rozmazanie - końcowy
+    // efekt jest RÓWNIE (a nawet odrobinę bardziej) miękki co pełnorozdzielczy
+    // blur, przy ułamku kosztu.
+    const overlayScale = 0.2;
+    const smallW = Math.round(w * overlayScale);
+    const smallH = Math.round(h * overlayScale);
+    const patchLayer = document.createElement('canvas');
+    patchLayer.width = smallW;
+    patchLayer.height = smallH;
+    const pctx = patchLayer.getContext('2d');
+    // Transform zamiast ręcznego mnożenia każdej współrzędnej/promienia -
+    // reszta kodu niżej rysuje plamy w NORMALNYCH (pełnych) jednostkach
+    // świata, ten scale() cichutko przekłada je na mały canvas.
+    pctx.scale(overlayScale, overlayScale);
+
     ctx.save();
     if (setIndex === 1) {
       // "Iglasty/mroźny" - biało-szara warstwa szronu (NIE niebieska - o
       // niebieski odcień całej planety dba teraz GAME_DECOR_SET_FILTERS/
       // _currentPlanetFilter, patrz tam - Tomek: "filtr świata miał być
-      // niebieski na zimowym świecie, a nie szron"), płaty rysowane pod
+      // niebieski na zimowym świecie, a nie szron"), płaty złożone pod
       // ctx.filter = blur(...) zamiast samego gradientu radialnego - dużo
       // miększe, "mglistsze" krawędzie plam zamiast wyraźnych okrągłych
       // kształtów (ten sam mechanizm co planet-filter, tylko blur zamiast
       // hue-rotate/saturate).
       ctx.fillStyle = 'rgba(225, 240, 248, 0.12)';
       ctx.fillRect(0, 0, w, h);
-      ctx.filter = 'blur(26px)';
       for (let i = 0; i < patchCount; i++) {
         const x = rand() * w;
         const y = rand() * h;
         const r = 45 + rand() * 100;
-        const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+        const grad = pctx.createRadialGradient(x, y, 0, x, y, r);
         grad.addColorStop(0, 'rgba(232, 244, 250, 0.5)');
         grad.addColorStop(0.7, 'rgba(232, 244, 250, 0.22)');
         grad.addColorStop(1, 'rgba(232, 244, 250, 0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.ellipse(x, y, r, r * (0.55 + rand() * 0.3), rand() * Math.PI, 0, Math.PI * 2);
-        ctx.fill();
+        pctx.fillStyle = grad;
+        pctx.beginPath();
+        pctx.ellipse(x, y, r, r * (0.55 + rand() * 0.3), rand() * Math.PI, 0, Math.PI * 2);
+        pctx.fill();
       }
-      ctx.filter = 'none';
+      // setTransform (nie tylko filter) - pctx wciąż ma aktywny scale()
+      // sprzed rysowania plam (współrzędne świata -> mały canvas). Bez
+      // zresetowania tego TU, ten drawImage (już w pikselach małego
+      // canvasu, nie współrzędnych świata) narysowałby się 5x za mały.
+      pctx.setTransform(1, 0, 0, 1, 0, 0);
+      pctx.filter = `blur(${8 * overlayScale}px)`;
+      pctx.drawImage(patchLayer, 0, 0); // rozmyj SAM SIEBIE - tani na małym canvasie
+      ctx.drawImage(patchLayer, 0, 0, smallW, smallH, 0, 0, w, h);
     } else if (setIndex === 2) {
       // "Pustynny" - słaby ogólny piaszczysty nalot na całej ziemi + mocniejsze
       // plamy suchego piasku + wyraźne pęknięcia spieczonej ziemi (ta sama
       // technika łamanych linii co _bakeCrystalGroundTexture).
       ctx.fillStyle = 'rgba(205, 170, 105, 0.14)';
       ctx.fillRect(0, 0, w, h);
-      // Plamy piasku pod tym samym blur() co szron (Tomek: "te rozmyte plamy
-      // pustynne, niech mają tak samo rozmyte krawędzie") - filtr zdejmowany
-      // PRZED pęknięciami ziemi niżej, żeby te zostały ostre/czytelne (linia
-      // pęknięcia rozmyta na 26px byłaby praktycznie niewidoczna).
-      ctx.filter = 'blur(26px)';
+      // Plamy piasku złożone pod tym samym "tanim blurem" co szron wyżej -
+      // pęknięcia ziemi rysowane PO złożeniu, wprost na ctx w pełnej
+      // rozdzielczości (bez rozmycia), żeby zostały ostre/czytelne.
       for (let i = 0; i < patchCount; i++) {
         const x = rand() * w;
         const y = rand() * h;
         const r = 40 + rand() * 90;
-        const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+        const grad = pctx.createRadialGradient(x, y, 0, x, y, r);
         grad.addColorStop(0, 'rgba(213, 178, 112, 0.46)');
         grad.addColorStop(0.7, 'rgba(213, 178, 112, 0.2)');
         grad.addColorStop(1, 'rgba(213, 178, 112, 0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.ellipse(x, y, r, r * (0.55 + rand() * 0.3), rand() * Math.PI, 0, Math.PI * 2);
-        ctx.fill();
+        pctx.fillStyle = grad;
+        pctx.beginPath();
+        pctx.ellipse(x, y, r, r * (0.55 + rand() * 0.3), rand() * Math.PI, 0, Math.PI * 2);
+        pctx.fill();
       }
-      ctx.filter = 'none';
+      pctx.setTransform(1, 0, 0, 1, 0, 0);
+      pctx.filter = `blur(${8 * overlayScale}px)`;
+      pctx.drawImage(patchLayer, 0, 0);
+      ctx.drawImage(patchLayer, 0, 0, smallW, smallH, 0, 0, w, h);
       ctx.strokeStyle = 'rgba(84, 60, 30, 0.4)';
       ctx.lineWidth = 2.5;
       const crackCount = Math.round(patchCount / 2);
