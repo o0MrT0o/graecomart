@@ -192,7 +192,18 @@ const DECOR_SETS = [
 // Typy wczytywane/sprawdzane PER ZESTAW (patrz _decorImageSets/_decorImagesReady)
 // - "rock" celowo pominięty, ma własną, wspólną pulę (ROCK_VARIANT_SRC niżej).
 const DECOR_SET_IMAGE_TYPES = DECOR_TYPES.filter((type) => type !== 'rock');
-const DECOR_PROCEDURAL_TYPES = ['flower', 'puddle'];
+// BUGFIX (Tomek: "Strefa D [...] wygląda pusto" - okazało się DUŻO gorsze
+// niż "mało wariantów"): 'crystal' NIGDY nie było tu wpisane, mimo że
+// _drawProceduralDecor (niżej) od zawsze umie je narysować i
+// _generateDecorations od zawsze piecze mu teksturę (_bakeCrystalDecorTexture).
+// _drawDecorations sprawdza WYŁĄCZNIE ten check przed przekazaniem dekoracji
+// do _drawProceduralDecor - bez 'crystal' tutaj każda kępka kryształów w
+// Strefie D po cichu przepadała (_decorImages['crystal'] nie istnieje, bo
+// 'crystal' nie jest częścią DECOR_SETS, więc trafiała w `if (!img) return`
+// kawałek niżej). W praktyce Strefa D od zawsze pokazywała tylko 'rock'
+// (1/3 wagi w zoneTypes.D) - reszta (2/3, 'crystal') była niewidzialna, stąd
+// wrażenie dużo bardziej pustej/powtarzalnej strefy niż A/B/C.
+const DECOR_PROCEDURAL_TYPES = ['flower', 'puddle', 'crystal'];
 
 // Warianty POJEDYNCZEGO kamienia (Tomek: "znajdź jakieś fajne kamienie w
 // tych paczkach i podmień aktualne na różne warianty", potem "ten oryginalny
@@ -277,6 +288,11 @@ const DECOR_TYPE_SCALE = {
   flower: 1,
   puddle: 1.6,
   crystal: 1.1,
+  // Mały, STATYCZNY odłamek (Strefa D) - naziemny wypełniacz gęstości, ten
+  // sam duch co grass_tuft w Strefie A (patrz _bakeCrystalShardTexture) -
+  // wyraźnie mniejszy niż główna kępka (crystal: 1.1), żeby czytał się jako
+  // drobny akcent, nie duplikat tej samej dekoracji.
+  shard: 0.4,
   // Oba źródłowo 128x128 (kwadrat) - skala dobrana wizualnie względem
   // sąsiadów w Strefie C: skrzynia ma czytać się jako podobnej "wagi" co
   // kamień, tabliczka trochę smuklej (węższy słupek, nie chcemy kwadratowej
@@ -1557,6 +1573,14 @@ class Game {
    */
   _bakeStaticDecorations(wctx) {
     this._decorations.forEach((d) => {
+      // 'shard' (Strefa D) - jedyny procedural-ale-STATYCZNY typ (bez pulsu/
+      // animacji, patrz _bakeCrystalShardTexture) - cień już upieczony PROSTO
+      // w d.texture, więc tu tylko jeden tani drawImage, ten sam trik co
+      // rock/crate/sign niżej, tylko bez sprite'a/wariantu kształtu.
+      if (d.type === 'shard') {
+        if (d.texture) wctx.drawImage(d.texture, d.x - d.textureAnchorX, d.y - d.textureAnchorY);
+        return;
+      }
       if (!DECOR_TYPES.includes(d.type)) return; // tylko sprite'owe (tree/bush/rock/shrub/crate/sign) mają tu osobny cień
 
       // Kamień - własny, wylosowany RAZ wariant kształtu (patrz ROCK_VARIANT_SRC/
@@ -1883,11 +1907,20 @@ class Game {
     // równi z rock, sign podbite razem z pierwszą rundą poprawek do 3/7 -
     // wciąż za dużo). rock teraz wyraźnie dominuje (5/7), sign i crate to
     // rzadkie akcenty (po 1/7 każdy).
+    // Strefa D przebalansowana PO naprawie bugu z DECOR_PROCEDURAL_TYPES
+    // (patrz komentarz tam) - dopóki 'crystal' było niewidzialne, 2/3 wagi
+    // sprowadzało się w praktyce do 'rock' (1/3). Teraz, kiedy kryształy
+    // faktycznie się renderują (i są jedynym ANIMOWANYM/pulsującym typem w
+    // tej strefie - kosztowniejsze na klatkę niż statyczne rock/shard),
+    // ich waga jest CELOWO niższa niż wcześniej zakładano - rzadki,
+    // "specjalny" akcent, nie dominujący wypełniacz. 'shard' (nowy, mały,
+    // statyczny odłamek - patrz DECOR_TYPE_SCALE/_bakeCrystalShardTexture)
+    // przejmuje rolę gęstego naziemnego wypełniacza, tak jak grass_tuft w A.
     const zoneTypes = {
       A: ['tree', 'bush', 'shrub', 'flower', 'flower', 'grass_tuft', 'grass_tuft', 'fern'],
       B: ['shrub', 'rock', 'puddle'],
       C: ['rock', 'rock', 'rock', 'rock', 'rock', 'sign', 'crate'],
-      D: ['crystal', 'crystal', 'rock']
+      D: ['crystal', 'rock', 'rock', 'shard', 'shard', 'shard']
     };
 
     // WSZYSTKIE dekoracje pilnują odstępu od SIEBIE NAWZAJEM (dowolna para,
@@ -2001,6 +2034,7 @@ class Game {
       if (type === 'flower') this._bakeFlowerTexture(item);
       else if (type === 'puddle') this._bakePuddleTexture(item);
       else if (type === 'crystal') this._bakeCrystalDecorTexture(item);
+      else if (type === 'shard') this._bakeCrystalShardTexture(item);
 
       list.push(item);
     }
@@ -2148,7 +2182,18 @@ class Game {
       if (d.y < camY - margin || d.y > camY + viewH + margin) return;
 
       // W pełni statyczne - już wypalone w tle, patrz komentarz wyżej.
-      if (staticBaked && (d.type === 'rock' || d.type === 'crate' || d.type === 'sign')) return;
+      // 'shard' dołącza do tej listy (patrz _bakeStaticDecorations) - to
+      // JEDYNY procedural-typ bez animacji, więc traktowany jak rock/crate/sign,
+      // nie jak crystal/flower/puddle niżej.
+      if (staticBaked && (d.type === 'rock' || d.type === 'crate' || d.type === 'sign' || d.type === 'shard')) return;
+
+      // Krótkie okno PRZED bakiem (patrz komentarz na górze metody) - 'shard'
+      // jeszcze nie jest w upieczonym tle, więc rysujemy jego gotową
+      // teksturę wprost, tym samym trikiem co _bakeStaticDecorations.
+      if (d.type === 'shard') {
+        if (d.texture) ctx.drawImage(d.texture, d.x - d.textureAnchorX, d.y - d.textureAnchorY);
+        return;
+      }
 
       if (DECOR_PROCEDURAL_TYPES.includes(d.type)) {
         this._drawProceduralDecor(ctx, d, nowSec);
@@ -2530,6 +2575,80 @@ class Game {
 
       tctx.restore();
     });
+
+    d.texture = canvas;
+    d.textureAnchorX = anchorX;
+    d.textureAnchorY = anchorY;
+  }
+
+  /**
+   * Mały, POJEDYNCZY odłamek kryształu (Strefa D) - naziemny wypełniacz
+   * gęstości (Tomek: "Strefa D [...] wygląda pusto/powtarzalnie w porównaniu
+   * do A/B/C"), ten sam duch co grass_tuft w Strefie A: tani, liczny,
+   * wypełnia puste kępki między "ciężkimi" dekoracjami (crystal/rock).
+   * Ta sama paleta/technika co _bakeCrystalDecorTexture (jedna iglica
+   * zamiast trzech, węższa, bez oddzielnej pulsującej poświaty) - czyta się
+   * jako "ten sam materiał", ale wyraźnie mniejszy i celowo BEZ animacji
+   * (patrz DECOR_TYPE_SCALE.shard), więc bezpiecznie piecze się RAZ do
+   * upieczonego tła świata (_bakeStaticDecorations), tak jak rock/crate/sign -
+   * zero kosztu na klatkę, w przeciwieństwie do prawdziwego 'crystal'
+   * (animowany puls + Light Mask, patrz _drawCrystalDecor). Cień upieczony
+   * PROSTO W teksturę (ten sam trik co _bakeCrystalDecorTexture) - żadnej
+   * osobnej logiki cienia w _bakeStaticDecorations dla tego typu.
+   */
+  _bakeCrystalShardTexture(d) {
+    const scale = d.scale * (DECOR_TYPE_SCALE.shard || 1);
+    const pad = 6;
+    const h = 30 * scale;
+    const w = 11 * scale;
+    const texW = Math.ceil(w + pad * 2);
+    const texH = Math.ceil(h + pad * 2);
+    const anchorX = texW / 2;
+    const anchorY = texH - pad;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = texW;
+    canvas.height = texH;
+    const tctx = canvas.getContext('2d');
+    const baseX = anchorX;
+    const baseY = anchorY;
+
+    tctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+    tctx.beginPath();
+    tctx.ellipse(baseX, baseY, w * 0.75, w * 0.28, 0, 0, Math.PI * 2);
+    tctx.fill();
+
+    tctx.save();
+    tctx.translate(baseX, baseY);
+    // Lekkie przechylenie (stałe, z seeda dekoracji - patrz item.seed w
+    // _generateDecorations) - kilka identycznie prostych iglic obok siebie
+    // wyglądałoby na siatkę, nie na naturalny rozrzut.
+    tctx.rotate((d.seed - 0.5) * 0.5);
+
+    const grad = tctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+    grad.addColorStop(0, '#4527A0');
+    grad.addColorStop(0.5, '#B39DDB');
+    grad.addColorStop(1, '#7E57C2');
+    tctx.fillStyle = grad;
+    tctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    tctx.lineWidth = 1;
+    tctx.beginPath();
+    tctx.moveTo(0, 0);
+    tctx.lineTo(-w / 2, -h * 0.35);
+    tctx.lineTo(0, -h);
+    tctx.lineTo(w / 2, -h * 0.35);
+    tctx.closePath();
+    tctx.fill();
+    tctx.stroke();
+
+    tctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+    tctx.lineWidth = 0.8;
+    tctx.beginPath();
+    tctx.moveTo(0, -h * 0.08);
+    tctx.lineTo(0, -h * 0.9);
+    tctx.stroke();
+
+    tctx.restore();
 
     d.texture = canvas;
     d.textureAnchorX = anchorX;
