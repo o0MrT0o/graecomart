@@ -176,6 +176,20 @@ const DECOR_SETS = [
 ];
 const DECOR_PROCEDURAL_TYPES = ['flower', 'puddle'];
 
+// Warianty POJEDYNCZEGO kamienia (Tomek: "znajdź jakieś fajne kamienie w
+// tych paczkach i podmień aktualne na różne warianty") - NIEZALEŻNE od
+// DECOR_SETS/planetNumber: to nie inny zestaw per planeta, tylko wizualna
+// odmiana MIĘDZY POSZCZEGÓLNYMI kamieniami na TEJ SAMEJ planecie (jeden
+// wylosowany RAZ per egzemplarz w _generateDecorations - patrz
+// item.rockVariant), więc "rock" w DECOR_SETS wyżej zostaje wspólny dla
+// wszystkich trzech zestawów jako WARIANT 0 (domyślny) - reszta warstw
+// (kolor/kształt roślinności per planeta) i ta (kształt per kamień) to dwie
+// całkiem osobne osie zmienności, tak jak modyfikator planety vs zestaw
+// dekoracji już są. var2 (Platformer Pack Remastered - ta sama paczka co
+// crate.png/sign.png) i var3 (New Platformer Pack) - oba stylistycznie
+// pasują do już użytych assetów z tych samych paczek.
+const ROCK_VARIANT_SRC = ['assets/decor/rock.png', 'assets/decor/rock_var2.png', 'assets/decor/rock_var3.png'];
+
 // Sejdy PRNG narzutu na podłoże per zestaw dekoracji (patrz
 // _drawGroundOverlay) - 0 = brak narzutu (zestaw domyślny, ziemia zostaje
 // bez zmian, tak samo jak pierwsza planeta zostaje bez GAME_PLANET_VISUAL_
@@ -475,6 +489,22 @@ class Game {
     // (_decorImagesReady/_bakeStaticDecorations/_drawDecorations) używa
     // wyłącznie this._decorImages, bez wiedzy o istnieniu innych zestawów.
     this._decorImages = this._decorImageSets[this._currentDecorSetIndex()];
+
+    // Warianty kamienia (patrz ROCK_VARIANT_SRC) - WSPÓLNE dla wszystkich
+    // trzech DECOR_SETS (rock i tak jest tam identyczny w każdym), więc
+    // wczytywane RAZ, osobno od _decorImageSets wyżej.
+    this._rockVariantImages = ROCK_VARIANT_SRC.map((src, i) => {
+      const img = new Image();
+      readyPromises.push(new Promise((resolve) => {
+        img.onload = () => resolve();
+        img.onerror = () => {
+          console.warn(`[Game] Nie udało się wczytać wariantu kamienia ${i} (${src}).`);
+          resolve();
+        };
+      }));
+      img.src = src;
+      return img;
+    });
 
     // Ekran ładowania (main.js) czeka na to, ZANIM w ogóle pokaże grę - żeby
     // pierwsza widoczna klatka miała już upieczone tło świata (patrz
@@ -1396,7 +1426,7 @@ class Game {
     return this._decorImageSets.every((set) => DECOR_TYPES.every((type) => {
       const img = set[type];
       return img && img.complete;
-    }));
+    })) && this._rockVariantImages.every((img) => img.complete);
   }
 
   /**
@@ -1429,7 +1459,10 @@ class Game {
     this._decorations.forEach((d) => {
       if (!DECOR_TYPES.includes(d.type)) return; // tylko sprite'owe (tree/bush/rock/shrub/crate/sign) mają tu osobny cień
 
-      const img = this._decorImages[d.type];
+      // Kamień - własny, wylosowany RAZ wariant kształtu (patrz ROCK_VARIANT_SRC/
+      // item.rockVariant w _generateDecorations), NIEZALEŻNY od DECOR_SETS -
+      // reszta typów bierze obrazek z aktywnego zestawu jak dotychczas.
+      const img = d.type === 'rock' ? this._rockVariantImages[d.rockVariant] : this._decorImages[d.type];
       if (!img || !img.complete || !img.naturalWidth) return;
 
       const h = DECOR_BASE_HEIGHT * d.scale * (DECOR_TYPE_SCALE[d.type] || 1);
@@ -1825,7 +1858,14 @@ class Game {
       // prestige'u NIE powinno "obrócić" kamieni na nowo). Tylko rock -
       // crate/sign zostają proste (skrzynia/tabliczka to "zaprojektowane"
       // obiekty z czytelną górą/dołem, obrócone wyglądałyby na przewrócone).
-      if (type === 'rock') item.rotation = rand() * Math.PI * 2;
+      if (type === 'rock') {
+        item.rotation = rand() * Math.PI * 2;
+        // Wariant kształtu (patrz ROCK_VARIANT_SRC) - losowany RAZ tu, z tego
+        // samego powodu co rotation wyżej (stały kształt między przeliczeniami
+        // tła). Tomek: "znajdź fajne kamienie w tych paczkach i podmień
+        // aktualne na różne warianty".
+        item.rockVariant = Math.floor(rand() * ROCK_VARIANT_SRC.length);
+      }
 
       // BUGFIX (przycinanie na telefonie): _drawFlowerDecor/_drawPuddleDecor
       // odbudowywały swój kształt OD ZERA co klatkę - dla kwiatka to ~50
@@ -1997,7 +2037,9 @@ class Game {
         return;
       }
 
-      const img = this._decorImages[d.type];
+      // Kamień - wariant kształtu (patrz ROCK_VARIANT_SRC), niezależny od
+      // aktywnego DECOR_SETS - ten sam wybór co _bakeStaticDecorations.
+      const img = d.type === 'rock' ? this._rockVariantImages[d.rockVariant] : this._decorImages[d.type];
       if (!img || !img.complete || !img.naturalWidth) return;
 
       const h = DECOR_BASE_HEIGHT * d.scale * (DECOR_TYPE_SCALE[d.type] || 1);
