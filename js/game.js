@@ -149,28 +149,42 @@ const DECOR_SETS = [
   },
   {
     // Zestaw 1 - "iglasty/mroźny" (Kenney Background Elements Remastered dla
-    // tree/bush/shrub, Platformer Pack Remastered dla crate/sign - ten sam
-    // pakiet co crate/sign zestawu 0, ale inne pliki - i Foliage Sprites,
-    // dotintowane offline chłodną zielenią, dla grass_tuft/fern). sign_alt1
-    // to strzałka (signRight.png) - BYŁA tabliczka "EXIT" (signExit.png),
-    // Tomek: "te tabliczki exit też wyrzuć".
+    // tree/bush/shrub, Platformer Pack Remastered dla crate, i Foliage
+    // Sprites dotintowane offline chłodną zielenią, dla grass_tuft/fern).
+    // sign: WRÓCIŁ do zwykłej tabliczki zestawu 0 (Tomek: "na ash są
+    // tabliczki jakieś strzałki, usuń") - sign_alt1 (signRight.png) była
+    // strzałką, czyli DOKŁADNIE tym samym problemem co usunięta wcześniej
+    // tabliczka "EXIT" (signExit.png) - sugeruje kierunek/wyjście, czego
+    // ambientowa dekoracja nie powinna robić. "sign" i tak spawnuje
+    // WYŁĄCZNIE w Strefie C (patrz zoneTypes w _generateDecorations), więc
+    // brak osobnej grafiki na zestaw nie odbiera żadnej realnej różnorodności -
+    // tę i tak daje EXTRA_PROP_VARIANT_SRC (4 warianty przemysłowe).
     tree: 'assets/decor/tree_alt1.png',
     bush: 'assets/decor/bush_alt1.png',
     shrub: 'assets/decor/shrub_alt1.png',
     crate: 'assets/decor/crate_alt1.png',
-    sign: 'assets/decor/sign_alt1.png',
+    sign: 'assets/decor/sign.png',
     grass_tuft: 'assets/decor/grass_tuft_alt1.png',
     fern: 'assets/decor/fern_alt1.png'
   },
   {
-    // Zestaw 2 - "pustynny" (palma/kaktusy z Background Elements Remastered,
-    // inna skrzynia/tabliczka z Platformer Pack Remastered, Foliage Sprites
-    // dotintowane offline piaskowym odcieniem).
+    // Zestaw 2 - "pustynny" (palma z Background Elements Remastered, inna
+    // skrzynia z Platformer Pack Remastered, Foliage Sprites dotintowane
+    // offline piaskowym odcieniem). bush/shrub BYŁY kaktusami (bushAlt/
+    // cactus z tej samej paczki) - Tomek: "z biomu bagna usuń kaktusy [...]
+    // i na zwykłej trawie też są kaktusy, wyjebaj to". "shrub" spawnuje w
+    // Strefie A (trawa) ORAZ w Strefie B (bagno) - patrz zoneTypes w
+    // _generateDecorations - jeden kaktusowaty asset per zestaw ląduje więc
+    // WSZĘDZIE, łącznie z bagnem, gdzie wygląda absurdalnie. Zamienione na
+    // suchy, pomarańczowawy krzak (bushOrange1/4, ta sama paczka) - sensowny
+    // zarówno na piaszczystej trawie, jak i na uschniętym skrawku bagna,
+    // bez kaktusowej sylwetki. sign: jak wyżej, sign_alt2 (signLeft.png)
+    // była TĄ SAMĄ strzałką co w zestawie 1, tylko odwróconą - ten sam fix.
     tree: 'assets/decor/tree_alt2.png',
     bush: 'assets/decor/bush_alt2.png',
     shrub: 'assets/decor/shrub_alt2.png',
     crate: 'assets/decor/crate_alt2.png',
-    sign: 'assets/decor/sign_alt2.png',
+    sign: 'assets/decor/sign.png',
     grass_tuft: 'assets/decor/grass_tuft_alt2.png',
     fern: 'assets/decor/fern_alt2.png'
   }
@@ -1265,10 +1279,17 @@ class Game {
     const wctx = canvas.getContext('2d');
 
     // Filtr koloru bieżącej planety (patrz GAME_PLANET_VISUAL_FILTERS) -
-    // ustawiony PRZED wypełnieniem/dekoracjami, więc obejmuje CAŁY upieczony
-    // obraz (tereny + cienie + rock/crate/sign) w jednym, tanim przebiegu -
-    // koszt jednorazowy przy pieczeniu, zero dodatkowego kosztu na klatkę
-    // (w przeciwieństwie do filtrowania przy każdym rysowaniu).
+    // BUGFIX (Tomek: "2 pretig jest różowe zamiast zimowe"): filtr obejmował
+    // dawniej TEŻ dekoracje (rock/crate/sign/tree/...), a hue-rotate() kręci
+    // WSZYSTKIMI kolorami w obrazie, nie tylko zielenią trawy - niebieski
+    // pasek na beczce (crate_var2) wychodził różowy, drewniana tabliczka
+    // wychodziła jaskrawozielona, itd. Same tereny (trawa/bagno/popiół +
+    // narzut szronu/piasku) already czytają się
+    // jako "zimowe/pustynne" bez tego psucia kolorów obiektów - filtr więc
+    // teraz obejmuje WYŁĄCZNIE _renderZoneFills/_drawGroundOverlay (ziemia
+    // pod stopami), a _bakeStaticDecorations piecze się już z filtrem
+    // zdjętym, czystymi kolorami assetów. To samo w _drawDecorations niżej
+    // (dekoracje rysowane na żywo - kołyszące się drzewa/krzaki).
     const planetFilter = this._currentPlanetFilter();
     if (planetFilter) wctx.filter = planetFilter;
 
@@ -1285,9 +1306,9 @@ class Game {
 
     this._renderZoneFills(wctx, 0, 0, this.worldWidth, this.worldHeight);
     this._drawGroundOverlay(wctx, decorSetIndex);
-    this._bakeStaticDecorations(wctx);
 
     if (planetFilter) wctx.filter = 'none';
+    this._bakeStaticDecorations(wctx);
 
     this._worldBackgroundCanvas = canvas;
     this._worldBackgroundBaked = true;
@@ -2117,14 +2138,11 @@ class Game {
     const nowSec = performance.now() / 1000;
     const staticBaked = this._worldBackgroundBaked;
 
-    // Ten sam filtr koloru planety co upieczone tło (patrz _currentPlanetFilter/
-    // _bakeWorldBackground) - USTAWIONY RAZ przed pętlą, nie per-dekoracja
-    // (jedna zmiana stanu canvasu na klatkę, nie dziesiątki) - bez tego
-    // kołyszące się drzewa/krzaki zostałyby w oryginalnym kolorze, podczas
-    // gdy ziemia pod nimi już jest przebarwiona (upieczona z filtrem).
-    const planetFilter = this._currentPlanetFilter();
-    if (planetFilter) ctx.filter = planetFilter;
-
+    // BEZ filtra koloru planety (patrz obszerny komentarz w
+    // _bakeWorldBackground - hue-rotate() na dekoracjach psuł kolory
+    // obiektów, np. różowa beczka na zimowym świecie) - dekoracje (w tym te
+    // kołyszące się tutaj) trzymają naturalne kolory swoich assetów,
+    // niezależnie od tego, że ziemia pod nimi jest przebarwiona.
     this._decorations.forEach((d) => {
       if (d.x < camX - margin || d.x > camX + viewW + margin) return;
       if (d.y < camY - margin || d.y > camY + viewH + margin) return;
@@ -2200,8 +2218,6 @@ class Game {
         ctx.drawImage(img, d.x - w / 2, d.y - h + groundOffset, w, h);
       }
     });
-
-    if (planetFilter) ctx.filter = 'none';
   }
 
   /**
