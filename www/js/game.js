@@ -130,16 +130,17 @@ const DECOR_TYPES = ['tree', 'bush', 'rock', 'shrub', 'crate', 'sign', 'grass_tu
 // z planetNumber (patrz _currentDecorSet) - _generateDecorations (typ/
 // pozycja/liczba/skala każdej dekoracji) zostaje CAŁKOWICIE bez zmian, ta
 // tablica zmienia tylko to, JAKI obrazek rysujemy dla danego typu/miejsca.
-// rock jest WSPÓLNY dla wszystkich zestawów (żadna z już pobranych paczek
-// Kenney nie miała innego pasującego stylistycznie kamienia) - i tak
-// dostaje inny odcień z GAME_PLANET_VISUAL_FILTERS jak reszta tła, więc na
-// każdej planecie wygląda nieco inaczej mimo współdzielonego kształtu.
+// BRAK klucza "rock" w każdym zestawie - kamień NIE jest już częścią
+// DECOR_SETS (Tomek: "ten oryginalny kamień usuń całkowicie" - oryginalny
+// rock.png usunięty z projektu), tylko osobnej puli ROCK_VARIANT_SRC niżej,
+// współdzielonej między wszystkimi trzema zestawami (patrz komentarz tam) -
+// DECOR_SET_IMAGE_TYPES (niżej) pomija "rock" przy wczytywaniu/sprawdzaniu
+// gotowości tych obiektów.
 const DECOR_SETS = [
   {
     // Zestaw 0 - domyślny (oryginalne assety, patrz stary DECOR_SRC).
     tree: 'assets/decor/tree.png',
     bush: 'assets/decor/bush.png',
-    rock: 'assets/decor/rock.png',
     shrub: 'assets/decor/shrub.png',
     crate: 'assets/decor/crate.png',
     sign: 'assets/decor/sign.png',
@@ -153,7 +154,6 @@ const DECOR_SETS = [
     // dotintowane offline chłodną zielenią, dla grass_tuft/fern).
     tree: 'assets/decor/tree_alt1.png',
     bush: 'assets/decor/bush_alt1.png',
-    rock: 'assets/decor/rock.png',
     shrub: 'assets/decor/shrub_alt1.png',
     crate: 'assets/decor/crate_alt1.png',
     sign: 'assets/decor/sign_alt1.png',
@@ -166,7 +166,6 @@ const DECOR_SETS = [
     // dotintowane offline piaskowym odcieniem).
     tree: 'assets/decor/tree_alt2.png',
     bush: 'assets/decor/bush_alt2.png',
-    rock: 'assets/decor/rock.png',
     shrub: 'assets/decor/shrub_alt2.png',
     crate: 'assets/decor/crate_alt2.png',
     sign: 'assets/decor/sign_alt2.png',
@@ -174,21 +173,22 @@ const DECOR_SETS = [
     fern: 'assets/decor/fern_alt2.png'
   }
 ];
+// Typy wczytywane/sprawdzane PER ZESTAW (patrz _decorImageSets/_decorImagesReady)
+// - "rock" celowo pominięty, ma własną, wspólną pulę (ROCK_VARIANT_SRC niżej).
+const DECOR_SET_IMAGE_TYPES = DECOR_TYPES.filter((type) => type !== 'rock');
 const DECOR_PROCEDURAL_TYPES = ['flower', 'puddle'];
 
 // Warianty POJEDYNCZEGO kamienia (Tomek: "znajdź jakieś fajne kamienie w
-// tych paczkach i podmień aktualne na różne warianty") - NIEZALEŻNE od
-// DECOR_SETS/planetNumber: to nie inny zestaw per planeta, tylko wizualna
-// odmiana MIĘDZY POSZCZEGÓLNYMI kamieniami na TEJ SAMEJ planecie (jeden
-// wylosowany RAZ per egzemplarz w _generateDecorations - patrz
-// item.rockVariant), więc "rock" w DECOR_SETS wyżej zostaje wspólny dla
-// wszystkich trzech zestawów jako WARIANT 0 (domyślny) - reszta warstw
-// (kolor/kształt roślinności per planeta) i ta (kształt per kamień) to dwie
-// całkiem osobne osie zmienności, tak jak modyfikator planety vs zestaw
-// dekoracji już są. var2 (Platformer Pack Remastered - ta sama paczka co
-// crate.png/sign.png) i var3 (New Platformer Pack) - oba stylistycznie
-// pasują do już użytych assetów z tych samych paczek.
-const ROCK_VARIANT_SRC = ['assets/decor/rock.png', 'assets/decor/rock_var2.png', 'assets/decor/rock_var3.png'];
+// tych paczkach i podmień aktualne na różne warianty", potem "ten oryginalny
+// kamień usuń całkowicie" - stary rock.png usunięty z projektu, zostają
+// TYLKO te dwa) - NIEZALEŻNE od DECOR_SETS/planetNumber: to nie inny zestaw
+// per planeta, tylko wizualna odmiana MIĘDZY POSZCZEGÓLNYMI kamieniami na
+// TEJ SAMEJ planecie (jeden wylosowany RAZ per egzemplarz w
+// _generateDecorations - patrz item.rockVariant), więc obie te grafiki są
+// dostępne na wszystkich trzech zestawach. var2 (Platformer Pack Remastered -
+// ta sama paczka co crate.png/sign.png) i var3 (New Platformer Pack) - oba
+// stylistycznie pasują do już użytych assetów z tych samych paczek.
+const ROCK_VARIANT_SRC = ['assets/decor/rock_var2.png', 'assets/decor/rock_var3.png'];
 
 // Sejdy PRNG narzutu na podłoże per zestaw dekoracji (patrz
 // _drawGroundOverlay) - 0 = brak narzutu (zestaw domyślny, ziemia zostaje
@@ -471,7 +471,7 @@ class Game {
     // plików wczytanych z góry na ekranie ładowania.
     this._decorImageSets = DECOR_SETS.map((set) => {
       const images = {};
-      DECOR_TYPES.forEach((type) => {
+      DECOR_SET_IMAGE_TYPES.forEach((type) => {
         const img = new Image();
         readyPromises.push(new Promise((resolve) => {
           img.onload = () => resolve();
@@ -1423,7 +1423,7 @@ class Game {
    * (patrz _currentDecorSetIndex) - w tamtym momencie każdy z trzech mógłby
    * się okazać tym wybranym. */
   _decorImagesReady() {
-    return this._decorImageSets.every((set) => DECOR_TYPES.every((type) => {
+    return this._decorImageSets.every((set) => DECOR_SET_IMAGE_TYPES.every((type) => {
       const img = set[type];
       return img && img.complete;
     })) && this._rockVariantImages.every((img) => img.complete);
