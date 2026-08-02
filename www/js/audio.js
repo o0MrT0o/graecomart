@@ -172,7 +172,18 @@ const AUDIO_MIN_INTERVAL = {
   // drugi krok przy szybkim marszu i dźwięk rozjeżdżał się z nogami. Teraz
   // 90ms: nadal chroni przed patologicznym spamem, ale nie odrzuca żadnego
   // prawdziwego kroku (najszybszy możliwy to ~180ms).
-  footstep: 90
+  footstep: 90,
+  // AUDYT (ta sama metodologia co przy machine_feed - zmierzone przez Web
+  // Audio decodeAudioData): error.ogg ma ~450ms GŁOŚNEGO, sustainowanego
+  // "opadającego brzęczenia" (nie krótki transient jak reszta UI), zanim
+  // faktycznie ucichnie. Domyślny throttle (150ms) na "za mało kasy/Rdzeni"
+  // - jedynym dźwięku w grze odpalanym wprost przez powtarzane, ludzkie
+  // tapanie w przycisk (nie automatyczny event co stałe X ms jak przy
+  // machine_feed) - pozwalał na kilka nakładających się, głośnych "buczeń"
+  // przy niecierpliwym domashowaniu zablokowanego przycisku. Dłuższy próg
+  // tu jest też dobrym UX-em samym w sobie: negatywny feedback NIE musi
+  // być błyskawicznie powtarzalny jak pozytywny (pickup/coin).
+  error: 400
 };
 const AUDIO_DEFAULT_MIN_INTERVAL = 150;
 
