@@ -1221,9 +1221,18 @@ class PlayerController {
    * pozycję nóg z PLAYER_WALK_LEG_FRAMES dla TEGO SAMEGO kadru co
    * _drawSprite (_currentWalkFrameIndex()) - identyczna transformacja
    * ułamek->px jak przy rysowaniu sprite'a, więc but zawsze trafia w stopę.
-   * W bezruchu (statyczny assets/player.png - okrągła sylwetka BEZ osobno
-   * narysowanych nóg) nie ma do czego się dopasować, więc buty stoją w
-   * stałym, domyślnym rozstawie przy podstawie sylwetki.
+   * BUGFIX (Tomek: "buty odstają trochę od stóp"): powyższy komentarz o
+   * "sylwetce BEZ osobno narysowanych nóg" był nieaktualny/błędny -
+   * zmierzone wprost na pikselach assets/player.png (y=82-91): statyczny
+   * sprite MA dwie osobne, wyraźnie rozdzielone nogi (przerwa ~x=27-41 z
+   * 66px szerokości), tylko nikt wcześniej ich nie zmierzył. Poprzedni
+   * "stały, domyślny rozstaw" (this.radius*0.42, this.radius to parametr
+   * KOLIZJI, nie rozmiar sylwetki) był więc zgadywanką, nie pomiarem - stąd
+   * widoczne przesunięcie. Teraz buty w bezruchu czytają te same, realnie
+   * zmierzone ułamki (lewa noga środek ~0.318, prawa ~0.697, stopa ~0.989
+   * wysokości) przez _getSpriteDrawSize() - identyczna metoda co gałąź
+   * chodu wyżej, tylko z inną, osobno zmierzoną tabelą (ten sprite to inny
+   * plik niż assets/player_walk.png).
    */
   /**
    * BUGFIX (skiny na alternatywnym ciele): PLAYER_WALK_LEG_FRAMES to 11
@@ -1252,10 +1261,10 @@ class PlayerController {
       rightX = (frame.rightFrac - 0.5) * w;
       groundY = footY - h * (1 - frame.footFrac);
     } else {
-      const spread = this.radius * 0.42;
-      leftX = -spread;
-      rightX = spread;
-      groundY = footY;
+      const { w, h } = this._getSpriteDrawSize();
+      leftX = (0.318 - 0.5) * w;
+      rightX = (0.697 - 0.5) * w;
+      groundY = footY - h * (1 - 0.989);
     }
 
     ctx2.save();
@@ -1303,10 +1312,22 @@ class PlayerController {
    * wywołanie w _drawGearOverlays): sylwetka zajmuje tam ~85% pełnej
    * szerokości narysowanego sprite'a (_getSpriteDrawSize().w) - reszta gearu
    * (maska) już liczy się z tego samego źródła, więc pas jest teraz spójny
-   * z resztą, zamiast osobnego, niezależnie wymyślonego wymiaru. */
+   * z resztą, zamiast osobnego, niezależnie wymyślonego wymiaru.
+   *
+   * BUGFIX #2 (Tomek: "paski nachodzą na ręce, mają tylko tułów obejmować"):
+   * 85% wyżej to szerokość TUŁOWIA + RĄK RAZEM na tej wysokości (ręce tej
+   * postaci to boczne wybrzuszenia sylwetki dokładnie w tym miejscu, nie
+   * osobne, wąskie kończyny) - pas więc realnie sięgał rąk. Zmierzone osobno
+   * wąskie "jądro" tułowia (bez wybrzuszenia rąk) - dokładnie ta sama
+   * szerokość co nogi (32 z 66px = ~0.485), bo tułów jest jednolitym
+   * "baryłkowym" kształtem od karku po nogi, a ręce to DODATKOWE wybrzuszenie
+   * NA TYM kształcie tylko w okolicy ramion. 0.485 zostaje więc w samym
+   * tułowiu na każdej wysokości, niezależnie od tego, że akurat tu ręce się
+   * poszerzają.
+   */
   _drawHazmatTrim(ctx2, bodyY) {
     const { w: spriteW } = this._getSpriteDrawSize();
-    const w = spriteW * 0.85;
+    const w = spriteW * 0.485;
     ctx2.save();
 
     const beltGrad = ctx2.createLinearGradient(0, bodyY, 0, bodyY + 5);
