@@ -489,8 +489,18 @@ const DAILY_CHALLENGE_TEMPLATES = [
   { type: 'collect', material: 'paper', target: 15, reward: 100, label: 'Zbierz 15x Papieru' },
   { type: 'collect', material: 'glass', target: 10, reward: 110, label: 'Zbierz 10x Szkła' },
   { type: 'collect', material: 'metal', target: 10, reward: 110, label: 'Zbierz 10x Metalu' },
+  // Odłamek Kryształu (Strefa D) - jedyny surowiec BEZ maszyny-odbiorcy (od
+  // razu na targ, patrz TRADING_POST_ACCEPTS w market.js), więc niższy cel
+  // niż reszta "collect" (8, nie 10-20) - dotarcie do Grani samo w sobie
+  // kosztuje więcej (pełna ochrona), zbieranie ma być krótkim dodatkiem, nie
+  // drugim wyzwaniem. Nagroda wyższa - najcenniejszy surowiec w grze.
+  { type: 'collect', material: 'crystal_shard', target: 8, reward: 240, label: 'Zbierz 8x Odłamków Kryształu' },
   { type: 'earn', target: 180, reward: 100, label: `Zarób 180${ECONOMY_CREDIT_ICON_SVG}` },
   { type: 'earn', target: 400, reward: 200, label: `Zarób 400${ECONOMY_CREDIT_ICON_SVG}` },
+  // Trzeci próg 'earn' (po 180/400) - reszta typów ma już 2 poziomy trudności,
+  // 'earn' miało tylko dwa, mimo że to najbardziej uniwersalny typ (działa
+  // od pierwszej sekundy, nie wymaga żadnego konkretnego surowca/strefy).
+  { type: 'earn', target: 800, reward: 320, label: `Zarób 800${ECONOMY_CREDIT_ICON_SVG}` },
   { type: 'process', target: 15, reward: 90, label: 'Nakarm maszyny 15 razy' },
   { type: 'process', target: 30, reward: 160, label: 'Nakarm maszyny 30 razy' },
   { type: 'sell', target: 20, reward: 110, label: 'Sprzedaj 20 przedmiotów' },
@@ -577,7 +587,21 @@ const ACHIEVEMENTS = [
   { id: 'challenges_30', icon: _kenneyIcon('target', '#CE93D8'), name: 'Perfekcjonista', desc: 'Odbierz 30 wyzwań dnia', stat: 'challengesClaimed', target: 30 },
   // Jedyny nowy licznik (stats.coresEarned) - patrz komentarz przy nim w
   // konstruktorze i przy prestige() (rośnie tam obok this.cores).
-  { id: 'cores_100', icon: _kenneyIcon('diamond', '#81D4FA'), name: 'Kolekcjoner Rdzeni', desc: 'Zdobądź łącznie 100 Rdzeni Prestiżu', stat: 'coresEarned', target: 100 }
+  { id: 'cores_100', icon: _kenneyIcon('diamond', '#81D4FA'), name: 'Kolekcjoner Rdzeni', desc: 'Zdobądź łącznie 100 Rdzeni Prestiżu', stat: 'coresEarned', target: 100 },
+  // stats.lifetimePlaytimeSeconds istniało już wcześniej (zasila wiersz
+  // "Czas gry łącznie" w getStatsCatalog) - liczony na bieżąco w update(),
+  // ale dotąd BEZ żadnego osiągnięcia na nim opartego, jedyny licznik w
+  // this.stats zupełnie nieużyty przez ACHIEVEMENTS. hourglass - jedyna
+  // ikona z puli, której żadne inne osiągnięcie jeszcze nie zajęło.
+  { id: 'playtime_60', icon: _kenneyIcon('hourglass', '#A5D6A7'), name: 'Wciągnęło Cię', desc: 'Zagraj łącznie godzinę', stat: 'lifetimePlaytimeSeconds', target: 3600 },
+  { id: 'playtime_600', icon: _kenneyIcon('hourglass', '#26C6DA'), name: 'Nałóg recyklingowy', desc: 'Zagraj łącznie 10 godzin', stat: 'lifetimePlaytimeSeconds', target: 36000 },
+  // stats.skinsCollected (nowy licznik, patrz konstruktor/buySkin) - brush,
+  // ten sam motyw co nagłówek panelu Skinów (SHIRT_ICON_SVG w ui.js).
+  { id: 'skins_4', icon: _kenneyIcon('brush', '#F06292'), name: 'Stylowy recykler', desc: 'Odblokuj 4 różne skiny', stat: 'skinsCollected', target: 4 },
+  // Wszystkie 7 (patrz PLAYER_SKINS niżej) - włącznie z sezonowym
+  // Meteorytowym, więc realnie wymaga trafienia na Deszcz Meteorytów, nie
+  // tylko zebrania Rdzeni - stąd tier3 (najwyższy próg w tej grupie).
+  { id: 'skins_7', icon: _kenneyIcon('brush', '#BA68C8'), name: 'Kolekcjoner stylu', desc: 'Odblokuj wszystkie 7 skinów', stat: 'skinsCollected', target: 7 }
 ];
 
 // --- Progresywne odblokowania (walka z "martwo - wszystko dostępne od razu") --
@@ -942,7 +966,12 @@ class EconomyManager {
       // wydawaniu (ulepszenia/skiny), więc osiągnięcie "zdobądź łącznie 100
       // Rdzeni" potrzebuje osobnego licznika, który tylko rośnie (patrz
       // prestige()).
-      coresEarned: 0
+      coresEarned: 0,
+      // Start od 1 (nie 0) - 'default' liczy się jako już odblokowany skin
+      // (patrz unlockedSkins niżej), więc licznik musi się z nim zgadzać od
+      // pierwszej klatki, inaczej "odblokuj 4 skiny" wymagałoby w
+      // rzeczywistości kupienia 5 (default + 4), nie 3 dodatkowych.
+      skinsCollected: 1
     };
     // Set id-ków już zdobytych osiągnięć (patrz ACHIEVEMENTS). Serializowany
     // jako tablica (Set nie idzie wprost do JSON), tak jak unlockedIds.
@@ -1076,6 +1105,15 @@ class EconomyManager {
   update(delta) {
     this.totalPlaytimeSeconds += delta / 1000;
     this.stats.lifetimePlaytimeSeconds += delta / 1000;
+    // BUGFIX: playtime_60/playtime_600 (ACHIEVEMENTS) to jedyne osiągnięcia
+    // oparte na liczniku, który rośnie TU (co klatkę), a nie w odpowiedzi na
+    // Bus event - bez tego wywołania próg mógłby zostać przekroczony bez
+    // żadnego wywołania _checkAchievements() w pobliżu (gracz stoi w
+    // miejscu, nic nie zbiera/sprzedaje), więc toast/bonus spóźniałby się aż
+    // do następnej zupełnie niezwiązanej akcji. Tania pętla po ~24 wpisach,
+    // 60x/s - pomijalny koszt (patrz identyczne uzasadnienie przy
+    // _checkAchievements() wyżej).
+    this._checkAchievements();
   }
 
   /**
@@ -1817,6 +1855,8 @@ class EconomyManager {
     this.cores -= def.cost;
     this.unlockedSkins.add(skinId);
     this.selectedSkin = skinId;
+    this.stats.skinsCollected++;
+    this._checkAchievements();
 
     Bus.publish(Events.FX_POPUP, {
       text: `${def.name} odblokowany!`,
@@ -2083,6 +2123,16 @@ class EconomyManager {
       case 'glass': return this.isUnlocked('zone_B') && this.isUnlocked('furnace_c');
       case 'metal': return this.isUnlocked('zone_C') && this.isUnlocked('furnace_c');
       case 'paper': return (this.upgradeLevels['stage_paper'] || 0) > 0;
+      // Ta sama bramka co availableTypes w items.js (_spawnItem) dla
+      // crystal_shard - próg strefy SAM NIE wystarcza, trzeba też pełnej
+      // ochrony (Filtr + Kombinezon, albo perk hazard_immunity ze statku),
+      // inaczej wyzwanie rolowałoby się, zanim gracz w ogóle mógłby
+      // bezpiecznie wejść do Grani i cokolwiek zebrać.
+      case 'crystal_shard': {
+        const hasFullProtection = (typeof this.hasShipPerk === 'function' && this.hasShipPerk('hazard_immunity'))
+          || (this.hasUpgrade('toxic_filter') && this.hasUpgrade('radiation_suit'));
+        return this.isUnlocked('zone_D') && hasFullProtection;
+      }
       default: return true; // trash/plastic - zawsze dostępne
     }
   }
