@@ -100,6 +100,12 @@
          ambient.js, przed game.js bo main.js rejestruje CrittersManager. -->
     <script src="js/critters.js"></script>
     <script src="js/items.js"></script>
+    <!-- Dron Recyklingowy (SHOP_UPGRADES: 'drone') - czyta window.itemManager/
+         stackController/playerController/economyManager WYŁĄCZNIE w metodach
+         (nie przy parsowaniu), więc dokładna pozycja w tej liście nie ma
+         znaczenia - tutaj, blisko items.js/critters.js, z którymi dzieli
+         najwięcej logiki. -->
+    <script src="js/drone.js"></script>
     <!-- Wydarzenie sezonowe (Deszcz Meteorytów) - przed goldbonus.js, bo ten
          czyta window.seasonalEventManager.isActive() (częstszy spawn). -->
     <script src="js/events.js"></script>

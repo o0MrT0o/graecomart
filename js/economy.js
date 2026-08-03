@@ -187,6 +187,25 @@ const SHOP_UPGRADES = [
     getValue(level) {
       return level;
     }
+  },
+  {
+    // Automatyzacja (drone.js) - JEDYNE ulepszenie, które zbiera surowce
+    // BEZ obecności gracza w pobliżu (w przeciwieństwie do 'pickup' wyżej,
+    // który tylko poszerza zasięg PRZY graczu). getValue(level) = liczba
+    // dronów, czytana NA ŻYWO przez DroneManager (window.economyManager.
+    // upgradeLevels.drone) - zeruje się przy prestige() jak każde inne
+    // ulepszenie sklepowe, więc drony znikają/pojawiają się same, bez
+    // żadnego dodatkowego kodu w _applyUpgrade/prestige().
+    id: 'drone',
+    icon: _kenneyIcon('gear', '#64B5F6'),
+    name: 'Dron Recyklingowy',
+    description: '+1 dron - lata po mapie i sam zbiera pobliskie surowce',
+    baseCost: 300,
+    costScale: 2.0,
+    maxLevel: 3,
+    getValue(level) {
+      return level;
+    }
   }
 ];
 

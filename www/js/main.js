@@ -86,6 +86,14 @@ function startGame() {
     game.registerModule(window.ship);
     game.registerModule(player);
 
+    // Dron Recyklingowy (SHOP_UPGRADES: 'drone' w economy.js) - PO graczu
+    // (rejestracja = kolejność rysowania), żeby dron latający tuż nad
+    // graczem nigdy nie chował się pod jego sylwetką. Poziom (liczba dronów)
+    // czytany na żywo z economyManager.upgradeLevels.drone co klatkę - nie
+    // wymaga, żeby economyManager już istniał w TYM miejscu kodu.
+    window.droneManager = new DroneManager();
+    game.registerModule(window.droneManager);
+
     window.economyManager = new EconomyManager(game);
     // Faza 5: economyManager MUSI być zarejestrowany, żeby jego update()
     // (nalicza totalPlaytimeSeconds - podstawa tempa zarobku offline) w

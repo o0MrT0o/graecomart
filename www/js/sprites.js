@@ -142,7 +142,14 @@ const SPRITE_PATH_CANDIDATES = {
   // Złoty Bonus (goldbonus.js, Tomek: "daj coś fajnego z paczek") - gwiazdka
   // z Kenney "Space Shooter Remastered" (Power-ups/star_gold.png), ta sama
   // paczka co ship_fighter/fx_soot/fx_smoke_puff wyżej.
-  fx_gold_star: ['assets/effects/fx_gold_star.png']
+  fx_gold_star: ['assets/effects/fx_gold_star.png'],
+  // Dron Recyklingowy (drone.js, SHOP_UPGRADES: 'drone' w economy.js) - ta
+  // sama paczka i ten sam "spodek" kształt co critter_ufo wyżej, ale wariant
+  // BEZ obcego w kokpicie (shipBlue.png, nie shipGreen_manned.png) - czyta
+  // się jako "pusty, zautomatyzowany", nie "żywe stworzenie", a inny kolor
+  // (niebieski, jak domyślny skin gracza) odróżnia go na pierwszy rzut oka
+  // od zielonego, ambientowego UFO.
+  drone: ['assets/critters/drone.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd
