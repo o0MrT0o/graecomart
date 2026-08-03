@@ -34,7 +34,7 @@ const DRONE_SEEK_RADIUS = 480; // maks. odległość CELU od GRACZA - dron "prac
 const DRONE_HOVER_RADIUS = 70; // promień leniwego krążenia nad graczem, gdy brak celu
 const DRONE_HOVER_LIFT = 40; // px nad głową gracza, żeby krążący dron nie nakładał się na jego sylwetkę
 const DRONE_SPRITE_W = 34;
-const DRONE_SPRITE_H = DRONE_SPRITE_W * (90 / 124); // naturalne proporcje assets/critters/drone.png
+const DRONE_SPRITE_H = DRONE_SPRITE_W * (84 / 104); // naturalne proporcje assets/critters/drone.png (Tomek: "2 jest git" - Kenney Space Shooter Redux, Enemies/enemyBlue2.png)
 
 class DroneManager {
   constructor() {

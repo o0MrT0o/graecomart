@@ -143,12 +143,12 @@ const SPRITE_PATH_CANDIDATES = {
   // z Kenney "Space Shooter Remastered" (Power-ups/star_gold.png), ta sama
   // paczka co ship_fighter/fx_soot/fx_smoke_puff wyżej.
   fx_gold_star: ['assets/effects/fx_gold_star.png'],
-  // Dron Recyklingowy (drone.js, SHOP_UPGRADES: 'drone' w economy.js) - ta
-  // sama paczka i ten sam "spodek" kształt co critter_ufo wyżej, ale wariant
-  // BEZ obcego w kokpicie (shipBlue.png, nie shipGreen_manned.png) - czyta
-  // się jako "pusty, zautomatyzowany", nie "żywe stworzenie", a inny kolor
-  // (niebieski, jak domyślny skin gracza) odróżnia go na pierwszy rzut oka
-  // od zielonego, ambientowego UFO.
+  // Dron Recyklingowy (drone.js, SHOP_UPGRADES: 'drone' w economy.js) -
+  // Kenney "Space Shooter Redux" (CC0), Enemies/enemyBlue2.png - Tomek
+  // wybrał z 10 kandydatów pokazanych w galerii ("2 jest git"). Kompaktowa,
+  // owadzia sylwetka z jasnym "czujnikiem" na przedzie - czyta się jako
+  // mały zautomatyzowany zwiadowca, wyraźnie inna (kształt, nie tylko
+  // kolor) od zielonego, ambientowego UFO (critter_ufo wyżej).
   drone: ['assets/critters/drone.png']
 };
 
