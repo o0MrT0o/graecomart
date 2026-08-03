@@ -1171,6 +1171,59 @@ class PlayerController {
     this._roundRect(ctx2, x - w * 0.09, y - h / 2 - h * 0.01, w * 0.18, h * 0.13, w * 0.04);
     ctx2.fill();
 
+    // Tomek: "progres capacity niech będzie widać na oko, nie tylko
+    // rozmiarem" - od poziomu 3 dochodzi DRUGA kieszeń po przeciwnej
+    // stronie plecaka (widoczna zza ramienia razem z główną), a na
+    // maksymalnym poziomie 5 dodatkowo zwinięta mata/derka przypięta pod
+    // spodem na krzyżujących się paskach - typowy język "w pełni
+    // wyposażonego" plecaka, łatwo czytelny nawet w małej skali sprite'a.
+    if (level >= 3) {
+      const px = x + w * 0.4;
+      const py = y + h * 0.02;
+      const pw = w * 0.24;
+      const ph = h * 0.24;
+      ctx2.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx2.lineWidth = 1.6;
+      ctx2.beginPath();
+      ctx2.moveTo(px, py - ph * 0.5);
+      ctx2.lineTo(px, y - h * 0.42);
+      ctx2.stroke();
+      const pocket2Grad = ctx2.createLinearGradient(0, py - ph / 2, 0, py + ph / 2);
+      pocket2Grad.addColorStop(0, '#6D4C41');
+      pocket2Grad.addColorStop(1, '#4E342E');
+      ctx2.fillStyle = pocket2Grad;
+      ctx2.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx2.lineWidth = 1;
+      this._roundRect(ctx2, px - pw / 2, py - ph / 2, pw, ph, w * 0.08);
+      ctx2.fill();
+      ctx2.stroke();
+    }
+
+    if (level >= 5) {
+      const rollY = y + h / 2 + h * 0.1;
+      const rollW = w * 0.9;
+      const rollH = h * 0.2;
+      const rollGrad = ctx2.createLinearGradient(0, rollY - rollH / 2, 0, rollY + rollH / 2);
+      rollGrad.addColorStop(0, '#8D9C4A');
+      rollGrad.addColorStop(0.5, '#6B7A38');
+      rollGrad.addColorStop(1, '#4A5626');
+      ctx2.fillStyle = rollGrad;
+      ctx2.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx2.lineWidth = 1.2;
+      this._roundRect(ctx2, x - rollW / 2, rollY - rollH / 2, rollW, rollH, rollH * 0.5);
+      ctx2.fill();
+      ctx2.stroke();
+
+      ctx2.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx2.lineWidth = 2;
+      [-0.28, 0.28].forEach((frac) => {
+        ctx2.beginPath();
+        ctx2.moveTo(x + w * frac, y + h * 0.4);
+        ctx2.lineTo(x + w * frac * 0.5, rollY);
+        ctx2.stroke();
+      });
+    }
+
     ctx2.restore();
   }
 
