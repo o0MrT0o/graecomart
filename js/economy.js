@@ -150,7 +150,7 @@ const SHOP_UPGRADES = [
     id: 'toxic_filter',
     icon: _kenneyIcon('shield', '#66BB6A'),
     name: 'Filtr Toksyn',
-    description: 'Bez spowolnienia ani utraty przedmiotów w Strefie Skażenia (szkło)',
+    description: 'Bez spowolnienia ani utraty przedmiotów w Strefie Bagiennej (szkło)',
     baseCost: 250,
     costScale: 1.0,
     maxLevel: 1,
@@ -633,7 +633,10 @@ const ACHIEVEMENTS = [
 // balansowania od zera) - zamienia "wszystko naraz" w sekwencję odkryć z
 // rytmem "aha, otworzyło się coś nowego" co kilka minut.
 //
-// Start: tylko łąka (Strefa A) + Recykler. Reszta otwiera się progami.
+// Start: tylko łąka (Strefa Łąkowa) + Recykler. Reszta otwiera się progami.
+// Strefa A jest zawsze odblokowana (bez progu), więc nie ma tu wpisu jak
+// zone_B/C/D - jej nazwa żyje tylko tam, gdzie faktycznie się pojawia
+// (patrz opis skina 'verde' niżej).
 // Progi celowo niskie na początku (pierwsze odblokowanie szybko, żeby od
 // razu było czuć że "coś się dzieje"), potem rozstawione szerzej.
 //
@@ -824,7 +827,7 @@ const PLAYER_SKINS = [
   // używane jako awaryjny kolor kółka/proceduralnej sylwetki, zanim sprite
   // się wczyta (patrz ui.js SkinsPanel/_drawProcedural w tym pliku) - dla
   // skinów Z tint ten sam cel spełnia samo pole tint, previewColor zbędne.
-  { id: 'verde', name: 'Zielony', desc: 'Zielony jak łąka Strefy A', tint: null, body: 'green', previewColor: '#5FBF7A', cost: 2 },
+  { id: 'verde', name: 'Zielony', desc: 'W barwach Strefy Łąkowej', tint: null, body: 'green', previewColor: '#5FBF7A', cost: 2 },
   { id: 'crimson', name: 'Czerwony', desc: 'Czerwony jak żar Pieca Plazmowego', tint: '#E53935', body: 'pink', cost: 2 },
   { id: 'amber', name: 'Bursztynowy', desc: 'Ciepły odcień pustynnego piasku', tint: '#FFB74D', body: 'beige', cost: 4 },
   // Barwy Kryształowej Grani (patrz _bakeCrystalGroundTexture w game.js) -

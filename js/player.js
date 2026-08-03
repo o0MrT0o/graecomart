@@ -609,8 +609,15 @@ class PlayerController {
     if (inHazard) {
       if (this._hazardWarnedZone !== this.currentZone) {
         this._hazardWarnedZone = this.currentZone;
+        // BUGFIX (Tomek: "strefy niech mają swoje własne nazwy"): Strefa B
+        // miała TRZY różne nazwy w grze naraz - "Strefa Bagienna" w
+        // toaście odblokowania (economy.js PROGRESSION_UNLOCKS), ale
+        // "Strefa Skażenia" tutaj I w opisie Filtra Toksyn (economy.js
+        // SHOP_UPGRADES) - gracz widział jedną nazwę przy odblokowaniu, a
+        // zupełnie inną przy wejściu bez sprzętu. Ujednolicone na "Strefa
+        // Bagienna" wszędzie (to ona pojawia się PIERWSZA, przy odblokowaniu).
         const zoneWarnings = {
-          B: 'Strefa Skażenia - bez Filtra Toksyn stracisz przedmiot!',
+          B: 'Strefa Bagienna - bez Filtra Toksyn stracisz przedmiot!',
           C: 'Strefa Atomowa - bez Kombinezonu Radiacyjnego stracisz przedmiot!',
           D: 'Kryształowa Grań - potrzebujesz Filtra I Kombinezonu naraz!'
         };
