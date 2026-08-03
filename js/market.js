@@ -260,15 +260,20 @@ class TradingPost {
     const idx = stack.findIndex((item) => this.acceptsType.includes(item.typeId));
     if (idx === -1) return;
 
+    // BUGFIX: kolejność musi być "sprawdź, czy da się zapłacić, POTEM
+    // zdejmij ze stosu" - było odwrotnie (removeAt PRZED walidacją ceny/
+    // economyManagera), więc gdyby kiedyś acceptsType/TRADING_POST_ACCEPTS
+    // rozjechało się z MARKET_BASE_PRICES (dwie osobne, ręcznie utrzymywane
+    // listy w tym pliku), przedmiot znikał ze stosu bez żadnej wypłaty -
+    // ciche zniszczenie itemu gracza.
+    const peeked = stack.find((item) => this.acceptsType.includes(item.typeId));
+    const price = peeked ? this.market.getPrice(peeked.typeId) : null;
+    if (price === null || !window.economyManager) return;
+
     const item = stack.removeAt(idx);
     if (!item) return;
 
-    const price = this.market.getPrice(item.typeId);
-    if (price === null) return;
-
-    if (window.economyManager) {
-      window.economyManager.sellItem(item.typeId, price, this.x, this.y - this.h / 2);
-    }
+    window.economyManager.sellItem(item.typeId, price, this.x, this.y - this.h / 2);
     Bus.publish(Events.FX_PARTICLES, { x: this.x, y: this.y, color: '#FFD54F', count: 5 });
     this._lastSaleFlash = 220;
   }

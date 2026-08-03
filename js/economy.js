@@ -2045,9 +2045,30 @@ class EconomyManager {
     return result;
   }
 
-  /** Losuje nowe wyzwanie z DAILY_CHALLENGE_TEMPLATES, ostemplowane dzisiejszą datą. */
+  /** true, gdy surowiec szablonu 'collect' faktycznie może się w tej chwili
+   * pojawić w świecie - ta sama bramka co availableTypes w items.js
+   * (_spawnItem), tylko od strony EconomyManager (jedyne dane, jakie tu
+   * mamy - isUnlocked/upgradeLevels). BUGFIX: bez tego filtra wyzwanie typu
+   * "zbierz szkło/metal/papier" potrafiło wylosować się, zanim gracz w
+   * ogóle miał gdzie/z czego ten surowiec zebrać (świeża gra ALBO świeżo
+   * po prestiżu, patrz prestige() zerujące upgradeLevels) - progress
+   * pozostawał na 0 do końca dnia, cel realnie nieosiągalny. */
+  _isChallengeTemplateAvailable(template) {
+    if (template.type !== 'collect') return true;
+    switch (template.material) {
+      case 'glass': return this.isUnlocked('zone_B') && this.isUnlocked('furnace_c');
+      case 'metal': return this.isUnlocked('zone_C') && this.isUnlocked('furnace_c');
+      case 'paper': return (this.upgradeLevels['stage_paper'] || 0) > 0;
+      default: return true; // trash/plastic - zawsze dostępne
+    }
+  }
+
+  /** Losuje nowe wyzwanie z DAILY_CHALLENGE_TEMPLATES (po odfiltrowaniu
+   * szablonów niedostępnych w obecnym stanie gry), ostemplowane dzisiejszą
+   * datą. */
   _generateDailyChallenge() {
-    const template = DAILY_CHALLENGE_TEMPLATES[Math.floor(Math.random() * DAILY_CHALLENGE_TEMPLATES.length)];
+    const pool = DAILY_CHALLENGE_TEMPLATES.filter((t) => this._isChallengeTemplateAvailable(t));
+    const template = pool[Math.floor(Math.random() * pool.length)];
     this.dailyChallenge = {
       dateStr: this._todayDateStr(),
       type: template.type,

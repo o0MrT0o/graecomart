@@ -32,11 +32,44 @@ const OFFLINE_REMINDER_PREVIEW_SECONDS = 30 * 60;
 class OfflineReminderManager {
   constructor(economyManager) {
     this.economyManager = economyManager;
+    this._hiddenAt = null; // timestamp chowania w tło, do wyliczenia nagrody offline przy powrocie
 
     this._onVisibilityChange = () => {
-      if (document.hidden) this._scheduleReminder();
-      else this._cancelReminder();
+      if (document.hidden) {
+        this._hiddenAt = Date.now();
+        this._scheduleReminder();
+      } else {
+        this._cancelReminder();
+        this._onResume();
+      }
     };
+  }
+
+  /** BUGFIX: streak logowania, wyzwanie dnia i nagroda offline były
+   * sprawdzane WYŁĄCZNIE raz przy starcie gry (main.js) - ale Capacitor
+   * WebView normalnie PRZEŻYWA chowanie apki w tło (to samo zdarzenie
+   * visibilitychange co wyżej, nie pełny page load). Gracz, który schował
+   * apkę na noc i wrócił stukając w powiadomienie "wróć po odbiór", trafiał
+   * do wciąż żywej sesji, w której lastLoginDateStr/dailyChallenge.dateStr
+   * były jeszcze wczorajsze - bez toastu streaka, bez nowego wyzwania, bez
+   * modala offline, a przy NASTĘPNYM prawdziwym zimnym starcie różnica dni
+   * wychodziła >1 i streak po cichu się zerował. Wołane więc też tutaj, przy
+   * KAŻDYM powrocie z tła - checkDailyLogin()/checkDailyChallenge() są
+   * jawnie idempotentne (nic nie robią, gdy dzisiaj już sprawdzone), więc
+   * bezpieczne przy powtórnym wywołaniu tego samego dnia. */
+  _onResume() {
+    if (!this.economyManager) return;
+    this.economyManager.checkDailyLogin();
+    this.economyManager.checkDailyChallenge();
+
+    if (this._hiddenAt !== null) {
+      const elapsedMs = Date.now() - this._hiddenAt;
+      this._hiddenAt = null;
+      if (typeof this.economyManager.computeOfflineReward === 'function' && window.uiManager) {
+        const offline = this.economyManager.computeOfflineReward(elapsedMs);
+        if (offline) window.uiManager.showOfflineReward(offline);
+      }
+    }
   }
 
   init() {
