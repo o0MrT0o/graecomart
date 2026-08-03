@@ -30,7 +30,7 @@
  * _ensureJoystickElements). Działa jednocześnie na dotyk i mysz.
  */
 
-const JOYSTICK_KNOB_DIAMETER = 50; // px - wygląd wewnętrznego "drążka"
+const JOYSTICK_KNOB_DIAMETER = 56; // px - wygląd wewnętrznego "drążka" (musi się zgadzać z #joystick-knob w style.css)
 const JOYSTICK_Z_INDEX = 9999; // ponad warstwami gry
 
 // Bazowa prędkość PRZED jakimkolwiek upgrade'em (musi zgadzać się z
@@ -395,16 +395,21 @@ class PlayerController {
       pointerEvents: 'none'
     });
 
+    // BUGFIX/UPGRADE: dawniej ustawiał TU wprost background/border (płaskie
+    // białe kółka) - inline style zawsze wygrywa ze stylesheetem, więc
+    // nadpisywał wygląd z assets/ui/joystick_base.png/joystick_knob.png
+    // (Kenney UI Pack, patrz #joystick-base/#joystick-knob w style.css) tym
+    // samym płaskim CSS, mimo wymiany tekstur. Tylko GEOMETRIA (rozmiar/
+    // wyśrodkowanie) zostaje ustawiana z JS (zależy od joystickRadius,
+    // konfigurowalnego pola instancji) - kolor/tekstura to wyłącznie
+    // stylesheet.
     if (createdBase) {
       const baseDiameter = this.joystickRadius * 2;
       Object.assign(base.style, {
         width: `${baseDiameter}px`,
         height: `${baseDiameter}px`,
         marginLeft: `${-baseDiameter / 2}px`,
-        marginTop: `${-baseDiameter / 2}px`,
-        borderRadius: '50%',
-        background: 'rgba(255, 255, 255, 0.15)',
-        border: '2px solid rgba(255, 255, 255, 0.4)'
+        marginTop: `${-baseDiameter / 2}px`
       });
     }
     if (createdKnob) {
@@ -412,9 +417,7 @@ class PlayerController {
         width: `${JOYSTICK_KNOB_DIAMETER}px`,
         height: `${JOYSTICK_KNOB_DIAMETER}px`,
         marginLeft: `${-JOYSTICK_KNOB_DIAMETER / 2}px`,
-        marginTop: `${-JOYSTICK_KNOB_DIAMETER / 2}px`,
-        borderRadius: '50%',
-        background: 'rgba(255, 255, 255, 0.5)'
+        marginTop: `${-JOYSTICK_KNOB_DIAMETER / 2}px`
       });
     }
 

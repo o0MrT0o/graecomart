@@ -231,24 +231,30 @@ canvas {
     pointer-events: auto;
 }
 
-/* Joystick */
+/* Joystick - Kenney UI Pack (button_round_line/button_round_border, ten sam
+   pakiet co reszta przycisków gry, assets/ui/btn_*.png) zamiast płaskich
+   kółek CSS. Baza jako obrazek TŁA (nie border/background-color) - opacity
+   0.4 na CAŁYM elemencie (nie tylko kolorze) celowo przyciemnia RÓWNIEŻ
+   narysowany na PNG pierścień, więc świat pod spodem wciąż czytelnie
+   prześwituje przez środek, tak jak przy poprzednim czysto-CSS wariancie. */
 #joystick-base {
     position: absolute;
     width: 120px;
     height: 120px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.15);
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    background-image: url('assets/ui/joystick_base.png');
+    background-size: contain;
+    opacity: 0.4;
     pointer-events: none;
     display: none;
 }
 
 #joystick-knob {
     position: absolute;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.5);
+    width: 56px;
+    height: 56px;
+    background-image: url('assets/ui/joystick_knob.png');
+    background-size: contain;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
