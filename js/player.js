@@ -1049,6 +1049,18 @@ class PlayerController {
    * "paskiem" łączącym go wizualnie z plecami zamiast wyglądać jak osobny,
    * oderwany obiekt.
    */
+  /**
+   * BALANS WIZUALNY (Tomek: "ulepszenia dla postaci są za proste, sprawdź
+   * paczki") - przejrzano WSZYSTKIE dostępne paczki Kenney w repo pod kątem
+   * gotowego, noszonego plecaka pasującego stylem do postaci: brak (paczki
+   * to albo kompletne spritesheet'y postaci bez osobnych dodatków, albo
+   * płaskie jednokolorowe ikonki-plakietki UI, albo kafelki środowiska -
+   * żadna nie ma "modułowej odzieży" w tym samym stylu co alien). Zamiast
+   * tego ten sam kawałek geometrii dostał realne cieniowanie (gradient,
+   * jak w machines.js _drawMachineBody) + druga szelka + klamra + kieszeń -
+   * ten sam poziom detalu co maska (_drawGasMask), która już wcześniej
+   * dostała taki przebieg.
+   */
   _drawBackpack(ctx2, bodyTopY, level) {
     const growth = 1 + (level - 1) * 0.12; // 5 poziomów: 1.0 .. ~1.48
     const w = this.radius * 0.5 * growth;
@@ -1058,24 +1070,57 @@ class PlayerController {
 
     ctx2.save();
 
+    // Dwie szelki (nie jedna kreska) - biegną od górnych rogów plecaka w
+    // stronę środka ciała, żeby czytało się jako COŚ NOSZONEGO na plecach,
+    // nie doczepiony z boku pakunek.
     ctx2.strokeStyle = 'rgba(0, 0, 0, 0.35)';
-    ctx2.lineWidth = 2;
-    ctx2.beginPath();
-    ctx2.moveTo(x - w / 2, y);
-    ctx2.lineTo(0, bodyTopY + h * 0.15);
-    ctx2.stroke();
+    ctx2.lineWidth = 2.2;
+    ctx2.lineCap = 'round';
+    [-0.3, 0.22].forEach((frac) => {
+      ctx2.beginPath();
+      ctx2.moveTo(x + w * frac, y - h * 0.42);
+      ctx2.lineTo(0, bodyTopY + h * 0.1);
+      ctx2.stroke();
+    });
 
-    ctx2.fillStyle = '#5D4037';
-    ctx2.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+    // Korpus - gradient góra-dół zamiast płaskiego wypełnienia, żeby miał
+    // wyczuwalną objętość (jaśniejsza górna krawędź, cień u dołu).
+    const bodyGrad = ctx2.createLinearGradient(0, y - h / 2, 0, y + h / 2);
+    bodyGrad.addColorStop(0, '#7A5548');
+    bodyGrad.addColorStop(0.5, '#5D4037');
+    bodyGrad.addColorStop(1, '#3E2723');
+    ctx2.fillStyle = bodyGrad;
+    ctx2.strokeStyle = 'rgba(0, 0, 0, 0.45)';
     ctx2.lineWidth = 1.3;
     this._roundRect(ctx2, x - w / 2, y - h / 2, w, h, w * 0.3);
     ctx2.fill();
     ctx2.stroke();
 
-    // Klapa u góry - drobny detal, żeby czytało się jako plecak, nie po
-    // prostu ciemny prostokąt przy boku.
-    ctx2.fillStyle = '#4E342E';
+    // Boczna kieszeń - mały prostokąt z własnym cieniowaniem, żeby korpus
+    // nie był jednolitą płaszczyzną.
+    const pocketGrad = ctx2.createLinearGradient(0, y, 0, y + h * 0.32);
+    pocketGrad.addColorStop(0, '#6D4C41');
+    pocketGrad.addColorStop(1, '#4E342E');
+    ctx2.fillStyle = pocketGrad;
+    this._roundRect(ctx2, x - w * 0.32, y + h * 0.08, w * 0.64, h * 0.3, w * 0.14);
+    ctx2.fill();
+
+    // Klapa u góry - z gradientem i cienką jasną krawędzią (szew).
+    const flapGrad = ctx2.createLinearGradient(0, y - h / 2 - h * 0.14, 0, y - h / 2 + h * 0.16);
+    flapGrad.addColorStop(0, '#5D4037');
+    flapGrad.addColorStop(1, '#3E2723');
+    ctx2.fillStyle = flapGrad;
     this._roundRect(ctx2, x - w * 0.36, y - h / 2 - h * 0.14, w * 0.72, h * 0.3, w * 0.16);
+    ctx2.fill();
+    ctx2.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx2.lineWidth = 1;
+    this._roundRect(ctx2, x - w * 0.36, y - h / 2 - h * 0.14, w * 0.72, h * 0.3, w * 0.16);
+    ctx2.stroke();
+
+    // Klamra na klapie - mały jasny prostokąt, sprzedaje "prawdziwy sprzęt"
+    // zamiast gładkiej bryły.
+    ctx2.fillStyle = '#FFCA28';
+    this._roundRect(ctx2, x - w * 0.09, y - h / 2 - h * 0.01, w * 0.18, h * 0.13, w * 0.04);
     ctx2.fill();
 
     ctx2.restore();
@@ -1094,7 +1139,14 @@ class PlayerController {
     ctx2.save();
     ctx2.translate(0, topY);
 
-    ctx2.fillStyle = '#FFB300';
+    // Kopuła - radialny gradient (jasny punkt w lewym górnym rogu, jak
+    // światło padające z góry), zamiast płaskiego wypełnienia - ten sam
+    // "obiekt ma objętość" zabieg co _drawBackpack/machines.js.
+    const domeGrad = ctx2.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r * 1.1);
+    domeGrad.addColorStop(0, '#FFD54F');
+    domeGrad.addColorStop(0.6, '#FFB300');
+    domeGrad.addColorStop(1, '#E68900');
+    ctx2.fillStyle = domeGrad;
     ctx2.strokeStyle = 'rgba(0, 0, 0, 0.4)';
     ctx2.lineWidth = 1.3;
     ctx2.beginPath();
@@ -1105,16 +1157,34 @@ class PlayerController {
     ctx2.fill();
     ctx2.stroke();
 
+    // Nity wzdłuż dolnej krawędzi kopuły - drobny, ale realny "sprzętowy"
+    // detal, którego płaska wersja nie miała w ogóle.
+    ctx2.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    [-0.62, -0.3, 0.3, 0.62].forEach((frac) => {
+      ctx2.beginPath();
+      ctx2.arc(r * frac, r * 0.12, r * 0.045, 0, Math.PI * 2);
+      ctx2.fill();
+    });
+
     ctx2.fillStyle = 'rgba(93, 64, 55, 0.5)';
     ctx2.fillRect(-r, r * 0.05, r * 2, r * 0.17);
 
-    // Lampka - pulsuje, żeby czytała się jako WŁĄCZONA, nie naklejka.
+    // Lampka - pierścień poświaty pod spodem (radialny gradient) + jasny
+    // rdzeń, zamiast pojedynczego płaskiego kółka - czyta się jako źródło
+    // światła, nie naklejka, nawet zanim pulsowanie zacznie działać.
     const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 260);
     ctx2.save();
     ctx2.globalAlpha = pulse;
+    const glowGrad = ctx2.createRadialGradient(0, -r * 0.15, 0, 0, -r * 0.15, r * 0.4);
+    glowGrad.addColorStop(0, 'rgba(255, 249, 196, 0.9)');
+    glowGrad.addColorStop(1, 'rgba(255, 249, 196, 0)');
+    ctx2.fillStyle = glowGrad;
+    ctx2.beginPath();
+    ctx2.arc(0, -r * 0.15, r * 0.4, 0, Math.PI * 2);
+    ctx2.fill();
     ctx2.fillStyle = '#FFF9C4';
     ctx2.beginPath();
-    ctx2.arc(0, -r * 0.15, r * 0.22, 0, Math.PI * 2);
+    ctx2.arc(0, -r * 0.15, r * 0.2, 0, Math.PI * 2);
     ctx2.fill();
     ctx2.restore();
 
@@ -1177,26 +1247,73 @@ class PlayerController {
     }
 
     ctx2.save();
-    ctx2.fillStyle = '#F9A825';
     ctx2.strokeStyle = 'rgba(0, 0, 0, 0.4)';
     ctx2.lineWidth = 1.2;
     [leftX, rightX].forEach((dx) => {
-      this._roundRect(ctx2, dx - bootW / 2, groundY - bootH * 0.7, bootW, bootH, bootW * 0.3);
+      const bootTop = groundY - bootH * 0.7;
+      // Cholewka - gradient góra-dół (jaśniejsza cholewka, ciemniejsza
+      // podeszwa), zamiast jednego płaskiego koloru.
+      const grad = ctx2.createLinearGradient(0, bootTop, 0, groundY);
+      grad.addColorStop(0, '#FFC947');
+      grad.addColorStop(0.65, '#F9A825');
+      grad.addColorStop(1, '#B36A00');
+      ctx2.fillStyle = grad;
+      this._roundRect(ctx2, dx - bootW / 2, bootTop, bootW, bootH, bootW * 0.3);
       ctx2.fill();
       ctx2.stroke();
+
+      // Podeszwa - ciemny pasek u samego dołu, sprzedaje "but", nie tylko
+      // kolorowy prostokąt.
+      ctx2.fillStyle = 'rgba(62, 39, 35, 0.85)';
+      this._roundRect(ctx2, dx - bootW / 2, groundY - bootH * 0.22, bootW, bootH * 0.22, bootW * 0.14);
+      ctx2.fill();
+
+      // Pasek z klamerką w połowie cholewki.
+      ctx2.fillStyle = 'rgba(62, 39, 35, 0.55)';
+      ctx2.fillRect(dx - bootW / 2, bootTop + bootH * 0.32, bootW, bootH * 0.13);
+      ctx2.fillStyle = '#FFECB3';
+      ctx2.fillRect(dx - bootW * 0.1, bootTop + bootH * 0.3, bootW * 0.2, bootH * 0.17);
     });
     ctx2.restore();
   }
 
-  /** Pasy bezpieczeństwa w poprzek torsu - prosty, czytelny sygnał
-   * "wyposażenie ochronne" bez przerabiania całej sylwetki gracza. */
+  /** Pas bezpieczeństwa w poprzek torsu + centralna klamra - czytelny sygnał
+   * "wyposażenie ochronne" bez przerabiania całej sylwetki gracza. Gradient +
+   * klamra (zamiast jednej płaskiej kreski) - ten sam poziom detalu co
+   * reszta gearu po przeglądzie paczek (patrz komentarz przy _drawBackpack).
+   *
+   * BUGFIX (Tomek: "pasek [...] niech przylega do końców postaci po bokach
+   * tułowia"): szerokość liczona z this.radius (parametr KOLIZJI/gry, nie
+   * rozmiar narysowanej sylwetki) była kompletnie niezależna od faktycznej
+   * szerokości sprite'a w tym miejscu - pas nigdy nie sięgał realnych
+   * krawędzi ciała. Zmierzone wprost na pikselach assets/player.png (66x92)
+   * na wysokości fraction=0.78 (tam, gdzie pas jest zakotwiczony, patrz
+   * wywołanie w _drawGearOverlays): sylwetka zajmuje tam ~85% pełnej
+   * szerokości narysowanego sprite'a (_getSpriteDrawSize().w) - reszta gearu
+   * (maska) już liczy się z tego samego źródła, więc pas jest teraz spójny
+   * z resztą, zamiast osobnego, niezależnie wymyślonego wymiaru. */
   _drawHazmatTrim(ctx2, bodyY) {
-    const w = this.radius * 1.3;
+    const { w: spriteW } = this._getSpriteDrawSize();
+    const w = spriteW * 0.85;
     ctx2.save();
-    ctx2.fillStyle = '#FFB300';
+
+    const beltGrad = ctx2.createLinearGradient(0, bodyY, 0, bodyY + 5);
+    beltGrad.addColorStop(0, '#FFC947');
+    beltGrad.addColorStop(1, '#E68900');
+    ctx2.fillStyle = beltGrad;
     ctx2.fillRect(-w / 2, bodyY, w, 5);
     ctx2.fillStyle = 'rgba(33, 33, 33, 0.6)';
     ctx2.fillRect(-w / 2, bodyY + 5, w, 2);
+
+    // Klamra na środku pasa - mały metaliczny prostokąt z ciemną obwódką,
+    // sprzedaje "prawdziwy pas ochronny", nie tylko kolorową kreskę.
+    const buckleW = w * 0.14;
+    ctx2.fillStyle = '#CFD8DC';
+    ctx2.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx2.lineWidth = 1;
+    ctx2.fillRect(-buckleW / 2, bodyY - 1.5, buckleW, 8);
+    ctx2.strokeRect(-buckleW / 2, bodyY - 1.5, buckleW, 8);
+
     ctx2.restore();
   }
 
