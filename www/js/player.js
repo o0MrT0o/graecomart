@@ -1026,8 +1026,15 @@ class PlayerController {
     if (eco.hasUpgrade('headlamp')) {
       this._drawHelmet(ctx2, this._getBodyPointY(0));
     }
+    // BUGFIX (Tomek: "ta brązowa butle z rurką na hełmie źle wygląda"):
+    // 0.47 (blisko szyi/maski) + szelki rysowane AŻ do punktu przy głowie
+    // czytały się jako osobna "butla z rurką" doczepiona do hełmu, nie jako
+    // plecak na plecach. Ten sam powód i ten sam kierunek poprawki co
+    // wcześniejszy BUGFIX "kamizelka na szyi" przy pasie (0.6 -> 0.78) -
+    // 0.62 zdejmuje plecak wyraźnie niżej, na wysokość torsu, z dala od
+    // klastra głowa/hełm/maska.
     if (eco.upgradeLevels && eco.upgradeLevels.capacity > 0) {
-      this._drawBackpack(ctx2, this._getBodyPointY(0.47), eco.upgradeLevels.capacity);
+      this._drawBackpack(ctx2, this._getBodyPointY(0.62), eco.upgradeLevels.capacity);
     }
     if (eco.hasUpgrade('boots')) {
       this._drawBoots(ctx2);
@@ -1070,16 +1077,21 @@ class PlayerController {
 
     ctx2.save();
 
-    // Dwie szelki (nie jedna kreska) - biegną od górnych rogów plecaka w
-    // stronę środka ciała, żeby czytało się jako COŚ NOSZONEGO na plecach,
-    // nie doczepiony z boku pakunek.
+    // BUGFIX (Tomek: "brązowa butle z rurką"): szelki wcześniej biegły AŻ do
+    // punktu blisko głowy - z daleka czytały się jako osobna "rurka"
+    // wychodząca z plecaka w stronę hełmu, nie jak pasek noszony na
+    // ramieniu. Teraz to KRÓTKIE kreski TYLKO przy górnej krawędzi plecaka
+    // (sugerują "tu zaczyna się szelka i znika za ramieniem"), bez ciągnięcia
+    // linii przez pół sylwetki do głowy.
     ctx2.strokeStyle = 'rgba(0, 0, 0, 0.35)';
     ctx2.lineWidth = 2.2;
     ctx2.lineCap = 'round';
-    [-0.3, 0.22].forEach((frac) => {
+    [-0.28, 0.2].forEach((frac) => {
+      const sx = x + w * frac;
+      const sy = y - h / 2 + h * 0.06;
       ctx2.beginPath();
-      ctx2.moveTo(x + w * frac, y - h * 0.42);
-      ctx2.lineTo(0, bodyTopY + h * 0.1);
+      ctx2.moveTo(sx, sy);
+      ctx2.lineTo(sx - w * 0.22, sy - h * 0.16);
       ctx2.stroke();
     });
 
