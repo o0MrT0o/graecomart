@@ -122,6 +122,29 @@ const PLAYER_WALK_LEG_FRAMES = [
   { leftFrac: 0.438, rightFrac: 0.554, footFrac: 0.989 },
   { leftFrac: 0.358, rightFrac: 0.620, footFrac: 0.989 }
 ];
+
+/**
+ * BUGFIX (Tomek: "na alien body skin to jest w ogóle wszystko nie tak z
+ * tych ulepszeń"): _drawBoots (gałąź bezruchu) i _drawHazmatTrim liczyły
+ * pozycję/szerokość z ułamkami zmierzonymi WYŁĄCZNIE na assets/player.png
+ * (domyślne ciało) i zakładały (błędnie), że alien body ma "niemal
+ * identyczny zarys w tym samym płótnie". Sprawdzone bezpośrednio pikselami:
+ * pink/green/beige są identyczne między sobą (yellow to ten sam kształt,
+ * tylko przesunięty przez wcześniejszy pad_top fix), ale RÓŻNIĄ SIĘ mocno
+ * od domyślnego ciała - ręce zwisają WZDŁUŻ tułowia (nie sterczą na boki na
+ * wysokości pasa jak u domyślnej postaci), więc i szerokość "samego tułowia"
+ * i pozycja nóg wypadają gdzie indziej. Zmierzone wprost na
+ * assets/player/alien_pink.png (reprezentatywne dla całej rodziny):
+ * - nogi (rzędy w pełni rozdzielone, y=84-91): środek lewej ~0.215,
+ *   prawej ~0.674, najniższy piksel ~0.989 wysokości.
+ * - tułów BEZ rąk (rzędy y=74-82, ręce już się skończyły, nogi jeszcze się
+ *   nie rozdzieliły): szerokość ~0.586 pełnej szerokości sprite'a.
+ */
+const PLAYER_ALIEN_BOOT_LEFT_FRAC = 0.215;
+const PLAYER_ALIEN_BOOT_RIGHT_FRAC = 0.674;
+const PLAYER_ALIEN_BOOT_FOOT_FRAC = 0.989;
+const PLAYER_ALIEN_TORSO_WIDTH_FRAC = 0.586;
+
 // Docelowa wysokość rysowanego sprite'a (px) - szerokość liczona proporcjonalnie
 // z naturalnych wymiarów obrazka, żeby nie zniekształcić postaci.
 const PLAYER_SPRITE_HEIGHT = 84;
@@ -816,6 +839,16 @@ class PlayerController {
     ctx2.rotate(lean);
     ctx2.scale(this.facing, 1);
 
+    // Plecak PRZED sylwetką (Tomek: "damy go bardziej na plecy") - postać
+    // rysowana zaraz potem zasłania środek plecaka, więc widać tylko
+    // wystający fragment zza ramienia, jak coś NOSZONEGO na plecach, a nie
+    // doczepiony z boku pakunek (patrz komentarz przy _drawBackpack o
+    // wcześniejszym x-offsecie).
+    const eco = window.economyManager;
+    if (eco && eco.upgradeLevels && eco.upgradeLevels.capacity > 0) {
+      this._drawBackpack(ctx2, this._getBodyPointY(0.62), eco.upgradeLevels.capacity);
+    }
+
     if (this._spriteLoaded) {
       this._drawSprite(ctx2);
     } else {
@@ -1020,21 +1053,13 @@ class PlayerController {
     if (eco.hasUpgrade('toxic_filter')) {
       this._drawGasMask(ctx2, this._getBodyPointY(0.32));
     }
-    // Kask NAD maską (patrz _drawHelmet - podniesiony ponad nią), plecak Z
-    // BOKU torsu, buty PRZY stopach - żaden z pięciu możliwych gearów
-    // (plecak/kask/maska/pasy/buty) nie nakłada się na inny.
+    // Kask NAD maską (patrz _drawHelmet - podniesiony ponad nią), buty PRZY
+    // stopach - żaden z gearów rysowanych TU (kask/maska/pasy/buty) nie
+    // nakłada się na inny. Plecak NIE jest już tutaj - rysuje się PRZED
+    // sylwetką w draw(), żeby postać go częściowo zasłaniała (patrz
+    // komentarz tam i przy _drawBackpack).
     if (eco.hasUpgrade('headlamp')) {
       this._drawHelmet(ctx2, this._getBodyPointY(0));
-    }
-    // BUGFIX (Tomek: "ta brązowa butle z rurką na hełmie źle wygląda"):
-    // 0.47 (blisko szyi/maski) + szelki rysowane AŻ do punktu przy głowie
-    // czytały się jako osobna "butla z rurką" doczepiona do hełmu, nie jako
-    // plecak na plecach. Ten sam powód i ten sam kierunek poprawki co
-    // wcześniejszy BUGFIX "kamizelka na szyi" przy pasie (0.6 -> 0.78) -
-    // 0.62 zdejmuje plecak wyraźnie niżej, na wysokość torsu, z dala od
-    // klastra głowa/hełm/maska.
-    if (eco.upgradeLevels && eco.upgradeLevels.capacity > 0) {
-      this._drawBackpack(ctx2, this._getBodyPointY(0.62), eco.upgradeLevels.capacity);
     }
     if (eco.hasUpgrade('boots')) {
       this._drawBoots(ctx2);
@@ -1049,30 +1074,25 @@ class PlayerController {
    * BUGFIX: pierwsza wersja rysowała go WYŚRODKOWANY i PRZED sylwetką (żeby
    * "wystawał zza pleców") - ale przy realnych wymiarach sprite'a
    * (66x92, ~60px szerokości narysowanej) mały, wyśrodkowany prostokąt
-   * mieścił się CAŁKOWICIE w cieniu korpusu i nigdy nie było go widać.
-   * Teraz rysowany PO sylwetce (jak reszta gearu), przesunięty WYRAŹNIE w
-   * bok od środka - zawsze w pełni widoczny, niezależnie od dokładnej
-   * szerokości aktywnej ścieżki rysowania (sprite/procedural), z cienkim
-   * "paskiem" łączącym go wizualnie z plecami zamiast wyglądać jak osobny,
-   * oderwany obiekt.
-   */
-  /**
-   * BALANS WIZUALNY (Tomek: "ulepszenia dla postaci są za proste, sprawdź
-   * paczki") - przejrzano WSZYSTKIE dostępne paczki Kenney w repo pod kątem
-   * gotowego, noszonego plecaka pasującego stylem do postaci: brak (paczki
-   * to albo kompletne spritesheet'y postaci bez osobnych dodatków, albo
-   * płaskie jednokolorowe ikonki-plakietki UI, albo kafelki środowiska -
-   * żadna nie ma "modułowej odzieży" w tym samym stylu co alien). Zamiast
-   * tego ten sam kawałek geometrii dostał realne cieniowanie (gradient,
-   * jak w machines.js _drawMachineBody) + druga szelka + klamra + kieszeń -
-   * ten sam poziom detalu co maska (_drawGasMask), która już wcześniej
-   * dostała taki przebieg.
+   * mieścił się CAŁKOWICIE w cieniu korpusu i nigdy nie było go widać, więc
+   * przesunięto go WYRAŹNIE w bok i za sylwetkę (rysowany PO niej) - zawsze
+   * w pełni widoczny, ale czytał się jako doczepiony z boku pakunek, nie
+   * plecak NA plecach.
+   *
+   * BUGFIX #2 (Tomek: "co robimy z plecakiem, może go bardziej na plecy
+   * damy"): wrócono do PRZED-sylwetkowego rysowania (patrz wywołanie w
+   * draw()), ale tym razem z x na tyle bliskim środka, żeby postać
+   * ZASŁANIAŁA środek plecaka, a widoczny zostawał tylko fragment
+   * wystający zza ramienia - kompromis między pierwszą wersją (całkiem
+   * znikał) a drugą (cały czas widoczny obok, jak osobny pakunek). Trochę
+   * większa bazowa szerokość niż poprzednio, żeby wystający fragment nadal
+   * wyraźnie czytał się jako plecak po częściowym zasłonięciu.
    */
   _drawBackpack(ctx2, bodyTopY, level) {
     const growth = 1 + (level - 1) * 0.12; // 5 poziomów: 1.0 .. ~1.48
-    const w = this.radius * 0.5 * growth;
+    const w = this.radius * 0.75 * growth;
     const h = this.radius * 0.8 * growth;
-    const x = this.radius * 1.05;
+    const x = this.radius * 0.68;
     const y = bodyTopY + h * 0.3;
 
     ctx2.save();
@@ -1262,9 +1282,13 @@ class PlayerController {
       groundY = footY - h * (1 - frame.footFrac);
     } else {
       const { w, h } = this._getSpriteDrawSize();
-      leftX = (0.318 - 0.5) * w;
-      rightX = (0.697 - 0.5) * w;
-      groundY = footY - h * (1 - 0.989);
+      const alien = this._isAlienBodyActive();
+      const leftFrac = alien ? PLAYER_ALIEN_BOOT_LEFT_FRAC : 0.318;
+      const rightFrac = alien ? PLAYER_ALIEN_BOOT_RIGHT_FRAC : 0.697;
+      const footFrac = alien ? PLAYER_ALIEN_BOOT_FOOT_FRAC : 0.989;
+      leftX = (leftFrac - 0.5) * w;
+      rightX = (rightFrac - 0.5) * w;
+      groundY = footY - h * (1 - footFrac);
     }
 
     ctx2.save();
@@ -1327,7 +1351,7 @@ class PlayerController {
    */
   _drawHazmatTrim(ctx2, bodyY) {
     const { w: spriteW } = this._getSpriteDrawSize();
-    const w = spriteW * 0.485;
+    const w = spriteW * (this._isAlienBodyActive() ? PLAYER_ALIEN_TORSO_WIDTH_FRAC : 0.485);
     ctx2.save();
 
     const beltGrad = ctx2.createLinearGradient(0, bodyY, 0, bodyY + 5);
@@ -1554,6 +1578,16 @@ class PlayerController {
     const baked = this._tintedSprites[skinId];
     if (!baked) return null;
     return useWalk ? baked.walk : baked.static;
+  }
+
+  /** true, gdy aktywny skin siedzi na jednym z PLAYER_ALIEN_BODY_IDS (nie na
+   * domyślnym ciele) - patrz komentarz przy PLAYER_ALIEN_BOOT_LEFT_FRAC dla
+   * powodu, dlaczego gear potrzebuje osobnych ułamków dla tej rodziny. */
+  _isAlienBodyActive() {
+    const eco = window.economyManager;
+    if (!eco || !window.PLAYER_SKINS) return false;
+    const skin = window.PLAYER_SKINS.find((s) => s.id === eco.selectedSkin);
+    return !!(skin && skin.body);
   }
 
   /**
