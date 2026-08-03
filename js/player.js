@@ -74,27 +74,36 @@ const PLAYER_WALK_SPRITE_CANDIDATES = ['assets/player_walk.png'];
 const PLAYER_WALK_FRAME_COUNT = 11;
 
 // --- Ciała skinów (Kenney "Platformer Art Extended" - Alien sprites) -------
-// Cztery kolory PRAWDZIWIE innej sylwetki (nie tylko przebarwienie tego
+// Trzy kolory PRAWDZIWIE innej sylwetki (nie tylko przebarwienie tego
 // samego sprite'a) - patrz PLAYER_SKINS w economy.js (pole `body`). Ten sam
 // rozmiar/rodzina co assets/player.png (66x92, "alien w hełmie") - Blue z tej
 // paczki to praktycznie już domyślny wygląd gracza, więc NIE dublujemy go
-// jako osobny skin, tylko wykorzystujemy pozostałe 4 kolory. Statyczna klatka
+// jako osobny skin, tylko wykorzystujemy pozostałe kolory. Statyczna klatka
 // (idle) i 2-klatkowy pasek chodu (walk1/walk2, bez precyzyjnej 11-klatkowej
 // animacji nóg jak przy domyślnym ciele - patrz PLAYER_ALIEN_WALK_FRAME_COUNT
 // i _drawBoots) - wystarczające "poruszanie się", bez konieczności ręcznego
-// mierzenia pozycji stóp w KAŻDEJ klatce dla 4 dodatkowych sylwetek.
-const PLAYER_ALIEN_BODY_IDS = ['beige', 'green', 'pink', 'yellow'];
+// mierzenia pozycji stóp w KAŻDEJ klatce dla dodatkowych sylwetek.
+//
+// BUGFIX (Tomek: "żółty jest za mały usuń go"): był tu też 'yellow' - jego
+// źródłowa klatka miała inną wysokość niż pink/green/beige, a łatka z
+// poprzedniej sesji (dopchanie pustego marginesu do wspólnego rozmiaru
+// płótna) naprawiła TYLKO pozycję stóp, nie samą skalę - drawImage()
+// skaluje całe płótno do jednego stałego rozmiaru niezależnie od tego, ile
+// z niego jest nieprzezroczyste, więc postać i tak wychodziła ~11% za mała
+// (mniej "prawdziwej" grafiki w tym samym płótnie = mniejsza narysowana
+// sylwetka po przeskalowaniu). Zamiast kolejnej łatki na tym samym, kruchym
+// assetcie - usunięty; 'gold' (jedyny skin, który go używał) wrócił do
+// domyślnego ciała z tintem (patrz PLAYER_SKINS w economy.js).
+const PLAYER_ALIEN_BODY_IDS = ['beige', 'green', 'pink'];
 const PLAYER_ALIEN_SPRITE_SRC = {
   beige: 'assets/player/alien_beige.png',
   green: 'assets/player/alien_green.png',
-  pink: 'assets/player/alien_pink.png',
-  yellow: 'assets/player/alien_yellow.png'
+  pink: 'assets/player/alien_pink.png'
 };
 const PLAYER_ALIEN_WALK_SPRITE_SRC = {
   beige: 'assets/player/alien_beige_walk.png',
   green: 'assets/player/alien_green_walk.png',
-  pink: 'assets/player/alien_pink_walk.png',
-  yellow: 'assets/player/alien_yellow_walk.png'
+  pink: 'assets/player/alien_pink_walk.png'
 };
 const PLAYER_ALIEN_WALK_FRAME_COUNT = 2;
 /**

@@ -831,7 +831,18 @@ const PLAYER_SKINS = [
   // nagroda-nawiązanie do najtrudniej dostępnej strefy, nie wymaga jednak
   // faktycznego jej odblokowania (kupowana wyłącznie za Rdzenie, jak reszta).
   { id: 'crystal', name: 'Kryształowy', desc: 'W barwach Kryształowej Grani', tint: '#B388FF', body: 'pink', cost: 8 },
-  { id: 'gold', name: 'Złoty', desc: 'Dla tych, którzy zebrali sporo Rdzeni', tint: null, body: 'yellow', previewColor: '#F5C542', cost: 15 },
+  // BUGFIX (Tomek: "żółty jest za mały usuń go"): body:'yellow' (jedyny
+  // skin, który go używał) renderował się ~11% mniejszy niż reszta -
+  // wcześniejsza próba naprawy (pad_top 10px na alien_yellow.png, patrz
+  // historia w commitach) wyrównała POZYCJĘ stóp, ale drawImage() skaluje
+  // CAŁE płótno do jednego stałego rozmiaru docelowego niezależnie od tego,
+  // ile z niego jest faktycznie nieprzezroczyste - dopchane 10px pustego
+  // marginesu zmniejszyło więc UDZIAŁ prawdziwej grafiki w płótnie, czyniąc
+  // narysowaną postać mniejszą, nie tej samej wielkości. Zamiast kolejnej
+  // łatki na tym samym, kruchym assetcie: wraca do domyślnego ciała (tint
+  // zamiast natywnego koloru paczki) - ten sam złoty odcień co dawny
+  // previewColor, teraz jako realny tint zamiast samego kolora zastępczego.
+  { id: 'gold', name: 'Złoty', desc: 'Dla tych, którzy zebrali sporo Rdzeni', tint: '#F5C542', body: null, cost: 15 },
   // Wydarzenie sezonowe "Deszcz Meteorytów" (events.js) - kupowalny WYŁĄCZNIE
   // gdy trwa (sobota/niedziela wg zegara urządzenia), ale raz kupiony
   // zostaje NA STAŁE (unlockedSkins się nie zeruje) - jak każdy inny skin,
