@@ -1993,7 +1993,12 @@ class SkinsPanel {
    */
   _buildPreviewCanvas(skin) {
     const pc = window.playerController;
-    const srcImg = skin.tint && pc && pc._tintedSprites[skin.id]
+    // BUGFIX: warunek sprawdzał WYŁĄCZNIE skin.tint - skiny z prawdziwie
+    // innym ciałem, ale BEZ przebarwienia (patrz PLAYER_SKINS.body w
+    // economy.js, np. 'verde'/'gold' - natywny kolor paczki, tint:null)
+    // wpadały w gałąź "brak upieczonej kopii" i pokazywały domyślne ciało
+    // gracza zamiast wybranego skina.
+    const srcImg = (skin.tint || skin.body) && pc && pc._tintedSprites[skin.id]
       ? pc._tintedSprites[skin.id].static
       : (pc && pc._spriteLoaded ? pc._spriteImg : null);
     if (!srcImg || !srcImg.width) return null;
@@ -2015,7 +2020,7 @@ class SkinsPanel {
     row.className = 'ui-shop-item';
     if (s.selected) row.classList.add('ui-shop-item--afford');
 
-    const iconFallback = `<span style="display:inline-block;width:26px;height:26px;border-radius:50%;background:${s.tint || '#5C85D6'}"></span>`;
+    const iconFallback = `<span style="display:inline-block;width:26px;height:26px;border-radius:50%;background:${s.tint || s.previewColor || '#5C85D6'}"></span>`;
     row.innerHTML = `
       <div class="ui-shop-item__icon" aria-hidden="true">${iconFallback}</div>
       <div class="ui-shop-item__info">

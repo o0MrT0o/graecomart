@@ -72,6 +72,31 @@ const BOOTS_HAZARD_GRACE_MULT = 1.5;
 const PLAYER_SPRITE_CANDIDATES = ['assets/player.png'];
 const PLAYER_WALK_SPRITE_CANDIDATES = ['assets/player_walk.png'];
 const PLAYER_WALK_FRAME_COUNT = 11;
+
+// --- Ciała skinów (Kenney "Platformer Art Extended" - Alien sprites) -------
+// Cztery kolory PRAWDZIWIE innej sylwetki (nie tylko przebarwienie tego
+// samego sprite'a) - patrz PLAYER_SKINS w economy.js (pole `body`). Ten sam
+// rozmiar/rodzina co assets/player.png (66x92, "alien w hełmie") - Blue z tej
+// paczki to praktycznie już domyślny wygląd gracza, więc NIE dublujemy go
+// jako osobny skin, tylko wykorzystujemy pozostałe 4 kolory. Statyczna klatka
+// (idle) i 2-klatkowy pasek chodu (walk1/walk2, bez precyzyjnej 11-klatkowej
+// animacji nóg jak przy domyślnym ciele - patrz PLAYER_ALIEN_WALK_FRAME_COUNT
+// i _drawBoots) - wystarczające "poruszanie się", bez konieczności ręcznego
+// mierzenia pozycji stóp w KAŻDEJ klatce dla 4 dodatkowych sylwetek.
+const PLAYER_ALIEN_BODY_IDS = ['beige', 'green', 'pink', 'yellow'];
+const PLAYER_ALIEN_SPRITE_SRC = {
+  beige: 'assets/player/alien_beige.png',
+  green: 'assets/player/alien_green.png',
+  pink: 'assets/player/alien_pink.png',
+  yellow: 'assets/player/alien_yellow.png'
+};
+const PLAYER_ALIEN_WALK_SPRITE_SRC = {
+  beige: 'assets/player/alien_beige_walk.png',
+  green: 'assets/player/alien_green_walk.png',
+  pink: 'assets/player/alien_pink_walk.png',
+  yellow: 'assets/player/alien_yellow_walk.png'
+};
+const PLAYER_ALIEN_WALK_FRAME_COUNT = 2;
 /**
  * Dokładna pozycja stóp (lewa/prawa noga, jako ułamek szerokości/wysokości
  * KLATKI 71x95) w KAŻDEJ z 11 klatek assets/player_walk.png - zmierzone
@@ -223,14 +248,18 @@ class PlayerController {
     this._inHazard = false;
 
     // --- Sprite postaci (z bezpiecznym fallbackiem na rysowanie proceduralne) --
-    // spritesReady - rozwiązuje się gdy OBA obrazki skończą próby wczytania
-    // (sukces LUB ostateczna porażka - i tak mamy fallback proceduralny),
-    // czytane przez main.js do ukrycia ekranu ładowania (patrz game.assetsReady).
+    // spritesReady - rozwiązuje się gdy WSZYSTKIE obrazki (domyślne ciało +
+    // 4 alternatywne ciała skinów, patrz PLAYER_ALIEN_BODY_IDS) skończą próby
+    // wczytania (sukces LUB ostateczna porażka - i tak mamy fallback
+    // proceduralny), czytane przez main.js do ukrycia ekranu ładowania
+    // (patrz game.assetsReady). Ciała skinów wchodzą w TĘ SAMĄ blokującą
+    // obietnicę co domyślny sprite (nie osobno w tle) - to małe pliki (kilka
+    // KB), a bez tego wybór skina z jeszcze niegotowym ciałem pokazałby na
+    // chwilę pusty/domyślny sprite zamiast wybranego.
+    const readyPromises = [];
     let resolveSpriteReady, resolveWalkReady;
-    this.spritesReady = Promise.all([
-      new Promise((resolve) => { resolveSpriteReady = resolve; }),
-      new Promise((resolve) => { resolveWalkReady = resolve; }),
-    ]);
+    readyPromises.push(new Promise((resolve) => { resolveSpriteReady = resolve; }));
+    readyPromises.push(new Promise((resolve) => { resolveWalkReady = resolve; }));
 
     this._spriteImg = new Image();
     this._spriteLoaded = false;
@@ -253,11 +282,40 @@ class PlayerController {
       resolveWalkReady();
     });
 
-    // --- Skiny postaci (economy.js: PLAYER_SKINS/selectedSkin) - przebarwione
-    // kopie sprite'a upieczone RAZ na skin, dopiero gdy oryginalne obrazki
-    // skończą się wczytywać (patrz _bakeSkinTints) - ten sam duch "upiecz raz,
-    // blituj wiele razy" co _bakeWorldBackground/_bakeCloudTexture w game.js.
-    this._tintedSprites = {}; // { skinId: { static: canvas|null, walk: canvas|null } }
+    // --- Alternatywne ciała skinów (patrz PLAYER_ALIEN_BODY_IDS wyżej) -------
+    this._alienBodies = {}; // { bodyId: { staticImg, walkImg, staticLoaded, walkLoaded } }
+    PLAYER_ALIEN_BODY_IDS.forEach((bodyId) => {
+      const entry = { staticImg: new Image(), walkImg: new Image(), staticLoaded: false, walkLoaded: false };
+      this._alienBodies[bodyId] = entry;
+
+      let resolveBodyStatic, resolveBodyWalk;
+      readyPromises.push(new Promise((resolve) => { resolveBodyStatic = resolve; }));
+      readyPromises.push(new Promise((resolve) => { resolveBodyWalk = resolve; }));
+
+      this._loadImageWithFallbacks(entry.staticImg, [PLAYER_ALIEN_SPRITE_SRC[bodyId]], () => {
+        entry.staticLoaded = true;
+        resolveBodyStatic();
+      }, () => {
+        console.warn('[PlayerController] Nie udało się wczytać ciała skina: ' + PLAYER_ALIEN_SPRITE_SRC[bodyId]);
+        resolveBodyStatic();
+      });
+      this._loadImageWithFallbacks(entry.walkImg, [PLAYER_ALIEN_WALK_SPRITE_SRC[bodyId]], () => {
+        entry.walkLoaded = true;
+        resolveBodyWalk();
+      }, () => {
+        console.warn('[PlayerController] Nie udało się wczytać chodu ciała skina: ' + PLAYER_ALIEN_WALK_SPRITE_SRC[bodyId]);
+        resolveBodyWalk();
+      });
+    });
+
+    this.spritesReady = Promise.all(readyPromises);
+
+    // --- Skiny postaci (economy.js: PLAYER_SKINS/selectedSkin) - obrazek
+    // (surowe ciało, opcjonalnie przebarwione) upieczony RAZ na skin, dopiero
+    // gdy oryginalne obrazki skończą się wczytywać (patrz _bakeSkinTints) -
+    // ten sam duch "upiecz raz, blituj wiele razy" co
+    // _bakeWorldBackground/_bakeCloudTexture w game.js.
+    this._tintedSprites = {}; // { skinId: { static, walk, frameCount } }
     this.spritesReady.then(() => this._bakeSkinTints());
 
     // --- WSAD / strzalki - fallback do testu w przegladarce desktopowej -----
@@ -861,16 +919,31 @@ class PlayerController {
    * (patrz _drawGearOverlays), nie zaszyte niejawnie w jednej stałej.
    */
   /**
-   * Który z 11 kadrów assets/player_walk.png jest teraz pokazywany - ta sama
-   * faza co bujanie (Math.sin(this.walkCycle) w update()), znormalizowana do
-   * 0..1 na pełnym okresie 2*PI i zmapowana na klatki. Wspólne dla
-   * _drawSprite (który kadr narysować) i _drawBoots (gdzie dokładnie leżą
-   * stopy W TYM kadrze, patrz PLAYER_WALK_LEG_FRAMES) - muszą zawsze
-   * wskazywać na TEN SAM kadr, inaczej buty znowu rozjadą się z nogami.
+   * Który kadr chodu jest teraz pokazywany - ta sama faza co bujanie
+   * (Math.sin(this.walkCycle) w update()), znormalizowana do 0..1 na pełnym
+   * okresie 2*PI i zmapowana na klatki. Wspólne dla _drawSprite (który kadr
+   * narysować) i _drawBoots (gdzie dokładnie leżą stopy W TYM kadrze, patrz
+   * PLAYER_WALK_LEG_FRAMES) - muszą zawsze wskazywać na TEN SAM kadr, inaczej
+   * buty znowu rozjadą się z nogami. frameCount jest parametrem (nie zawsze
+   * PLAYER_WALK_FRAME_COUNT=11) - skiny na alternatywnym ciele (patrz
+   * PLAYER_ALIEN_BODY_IDS) mają tylko 2 klatki chodu (_activeWalkFrameCount()).
    */
-  _currentWalkFrameIndex() {
+  _currentWalkFrameIndex(frameCount = PLAYER_WALK_FRAME_COUNT) {
     const phase = (this.walkCycle % (Math.PI * 2)) / (Math.PI * 2);
-    return Math.floor(phase * PLAYER_WALK_FRAME_COUNT) % PLAYER_WALK_FRAME_COUNT;
+    return Math.floor(phase * frameCount) % frameCount;
+  }
+
+  /** Liczba klatek spritesheeta chodu AKTYWNEGO skina - 11 (precyzyjna,
+   * ręcznie zmierzona animacja) dla domyślnego ciała, 2 (walk1/walk2 z
+   * paczki Kenney) dla alternatywnych ciał skinów (patrz PLAYER_SKINS.body
+   * w economy.js). Czytane przez _getSpriteDrawSize/_drawSprite/_drawBoots -
+   * wszystkie trzy muszą się zgadzać, inaczej kadrowanie rozjedzie się z
+   * rzeczywistym obrazkiem. */
+  _activeWalkFrameCount() {
+    const eco = window.economyManager;
+    const skinId = (eco && eco.selectedSkin) || 'default';
+    const baked = this._tintedSprites[skinId];
+    return (baked && baked.frameCount) || PLAYER_WALK_FRAME_COUNT;
   }
 
   /**
@@ -881,14 +954,27 @@ class PlayerController {
    * za mały ("filtr za mały" mimo kolejnych podbić mnożnika) - maska/buty
    * teraz skalują się względem TEGO SAMEGO rozmiaru co realnie widoczna
    * sylwetka, więc rosną/maleją razem z nią zamiast osobno zgadywać.
+   *
+   * BUGFIX (skiny na innym ciele): liczyło proporcje ZAWSZE z domyślnego
+   * this._spriteImg/this._walkImg, niezależnie od wybranego skina - dla
+   * skinów na alternatywnym ciele (inny rozmiar/kadr niż domyślny) dawało to
+   * złe proporcje (gear i sylwetka rozjeżdżały się). Liczy teraz z
+   * FAKTYCZNIE rysowanego obrazka (_getSkinImage), z fallbackiem na domyślny.
    */
   _getSpriteDrawSize() {
     let naturalRatio = 66 / 92; // domyslne proporcje sprite'a, zanim jakikolwiek obrazek zdazy sie wczytac
     if (this._spriteLoaded) {
       const useWalk = this.isMoving && this._walkLoaded;
-      naturalRatio = useWalk
-        ? (this._walkImg.naturalWidth / PLAYER_WALK_FRAME_COUNT) / this._walkImg.naturalHeight
-        : this._spriteImg.naturalWidth / this._spriteImg.naturalHeight;
+      const skinImg = this._getSkinImage(useWalk);
+      if (skinImg) {
+        const iw = skinImg.naturalWidth || skinImg.width;
+        const ih = skinImg.naturalHeight || skinImg.height;
+        naturalRatio = useWalk ? (iw / this._activeWalkFrameCount()) / ih : iw / ih;
+      } else {
+        naturalRatio = useWalk
+          ? (this._walkImg.naturalWidth / PLAYER_WALK_FRAME_COUNT) / this._walkImg.naturalHeight
+          : this._spriteImg.naturalWidth / this._spriteImg.naturalHeight;
+      }
     }
     const h = PLAYER_SPRITE_HEIGHT * this.bodySquash;
     const w = (PLAYER_SPRITE_HEIGHT * naturalRatio) / this.bodySquash;
@@ -1054,16 +1140,28 @@ class PlayerController {
    * narysowanych nóg) nie ma do czego się dopasować, więc buty stoją w
    * stałym, domyślnym rozstawie przy podstawie sylwetki.
    */
+  /**
+   * BUGFIX (skiny na alternatywnym ciele): PLAYER_WALK_LEG_FRAMES to 11
+   * ręcznie zmierzonych pozycji stóp - WYŁĄCZNIE dla domyślnego, 11-klatkowego
+   * assets/player_walk.png. Skiny na innym ciele (patrz PLAYER_ALIEN_BODY_IDS)
+   * mają tylko 2 klatki chodu (walk1/walk2) - indeksowanie ich do tej samej
+   * 11-elementowej tabeli dawałoby zupełnie przypadkowe (złe) pozycje.
+   * Precyzyjna IK jest więc używana TYLKO gdy aktywny jest domyślny,
+   * 11-klatkowy chód - dla pozostałych skinów buty wracają do prostego,
+   * stałego rozstawu (jak w bezruchu) - wciąż poprawnie przy stopach, tylko
+   * bez animacji rozstawiania nóg krok po kroku.
+   */
   _drawBoots(ctx2) {
     const footY = this.radius * 0.8;
     const bootW = this.radius * 0.4;
     const bootH = this.radius * 0.32;
 
-    const useWalk = this.isMoving && this._walkLoaded && this._spriteLoaded;
+    const frameCount = this._activeWalkFrameCount();
+    const useWalk = this.isMoving && this._walkLoaded && this._spriteLoaded && frameCount === PLAYER_WALK_FRAME_COUNT;
     let leftX, rightX, groundY;
 
     if (useWalk) {
-      const frame = PLAYER_WALK_LEG_FRAMES[this._currentWalkFrameIndex()];
+      const frame = PLAYER_WALK_LEG_FRAMES[this._currentWalkFrameIndex(frameCount)];
       const { w, h } = this._getSpriteDrawSize();
       leftX = (frame.leftFrac - 0.5) * w;
       rightX = (frame.rightFrac - 0.5) * w;
@@ -1247,24 +1345,26 @@ class PlayerController {
    */
   _drawSprite(ctx2) {
     const useWalk = this.isMoving && this._walkLoaded;
-    // Skin wybrany w economy.js (jeśli inny niż domyślny I jego przebarwiona
-    // kopia zdążyła się już upiec - patrz _bakeSkinTints) podmienia obrazek
-    // źródłowy na tintowaną wersję. Sam odczyt geometrii (sx/sy/sw/sh) w
-    // ogóle się nie zmienia - tintowany canvas ma DOKŁADNIE te same wymiary
-    // co oryginał (patrz _bakeTintedCanvas), więc kadrowanie klatek chodu
-    // działa identycznie na obu.
+    // Skin wybrany w economy.js (jeśli inny niż domyślny I jego kopia
+    // zdążyła się już upiec - patrz _bakeSkinTints) podmienia obrazek
+    // źródłowy - może to być inne CIAŁO (inny plik, inne wymiary/liczba
+    // klatek, patrz PLAYER_SKINS.body) niż domyślny sprite, więc sx/sy/sw/sh
+    // liczone są teraz Z FAKTYCZNIE rysowanego obrazka (img), nie zawsze z
+    // domyślnego rawImg jak poprzednio (BUGFIX - patrz _getSpriteDrawSize).
     const rawImg = useWalk ? this._walkImg : this._spriteImg;
-    const img = this._getSkinImage(useWalk) || rawImg;
+    const skinImg = this._getSkinImage(useWalk);
+    const img = skinImg || rawImg;
+    const frameCount = this._activeWalkFrameCount();
 
     let sx = 0;
     let sy = 0;
-    let sw = rawImg.naturalWidth || 66;
-    let sh = rawImg.naturalHeight || 92;
+    let sw = (img.naturalWidth || img.width) || 66;
+    let sh = (img.naturalHeight || img.height) || 92;
 
     if (useWalk) {
-      sw = rawImg.naturalWidth / PLAYER_WALK_FRAME_COUNT;
-      sh = rawImg.naturalHeight;
-      sx = this._currentWalkFrameIndex() * sw;
+      sw = (img.naturalWidth || img.width) / frameCount;
+      sh = img.naturalHeight || img.height;
+      sx = this._currentWalkFrameIndex(frameCount) * sw;
     }
 
     const naturalRatio = sw / sh;
@@ -1278,9 +1378,9 @@ class PlayerController {
     ctx2.drawImage(img, sx, sy, sw, sh, -w / 2, footY - h, w, h);
   }
 
-  /** Obrazek (tintowany canvas albo null) do użycia w _drawSprite() dla
-   * BIEŻĄCEGO wybranego skina - null = brak/domyślny, wywołujący sam
-   * wraca wtedy do surowego sprite'a. */
+  /** Obrazek (canvas/img albo null) do użycia w _drawSprite() dla BIEŻĄCEGO
+   * wybranego skina - null = brak/domyślny, wywołujący sam wraca wtedy do
+   * surowego sprite'a domyślnego ciała. */
   _getSkinImage(useWalk) {
     const eco = window.economyManager;
     const skinId = (eco && eco.selectedSkin) || 'default';
@@ -1291,19 +1391,32 @@ class PlayerController {
   }
 
   /**
-   * Piecze RAZ (po wczytaniu sprite'ów) przebarwioną kopię statycznego
-   * obrazka I spritesheeta chodu dla KAŻDEGO skina z PLAYER_SKINS oprócz
-   * 'default' (tint:null - nic do przebarwienia, oryginał już jest tym
-   * skinem). Bez tego przebarwianie musiałoby się liczyć co klatkę - dla
-   * postaci widocznej bez przerwy 60x/s to byłby zauważalny koszt za darmo.
+   * Piecze RAZ (po wczytaniu sprite'ów) obrazek statyczny I spritesheet
+   * chodu dla KAŻDEGO skina z PLAYER_SKINS oprócz 'default' (nic do
+   * zrobienia - oryginał już jest tym skinem). Dwa niezależne wymiary na
+   * skin: `body` (economy.js) wybiera ŹRÓDŁOWE ciało - domyślne
+   * (this._spriteImg/_walkImg) albo jedno z PLAYER_ALIEN_BODY_IDS - a `tint`
+   * opcjonalnie przebarwia TO ciało (patrz _bakeTintedCanvas). Bez tint
+   * używamy surowego obrazka wprost (bez zbędnego kopiowania na canvas) -
+   * ctx.drawImage() akceptuje zarówno <img> jak i <canvas> identycznie.
+   * Bez tego przebarwianie musiałoby się liczyć co klatkę - dla postaci
+   * widocznej bez przerwy 60x/s to byłby zauważalny koszt za darmo.
    */
   _bakeSkinTints() {
     const skins = window.PLAYER_SKINS || [];
     skins.forEach((skin) => {
-      if (!skin.tint) return; // 'default' - nic do zrobienia
+      if (skin.id === 'default') return;
+      const bodyId = skin.body || null;
+      const body = bodyId ? this._alienBodies[bodyId] : null;
+      const baseStatic = body ? body.staticImg : this._spriteImg;
+      const baseWalk = body ? body.walkImg : this._walkImg;
+      const staticReady = body ? body.staticLoaded : this._spriteLoaded;
+      const walkReady = body ? body.walkLoaded : this._walkLoaded;
+
       this._tintedSprites[skin.id] = {
-        static: this._spriteLoaded ? this._bakeTintedCanvas(this._spriteImg, skin.tint) : null,
-        walk: this._walkLoaded ? this._bakeTintedCanvas(this._walkImg, skin.tint) : null
+        static: staticReady ? (skin.tint ? this._bakeTintedCanvas(baseStatic, skin.tint) : baseStatic) : null,
+        walk: walkReady ? (skin.tint ? this._bakeTintedCanvas(baseWalk, skin.tint) : baseWalk) : null,
+        frameCount: bodyId ? PLAYER_ALIEN_WALK_FRAME_COUNT : PLAYER_WALK_FRAME_COUNT
       };
     });
   }
@@ -1353,7 +1466,7 @@ class PlayerController {
     // gdyby oba obrazki nigdy sie nie wczytaly, gracz i tak widzi wybrany kolor.
     const eco = window.economyManager;
     const skin = eco && window.PLAYER_SKINS && window.PLAYER_SKINS.find((s) => s.id === eco.selectedSkin);
-    ctx2.fillStyle = (skin && skin.tint) || '#5C85D6'; // niebieski kombinezon domyslnie
+    ctx2.fillStyle = (skin && (skin.tint || skin.previewColor)) || '#5C85D6'; // niebieski kombinezon domyslnie
     this._roundRect(ctx2, -w / 2, -h / 2, w, h, 8);
     ctx2.fill();
 

@@ -749,13 +749,26 @@ const PLANET_MODIFIERS = [
 // zerowane) i płatne tą samą walutą - to kolejny sposób na wydanie Rdzeni,
 // obok samych ulepszeń.
 //
-// `tint` to jedyne pole, które NIE jest tu tylko danymi UI - player.js czyta
-// je BEZPOŚREDNIO (window.PLAYER_SKINS, patrz eksport na dole pliku) do
-// przebarwienia sprite'a (_bakeSkinTints). Jeden katalog zamiast dwóch kopii
+// `tint`/`body` to jedyne pola, które NIE są tu tylko danymi UI - player.js
+// czyta je BEZPOŚREDNIO (window.PLAYER_SKINS, patrz eksport na dole pliku) do
+// zbudowania sprite'a (_bakeSkinTints). Jeden katalog zamiast dwóch kopii
 // (tu + w player.js), żeby cena/nazwa/kolor NIGDY się nie rozjechały -
 // wyjątek od "brak współdzielonych utili" tej samej klasy co odczyt
 // window.economyManager przez inne moduły (to dane, nie funkcja pomocnicza).
-// `tint: null` = domyślny skin, bez przebarwienia (oryginalny sprite).
+// `tint: null` = bez przebarwienia (surowy sprite ciała). `body: null` =
+// domyślne ciało (assets/player.png/player_walk.png), string (patrz
+// PLAYER_ALIEN_BODY_SRC w player.js) = INNA sylwetka z Kenney "Platformer
+// Art Extended" (Alien sprites - beige/green/pink/yellow), nie tylko
+// przebarwiona kopia tej samej postaci.
+// BUGFIX (Tomek: "skiny to tylko przebarwienia tego samego sprite'a, zero
+// odmiany kształtu"): każdy skin miał TEN SAM sprite, różnił je wyłącznie
+// tint. Cztery z pięciu kolorów paczki (Blue jest już samym domyślnym
+// wyglądem gracza) dostały więc PRAWDZIWIE inne ciało - verde/gold w
+// natywnym kolorze paczki (zero tint, już są zielone/żółte), crimson/
+// crystal/amber przebarwione na wierzchu (paczka nie ma czerwonego ani
+// fioletowego, więc tint dociąga do nazwy). Dwa niskopriorytetowe sloty
+// (amber/meteor) dzielą ciało 'beige' - wciąż odróżnialne tintem, ale to
+// jedyne powielenie, reszta ma unikalną sylwetkę.
 // Nazwy BEZ "Kombinezon" (Tomek: "to nie są kombinezony tylko kolor
 // postaci") - `tint` przebarwia sam sprite gracza (skórę obcego), nie
 // dokłada żadnego ubrania, więc nazwa sugerująca strój była myląca, tym
@@ -763,20 +776,26 @@ const PLANET_MODIFIERS = [
 // (gear, patrz SHOP_UPGRADES) - dwie zupełnie różne rzeczy o niemal tej
 // samej nazwie.
 const PLAYER_SKINS = [
-  { id: 'default', name: 'Domyślny kolor', desc: 'Klasyczny wygląd - bez dopłaty', tint: null, cost: 0 },
-  { id: 'verde', name: 'Zielony', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#66BB6A', cost: 2 },
-  { id: 'crimson', name: 'Czerwony', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#EF5350', cost: 2 },
-  { id: 'amber', name: 'Bursztynowy', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#FFB74D', cost: 4 },
+  { id: 'default', name: 'Domyślny kolor', desc: 'Klasyczny wygląd - bez dopłaty', tint: null, body: null, cost: 0 },
+  // previewColor: tylko dla skinów BEZ tint (natywny kolor ciała paczki) -
+  // używane jako awaryjny kolor kółka/proceduralnej sylwetki, zanim sprite
+  // się wczyta (patrz ui.js SkinsPanel/_drawProcedural w tym pliku) - dla
+  // skinów Z tint ten sam cel spełnia samo pole tint, previewColor zbędne.
+  { id: 'verde', name: 'Zielony', desc: 'Inna postać - natywna zieleń paczki, zero wpływu na rozgrywkę', tint: null, body: 'green', previewColor: '#5FBF7A', cost: 2 },
+  { id: 'crimson', name: 'Czerwony', desc: 'Inna postać, przebarwiona na czerwono - zero wpływu na rozgrywkę', tint: '#E53935', body: 'pink', cost: 2 },
+  { id: 'amber', name: 'Bursztynowy', desc: 'Inna postać, przebarwiona na bursztynowo - zero wpływu na rozgrywkę', tint: '#FFB74D', body: 'beige', cost: 4 },
   // Barwy Kryształowej Grani (patrz _bakeCrystalGroundTexture w game.js) -
   // nagroda-nawiązanie do najtrudniej dostępnej strefy, nie wymaga jednak
   // faktycznego jej odblokowania (kupowana wyłącznie za Rdzenie, jak reszta).
-  { id: 'crystal', name: 'Kryształowy', desc: 'W barwach Kryształowej Grani', tint: '#B388FF', cost: 8 },
-  { id: 'gold', name: 'Złoty', desc: 'Dla tych, którzy zebrali sporo Rdzeni', tint: '#FFD54F', cost: 15 },
+  { id: 'crystal', name: 'Kryształowy', desc: 'Inna postać, w barwach Kryształowej Grani', tint: '#B388FF', body: 'pink', cost: 8 },
+  { id: 'gold', name: 'Złoty', desc: 'Inna postać - natywny złoty kolor paczki', tint: null, body: 'yellow', previewColor: '#F5C542', cost: 15 },
   // Wydarzenie sezonowe "Deszcz Meteorytów" (events.js) - kupowalny WYŁĄCZNIE
   // gdy trwa (sobota/niedziela wg zegara urządzenia), ale raz kupiony
   // zostaje NA STAŁE (unlockedSkins się nie zeruje) - jak każdy inny skin,
-  // po prostu okno zakupu jest ograniczone w czasie.
-  { id: 'meteor', name: 'Meteorytowy', desc: 'Dostępny tylko podczas Weekendowego Deszczu Meteorytów', tint: '#FF6E40', cost: 12, eventOnly: true }
+  // po prostu okno zakupu jest ograniczone w czasie. Zostaje na oryginalnym
+  // ciele (body: null) - najrzadziej noszony skin, nie wart dodatkowego
+  // powielania sylwetki.
+  { id: 'meteor', name: 'Meteorytowy', desc: 'Dostępny tylko podczas Weekendowego Deszczu Meteorytów', tint: '#FF6E40', body: null, cost: 12, eventOnly: true }
 ];
 
 class EconomyManager {
@@ -1776,6 +1795,8 @@ class EconomyManager {
       name: def.name,
       desc: def.desc,
       tint: def.tint,
+      body: def.body,
+      previewColor: def.previewColor,
       cost: def.cost,
       unlocked: this.unlockedSkins.has(def.id),
       selected: this.selectedSkin === def.id,
