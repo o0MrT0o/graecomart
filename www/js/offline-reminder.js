@@ -20,14 +20,6 @@
  * wiedzieć, czy jesteśmy w prawdziwej apce Capacitor.
  */
 const OFFLINE_REMINDER_DELAY_SECONDS = 3 * 3600; // 3h - kiedy powiadomienie faktycznie się pokaże
-// BALANS: podgląd w treści powiadomienia liczony z KRÓTSZEGO okna niż
-// faktyczne opóźnienie wyżej - inaczej (przy dobrym tempie zarobku) tekst
-// obiecywałby setki/tysiące $ za nicnierobienie, co wygląda jak tania
-// naganka i podważa sens grania aktywnie. 30 min to wciąż uczciwa,
-// niepusta liczba (ta sama formuła co prawdziwy modal - patrz niżej), po
-// prostu skromna - realna nagroda po 3h i tak będzie większa (miła
-// niespodzianka), nigdy mniejsza (zero ryzyka rozczarowania).
-const OFFLINE_REMINDER_PREVIEW_SECONDS = 30 * 60;
 
 class OfflineReminderManager {
   constructor(economyManager) {
@@ -76,13 +68,21 @@ class OfflineReminderManager {
     document.addEventListener('visibilitychange', this._onVisibilityChange);
   }
 
-  /** Podgląd nagrody liczony TĄ SAMĄ metodą co prawdziwy modal offline
-   * (economy.js), ale z krótszego okna (OFFLINE_REMINDER_PREVIEW_SECONDS) -
-   * patrz komentarz przy tej stałej wyżej. */
+  /** Podgląd nagrody liczony TĄ SAMĄ metodą i z TYM SAMYM oknem czasu co
+   * prawdziwy modal offline (economy.js) - OFFLINE_REMINDER_DELAY_SECONDS,
+   * czyli dokładnie tyle, ile realnie minie zanim powiadomienie się pokaże.
+   * BUGFIX: wcześniej liczony był z osobnego, sztywnego 30-minutowego okna,
+   * niezależnie od faktycznego opóźnienia (3h) - kwota w powiadomieniu
+   * regularnie NIE zgadzała się z tym, co gracz widział po otwarciu gry
+   * (realny modal, licząc z pełnych 3h, potrafił pokazać kilka razy więcej).
+   * Teraz obie liczby powstają z tych samych danych wejściowych, więc jeśli
+   * gracz otworzy apkę zaraz po powiadomieniu, kwoty się pokrywają - a jeśli
+   * zwleka dłużej, realna nagroda może być tylko WYŻSZA (nigdy niższa, do
+   * limitu OFFLINE_MAX_SECONDS), więc nadal zero ryzyka rozczarowania. */
   _scheduleReminder() {
     if (!window.NativeNotifications || !this.economyManager) return;
     const preview = typeof this.economyManager.computeOfflineReward === 'function'
-      ? this.economyManager.computeOfflineReward(OFFLINE_REMINDER_PREVIEW_SECONDS * 1000)
+      ? this.economyManager.computeOfflineReward(OFFLINE_REMINDER_DELAY_SECONDS * 1000)
       : null;
     const body = preview
       ? `Twój sklep już zarabia (+${preview.reward}$) - wróć po odbiór!`

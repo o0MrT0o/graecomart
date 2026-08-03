@@ -460,12 +460,15 @@ const DAILY_STREAK_CORE_INTERVAL = 7;
 // nagrodę z ŚREDNIEGO tempa zarobku W TYM PRZEBIEGU (totalEarned /
 // totalPlaytimeSeconds) - samokorygujące się: silniejsza ekonomia gracza =
 // wyższe tempo = większa nagroda, bez osobnego strojenia per-etap gry.
-// 40% aktywnego tempa (nie 100%) - to bonus za sam fakt wracania, nie
-// zamiennik grania. Pułap 8h chroni przed absurdalnymi liczbami z
-// zostawionej karty na tydzień, ale wciąż zostawia sensowną nagrodę za noc.
+// BALANS: 40%/8h (poprzednie wartości) dawało za dużo - kilka godzin offline
+// starczało na wykupienie niemal całego drzewka ulepszeń, więc powrót do
+// gry przestawał się różnić od zwykłego grania. 15% aktywnego tempa (nie
+// 100%) - to bonus za sam fakt wracania, nie zamiennik grania. Pułap 5h
+// chroni przed absurdalnymi liczbami z zostawionej karty na tydzień, ale
+// wciąż zostawia sensowną nagrodę za noc.
 const OFFLINE_MIN_SECONDS = 120; // ponizej tego nie pokazujemy modala (np. szybkie odswiezenie)
-const OFFLINE_MAX_SECONDS = 8 * 3600;
-const OFFLINE_EFFICIENCY = 0.4;
+const OFFLINE_MAX_SECONDS = 5 * 3600;
+const OFFLINE_EFFICIENCY = 0.15;
 // BUGFIX: dodatkowe zabezpieczenie przed dzieleniem przez prawie-zero na
 // samym początku sesji (nawet z czystym sellEarnings, kilka sekund gry +
 // jedna szczęśliwa sprzedaż dałoby chwilowo zawyżone tempo). Poniżej tego
