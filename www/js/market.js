@@ -42,7 +42,17 @@ const MARKET_TREND_THRESHOLD = 0.03;
 // 'alloy' (z Pieca Hutniczego) jest najdroższy - rzadszy surowiec (metal/szkło,
 // odblokowywane drogim sprzętem w Fazie 2) powinien się bardziej opłacać.
 const MARKET_BASE_PRICES = {
-  plastic: 8,
+  // BALANS: było 8 - Kompresor Grawitonowy (press_b) zbiera maxInventory:3
+  // plastiku na cykl i przy bazowym poziomie 'yield' (getValue(0)=1) daje
+  // TYLKO 1 sztukę product (18) - czyli 3 sztuki surowego plastiku (przy 8/
+  // szt. to 24) były warte WIĘCEJ na surowo niż po przetworzeniu (18).
+  // Jedyna maszyna w grze z takim problemem (recycle_a/furnace_c/refinery_b
+  // biorą surowce BEZ ceny rynkowej - trash/paper/metal/glass nie są w
+  // TRADING_POST_ACCEPTS - więc przetwarzanie tam jest z definicji zyskiem;
+  // crystal_polisher bierze surowiec Z ceną (crystal_shard 30), ale 2x30=60
+  // < crystal_gem 70, więc wciąż na plus). Obniżone do 5: 3x5=15 < 18,
+  // przetwarzanie zawsze się opłaca, nawet zanim gracz kupi 'yield'.
+  plastic: 5,
   product: 18,
   alloy: 26,
   // 'crystal' (z Oczyszczalni: szkło->kryształ) najdroższy z PRZETWORZONYCH
