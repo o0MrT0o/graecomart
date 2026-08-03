@@ -1223,11 +1223,24 @@ class PlayerController {
    * owalu, a filtr przeniesiony z "brody" na bok głowy (jak w prawdziwym
    * respiratorze), żeby nie wyglądał jak druga, dziwna buzia.
    */
+  /**
+   * BUGFIX (Tomek: "czarna obramówka [maski] niech zasłania tę białą
+   * dokładnie"): rx=w*0.46 był zmierzony za wąsko - realna sylwetka głowy
+   * (zarówno domyślnego sprite'a, jak i ciał alienów, patrz
+   * PLAYER_ALIEN_BODY_IDS - obie rodziny mają niemal IDENTYCZNY zarys w tym
+   * samym 66x92 płótnie) sięga w najszerszym miejscu PRAWIE do samej
+   * krawędzi obrazka (zmierzone wprost na pikselach: pełne 66px szerokości
+   * przy y=29-35 z 92, czyli promień 0.5*w, nie 0.46*w). Przy 0.46 zostawał
+   * ~2-3px rąbek prawdziwej głowy (u alienów: ich własny biały pierścień
+   * hełmu) WIDOCZNY na zewnątrz ciemnej obwódki maski. 0.49 (+ połowa
+   * grubości ciemnej kreski, darkLW/2=1.5) sięga niecały piksel poza
+   * zmierzoną krawędź - z zapasem, żeby obwódka zawsze w pełni ją zakrywała.
+   */
   _drawGasMask(ctx2, headCenterY) {
     const { w, h } = this._getSpriteDrawSize();
-    const rx = w * 0.46;
-    const ry = h * 0.32;
-    const cy = ry * 0.1;
+    const rx = w * 0.54;
+    const ry = h * 0.36;
+    const cy = 0;
 
     ctx2.save();
     ctx2.translate(0, headCenterY);
