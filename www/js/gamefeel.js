@@ -201,16 +201,57 @@ class GameFeel {
       target.translate(cx, cy);
       target.scale(p.scale, p.scale);
       target.globalAlpha = alpha;
-      if (p.icon) this._drawPopupIcon(target, p.icon, p.color);
       target.font = 'bold 22px "Segoe UI", Arial, sans-serif';
       target.textAlign = 'center';
       target.textBaseline = 'middle';
-      target.fillStyle = 'rgba(0,0,0,0.45)';
-      target.fillText(p.text, 2, 2);
-      target.fillStyle = p.color;
-      target.fillText(p.text, 0, 0);
+
+      // BUGFIX: ostrzeżenia stref (player.js, np. "Strefa Skażenia - bez
+      // Filtra Toksyn stracisz przedmiot!") to pełne zdania - jedna linia w
+      // tym foncie wychodzi grubo ponad szerokość telefonu i uciekała za oba
+      // brzegi ekranu. Reszta popupów w grze ("+50" itp.) to pojedyncze
+      // krótkie słowa/liczby, więc zawijanie ich nie dotyczy (zawsze 1 linia).
+      const maxWidth = (window.innerWidth || 400) * 0.84;
+      const lines = this._wrapPopupLines(target, p.text, maxWidth);
+      const lineHeight = 25;
+      const startY = -((lines.length - 1) * lineHeight) / 2;
+
+      if (p.icon) {
+        target.save();
+        target.translate(0, startY);
+        this._drawPopupIcon(target, p.icon, p.color);
+        target.restore();
+      }
+
+      lines.forEach((line, i) => {
+        const ly = startY + i * lineHeight;
+        target.fillStyle = 'rgba(0,0,0,0.45)';
+        target.fillText(line, 2, ly + 2);
+        target.fillStyle = p.color;
+        target.fillText(line, 0, ly);
+      });
       target.restore();
     });
+  }
+
+  /** Dzieli tekst na linie nieprzekraczające maxWidth (mierzone aktualnym
+   * ctx.font) łamiąc po spacjach - pojedyncze słowo dłuższe niż maxWidth
+   * zostaje na swojej linii bez łamania (w praktyce nie występuje w tekstach
+   * gry). */
+  _wrapPopupLines(ctx, text, maxWidth) {
+    const words = String(text).split(' ');
+    const lines = [];
+    let current = '';
+    words.forEach((word) => {
+      const test = current ? `${current} ${word}` : word;
+      if (current && ctx.measureText(test).width > maxWidth) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
+    });
+    if (current) lines.push(current);
+    return lines;
   }
 
   /**
