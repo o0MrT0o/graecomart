@@ -55,7 +55,8 @@ class DroneManager {
       y: player ? player.y : 0,
       targetId: null,
       hoverAngle: Math.random() * Math.PI * 2,
-      bobPhase: Math.random() * Math.PI * 2
+      bobPhase: Math.random() * Math.PI * 2,
+      angle: 0 // kierunek aktualnego ruchu (atan2), patrz _drawDrone - lekkie przechylenie w stronę manewru
     };
   }
 
@@ -125,6 +126,7 @@ class DroneManager {
         if (dist > 1) {
           d.x += (dx / dist) * DRONE_SPEED * sec;
           d.y += (dy / dist) * DRONE_SPEED * sec;
+          d.angle = Math.atan2(dy, dx);
         }
 
         if (dist < DRONE_PICKUP_DIST && stack && !stack.isFull()) {
@@ -154,6 +156,7 @@ class DroneManager {
         if (dist > 2) {
           d.x += (dx / dist) * DRONE_SPEED * 0.5 * sec;
           d.y += (dy / dist) * DRONE_SPEED * 0.5 * sec;
+          d.angle = Math.atan2(dy, dx);
         }
       }
     });
@@ -174,12 +177,17 @@ class DroneManager {
     });
   }
 
-  /** Sam sprite (assets/critters/drone.png, ten sam "gołe UFO bez obcego"
-   * co critter_ufo w critters.js, tylko niebieski) + miękki cień na ziemi -
+  /** Sam sprite (assets/critters/drone.png) + miękki cień na ziemi -
    * identyczny trik co _drawUfo w critters.js (elipsa NIEZALEŻNA od
-   * bobbingu statku nad nią, sprzedaje wysokość lotu). */
+   * bobbingu statku nad nią, sprzedaje wysokość lotu). Lekkie przechylenie
+   * (Math.cos(d.angle), TA SAMA formuła co _drawUfo w critters.js) w stronę
+   * poziomej składowej aktualnego kierunku lotu - NIE pełny obrót do
+   * d.angle (sprite nie jest zaprojektowany do dowolnego obrotu, symetryczna
+   * "twarz" wygląda źle postawiona bokiem/do góry nogami), tylko subtelny
+   * bank sugerujący manewrowanie, czytelny z każdego kierunku. */
   _drawDrone(ctx, d) {
     const bob = Math.sin(d.bobPhase) * 3;
+    const tilt = Math.cos(d.angle || 0) * 0.16;
     const w = DRONE_SPRITE_W;
     const h = DRONE_SPRITE_H;
 
@@ -194,6 +202,7 @@ class DroneManager {
     const img = window.spriteLoader && window.spriteLoader.get('drone');
     ctx.save();
     ctx.translate(d.x, d.y + bob);
+    ctx.rotate(tilt);
     if (img && img.complete && img.naturalWidth) {
       ctx.drawImage(img, -w / 2, -h / 2, w, h);
     } else {
