@@ -781,14 +781,14 @@ const PLAYER_SKINS = [
   // używane jako awaryjny kolor kółka/proceduralnej sylwetki, zanim sprite
   // się wczyta (patrz ui.js SkinsPanel/_drawProcedural w tym pliku) - dla
   // skinów Z tint ten sam cel spełnia samo pole tint, previewColor zbędne.
-  { id: 'verde', name: 'Zielony', desc: 'Inna postać - natywna zieleń paczki, zero wpływu na rozgrywkę', tint: null, body: 'green', previewColor: '#5FBF7A', cost: 2 },
-  { id: 'crimson', name: 'Czerwony', desc: 'Inna postać, przebarwiona na czerwono - zero wpływu na rozgrywkę', tint: '#E53935', body: 'pink', cost: 2 },
-  { id: 'amber', name: 'Bursztynowy', desc: 'Inna postać, przebarwiona na bursztynowo - zero wpływu na rozgrywkę', tint: '#FFB74D', body: 'beige', cost: 4 },
+  { id: 'verde', name: 'Zielony', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: null, body: 'green', previewColor: '#5FBF7A', cost: 2 },
+  { id: 'crimson', name: 'Czerwony', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#E53935', body: 'pink', cost: 2 },
+  { id: 'amber', name: 'Bursztynowy', desc: 'Kosmetyczna zmiana koloru - zero wpływu na rozgrywkę', tint: '#FFB74D', body: 'beige', cost: 4 },
   // Barwy Kryształowej Grani (patrz _bakeCrystalGroundTexture w game.js) -
   // nagroda-nawiązanie do najtrudniej dostępnej strefy, nie wymaga jednak
   // faktycznego jej odblokowania (kupowana wyłącznie za Rdzenie, jak reszta).
-  { id: 'crystal', name: 'Kryształowy', desc: 'Inna postać, w barwach Kryształowej Grani', tint: '#B388FF', body: 'pink', cost: 8 },
-  { id: 'gold', name: 'Złoty', desc: 'Inna postać - natywny złoty kolor paczki', tint: null, body: 'yellow', previewColor: '#F5C542', cost: 15 },
+  { id: 'crystal', name: 'Kryształowy', desc: 'W barwach Kryształowej Grani', tint: '#B388FF', body: 'pink', cost: 8 },
+  { id: 'gold', name: 'Złoty', desc: 'Dla tych, którzy zebrali sporo Rdzeni', tint: null, body: 'yellow', previewColor: '#F5C542', cost: 15 },
   // Wydarzenie sezonowe "Deszcz Meteorytów" (events.js) - kupowalny WYŁĄCZNIE
   // gdy trwa (sobota/niedziela wg zegara urządzenia), ale raz kupiony
   // zostaje NA STAŁE (unlockedSkins się nie zeruje) - jak każdy inny skin,
