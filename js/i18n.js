@@ -84,9 +84,12 @@ const I18N_STRINGS = {
 
     'shop.title': 'Sklep',
     'shop.close': 'Zamknij sklep',
+    'shop.section.collection': 'Drzewko: Zbieranie',
+    'shop.section.protection': 'Drzewko: Ochrona',
     'shop.section.upgrades': 'Ulepszenia',
     'shop.section.licenses': 'Licencje i sprzęt',
     'shop.section.machines': 'Maszyny',
+    'ui.requires.label': 'Wymaga: {name}',
 
     'panel.achievements.title': 'Osiągnięcia',
     'panel.achievements.close': 'Zamknij osiągnięcia',
@@ -505,9 +508,12 @@ const I18N_STRINGS = {
 
     'shop.title': 'Shop',
     'shop.close': 'Close shop',
+    'shop.section.collection': 'Tree: Collection',
+    'shop.section.protection': 'Tree: Protection',
     'shop.section.upgrades': 'Upgrades',
     'shop.section.licenses': 'Licenses & gear',
     'shop.section.machines': 'Machines',
+    'ui.requires.label': 'Requires: {name}',
 
     'panel.achievements.title': 'Achievements',
     'panel.achievements.close': 'Close achievements',

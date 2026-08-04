@@ -815,6 +815,55 @@ canvas {
     opacity: 0.6;
 }
 
+/* Węzeł drzewka zależności bez spełnionego `requires` (patrz
+   isUpgradeUnlocked w economy.js) - wyraźnie przygaszony i odsaturowany,
+   żeby "zablokowane" czytało się od razu, bez konieczności czytania tekstu
+   podpowiedzi w kolumnie akcji. */
+.ui-shop-item--locked {
+    opacity: 0.5;
+    filter: grayscale(0.6);
+}
+
+/* Drzewko ulepszeń (ShopPanel._buildTreeSection) - pionowy łańcuch węzłów
+   połączony cienką linią zamiast zwykłego odstępu .ui-shop-list, żeby
+   zależność MIĘDZY wierszami była widoczna, nie tylko czytana z opisu.
+   Margines lewy 32px = 11px paddingu .ui-shop-item + połowa 44px kolumny
+   ikony - linia wychodzi dokładnie spod środka plakietki ikony nad/pod nią. */
+.ui-shop-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ui-shop-tree__connector {
+    width: 2px;
+    height: 12px;
+    margin: -2px 0 -2px 32px;
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.ui-shop-tree__connector--active {
+    background: var(--ui-accent);
+}
+
+/* Podpowiedź "Wymaga: X" w kolumnie akcji zablokowanego węzła - zajmuje
+   miejsce przycisku kupna, więc musi mieścić się w tej samej wąskiej
+   kolumnie auto bez zawijania na dwie linie. */
+.ui-shop-item__requires {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.64rem;
+    font-weight: 700;
+    color: var(--ui-text-muted);
+    white-space: nowrap;
+}
+
+.ui-shop-item__requires .ui-icon {
+    width: 0.85em;
+    height: 0.85em;
+}
+
 .ui-shop-item__icon {
     width: 44px;
     height: 44px;

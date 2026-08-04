@@ -605,17 +605,27 @@ class ShopPanel {
     const catalog = this.economyManager.getShopCatalog();
     const money = this.economyManager.getMoney();
 
-    // Dwie sekcje: powtarzalne ulepszenia statystyk (maxLevel > 1) vs
-    // jednorazowe odblokowania - licencje na surowce ORAZ sprzęt ochronny
-    // do stref (maxLevel === 1) - to naprawdę dwie różne kategorie decyzji,
-    // więc rozdzielenie ich niesie informację, a nie tylko dekoruje listę.
-    // Kryterium to maxLevel, nie prefiks id - toxic_filter/radiation_suit
-    // nie zaczynają się od "stage_", ale są tą samą kategorią co licencje.
-    const upgrades = catalog.filter((item) => item.maxLevel > 1);
-    const licenses = catalog.filter((item) => item.maxLevel === 1);
+    // Drzewko zależności (Tomek: "Drzewko ulepszeń zamiast płaskiej listy -
+    // daje poczucie budowania buildu") - dwie gałęzie z prawdziwym
+    // `requires` między węzłami (patrz SHOP_UPGRADES w economy.js),
+    // renderowane jako pionowy łańcuch połączony linią (_buildTreeSection).
+    // Kolejność w `catalog` już odpowiada kolejności w drzewie (economy.js
+    // deklaruje węzły korzeń->liść), więc wystarczy samo filtrowanie po
+    // branch - bez dodatkowego sortowania.
+    const collectionTree = catalog.filter((item) => item.branch === 'collection');
+    const protectionTree = catalog.filter((item) => item.branch === 'protection');
 
-    // Trzecia sekcja: ulepszenia KONKRETNYCH maszyn (patrz
-    // MACHINE_UPGRADE_KINDS w economy.js). Osobno od dwóch powyżej, bo to
+    // Reszta (branch === null) zostaje płaską listą jak dawniej - to
+    // pojedyncze węzły bez żadnej realnej zależności w grze, więc rysowanie
+    // ich jako "drzewka" byłoby fikcją. Podział na dwie sekcje wg maxLevel
+    // (jak przed drzewkiem) niesie wciąż tę samą informację: powtarzalne
+    // ulepszenia statystyk vs jednorazowe odblokowania.
+    const standalone = catalog.filter((item) => !item.branch);
+    const upgrades = standalone.filter((item) => item.maxLevel > 1);
+    const licenses = standalone.filter((item) => item.maxLevel === 1);
+
+    // Kolejna sekcja: ulepszenia KONKRETNYCH maszyn (patrz
+    // MACHINE_UPGRADE_KINDS w economy.js). Osobno od powyższych, bo to
     // inna kategoria decyzji - nie "co mam", tylko "którą maszynę rozwijam".
     // getMachineUpgradeCatalog() zwraca tylko ODBLOKOWANE maszyny, więc na
     // starcie to jedna pozycja, a nie ściana ośmiu.
@@ -624,6 +634,8 @@ class ShopPanel {
       : [];
 
     this.bodyEl.innerHTML = '';
+    if (collectionTree.length > 0) this.bodyEl.appendChild(this._buildTreeSection(I18n.t('shop.section.collection'), collectionTree, money));
+    if (protectionTree.length > 0) this.bodyEl.appendChild(this._buildTreeSection(I18n.t('shop.section.protection'), protectionTree, money));
     if (upgrades.length > 0) this.bodyEl.appendChild(this._buildSection(I18n.t('shop.section.upgrades'), upgrades, money));
     if (licenses.length > 0) this.bodyEl.appendChild(this._buildSection(I18n.t('shop.section.licenses'), licenses, money));
     if (machineUpgrades.length > 0) {
@@ -648,12 +660,50 @@ class ShopPanel {
     return section;
   }
 
+  /** Jak _buildSection, ale węzły łączy pionowa linia (.ui-shop-tree__connector)
+   * zamiast zwykłego odstępu - realny wizualny "build path", nie tylko
+   * pogrupowana lista. Linia między węzłem i a i-1 jest podświetlona
+   * (--active), gdy węzeł i jest ODBLOKOWANY (czyli rodzic i-1 ma już co
+   * najmniej 1 poziom) - gracz widzi na pierwszy rzut oka, dokąd doszedł. */
+  _buildTreeSection(title, items, money) {
+    const section = document.createElement('div');
+    section.className = 'ui-shop-section';
+
+    const heading = document.createElement('h3');
+    heading.className = 'ui-shop-section__title';
+    heading.textContent = title;
+    section.appendChild(heading);
+
+    const tree = document.createElement('div');
+    tree.className = 'ui-shop-tree';
+    items.forEach((item, i) => {
+      if (i > 0) {
+        const connector = document.createElement('div');
+        connector.className = 'ui-shop-tree__connector';
+        if (!item.locked || item.maxed) connector.classList.add('ui-shop-tree__connector--active');
+        tree.appendChild(connector);
+      }
+      tree.appendChild(this._buildRow(item, money));
+    });
+    section.appendChild(tree);
+
+    return section;
+  }
+
   _buildRow(item, money) {
     const row = document.createElement('article');
     row.className = 'ui-shop-item';
     if (item.maxed) row.classList.add('ui-shop-item--maxed');
+    // Węzeł drzewka, którego rodzic jeszcze nie jest kupiony (patrz
+    // isUpgradeUnlocked w economy.js) - wyszarzony, bez przycisku kupna,
+    // pokazuje TYLKO czego wymaga (patrz kolumna akcji niżej). WYJĄTEK:
+    // `maxed` (w tym "masz to już z modułu statku") ma pierwszeństwo -
+    // toxic_filter/radiation_suit mogą być dane przez perk hazard_immunity
+    // ZANIM gracz kupi headlamp/toxic_filter w drzewku, więc "zablokowane"
+    // byłoby tu po prostu fałszywe.
+    if (item.locked && !item.maxed) row.classList.add('ui-shop-item--locked');
 
-    const canBuy = !item.maxed && item.cost !== null && money >= item.cost;
+    const canBuy = !item.locked && !item.maxed && item.cost !== null && money >= item.cost;
     if (canBuy) row.classList.add('ui-shop-item--afford');
 
     const progressHtml = item.maxLevel > 1
@@ -688,6 +738,15 @@ class ShopPanel {
       // wyrenderował się jako ikona, a nie jako surowy tekst znaczników.
       badge.innerHTML = item.fromShip ? `${ROCKET_ICON_SVG} ${I18n.t('ui.badge.fromShip')}` : I18n.t('ui.badge.max');
       actionEl.appendChild(badge);
+    } else if (item.locked) {
+      // Węzeł drzewka bez spełnionego `requires` - zamiast ceny/przycisku
+      // pokazujemy WPROST czego brakuje, żeby gracz nie zgadywał, czemu
+      // "Kup" zniknęło. Sprawdzane PO `maxed` wyżej - patrz komentarz przy
+      // dodawaniu klasy --locked, ten sam powód (hazard_immunity).
+      const hint = document.createElement('span');
+      hint.className = 'ui-shop-item__requires';
+      hint.innerHTML = `${LOCK_ICON_SVG} ${I18n.t('ui.requires.label', { name: item.requiresName })}`;
+      actionEl.appendChild(hint);
     } else {
       // Kłódka PRZED ceną, TYLKO gdy nie stać (denied) - dźwięk odmowy
       // (UIButton `denied`, patrz audio.js 'error') mówi "nie" dopiero PO
@@ -714,7 +773,9 @@ class ShopPanel {
       actionEl.appendChild(btn.mount());
     }
 
-    row.dataset.tooltip = `${item.name}: ${item.description}`;
+    row.dataset.tooltip = (item.locked && !item.maxed)
+      ? `${item.name}: ${I18n.t('ui.requires.label', { name: item.requiresName })}`
+      : `${item.name}: ${item.description}`;
     return row;
   }
 

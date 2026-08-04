@@ -65,9 +65,50 @@ const _kenneyIcon = (maskClass, color) =>
 const _magnetIcon = (color) =>
   `<span class="ui-shop-item__icon-badge" style="background:${color}26"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round"><path d="M7 4 v7 a5 5 0 0 0 10 0 V4"/><path d="M7 4 h4 M13 4 h4"/><path d="M7 9 h4 M13 9 h4"/></svg></span>`;
 
+// Ta sama "brak odpowiednika w paczkach" sytuacja co magnes wyżej - dotyczy
+// całej rodziny sprzętu ochronnego (headlamp/boots/toxic_filter/
+// radiation_suit). Wcześniej WSZYSTKIE 4 dzieliły jedną tarczę ('shield') w
+// różnych kolorach (patrz commit e770f73), co Tomek trafnie wychwycił jako
+// wizualnie powtarzalne przy przejściu na drzewko zależności. Przejrzane
+// PONOWNIE pod kątem realnego kasku/buta/maski/kombinezonu: Game Icons,
+// Game Icons Expansion, Board Game Icons, Generic Items, UI Pack (RPG
+// Expansion), New Platformer Pack (w tym "hud_player_helmet" - odrzucony,
+// bo to portret gracza z buźką, nie sylwetka kasku), Platformer Pack
+// Industrial - żadna nie miała pasującego kształtu. Cztery osobne,
+// rozpoznawalne kształty w TEJ SAMEJ plakietce co _magnetIcon: kask z
+// lampą (helmet), odcisk buta (boot - czytelniejszy niż sylwetka buta przy
+// 16px), kartridż filtra (filter), międzynarodowy symbol
+// promieniowania (radiation - jedyny "fill", bo oryginał jest wypełniony,
+// nie konturowy).
+const _protectionIcon = (kind, color) => {
+  const shapes = {
+    helmet: `<path d="M4 15a8 8 0 0 1 16 0"/><path d="M3 15h18"/><circle cx="12" cy="11" r="2.4"/>`,
+    filter: `<rect x="7" y="5" width="10" height="15" rx="2.5"/><path d="M7 10h10M7 15h10"/>`
+  };
+  if (kind === 'boot') {
+    return `<span class="ui-shop-item__icon-badge" style="background:${color}26"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="${color}" stroke="none"><ellipse cx="12" cy="15.5" rx="5.5" ry="7"/><circle cx="8" cy="4.5" r="1.7"/><circle cx="11.5" cy="3" r="1.9"/><circle cx="15" cy="3.3" r="1.8"/><circle cx="18" cy="5" r="1.5"/></svg></span>`;
+  }
+  if (kind === 'radiation') {
+    return `<span class="ui-shop-item__icon-badge" style="background:${color}26"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="${color}" stroke="none"><circle cx="12" cy="12" r="2.6"/><path d="M10.55,9.15 L7.37,2.91 A10.2,10.2 0 0 1 16.63,2.91 L13.45,9.15 A3.2,3.2 0 0 0 10.55,9.15 Z"/><path d="M15.2,12.17 L22.19,12.53 A10.2,10.2 0 0 1 17.56,20.55 L13.74,14.68 A3.2,3.2 0 0 0 15.2,12.17 Z"/><path d="M10.26,14.68 L6.44,20.55 A10.2,10.2 0 0 1 1.81,12.53 L8.8,12.17 A3.2,3.2 0 0 0 10.26,14.68 Z"/></svg></span>`;
+  }
+  return `<span class="ui-shop-item__icon-badge" style="background:${color}26"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${shapes[kind]}</svg></span>`;
+};
+
+// Drzewko zależności (Tomek: "Drzewko ulepszeń zamiast płaskiej listy - daje
+// poczucie budowania buildu, nie tylko klikania kup po kolei"). `branch`
+// grupuje węzły do pionowych kolumn w ShopPanel, `requires` blokuje zakup
+// (i wyszarza węzeł), dopóki gracz nie ma co najmniej 1 poziomu wskazanego
+// ID - patrz isUpgradeUnlocked()/buyUpgrade() niżej. Węzły BEZ `branch`
+// (speed/stage_paper/minimap) to samodzielne, niezależne od reszty gałęzie
+// jednowęzłowe - proste "kup i gotowe", bez sztucznego wymuszania
+// zależności tam, gdzie w grze żadnej nie ma. Rdzenie (PRESTIGE_UPGRADES)
+// CELOWO zostają płaskie - już mają własną, grubszą bramkę
+// (unlockPlanet), a przerabianie ich to osobny temat.
 const SHOP_UPGRADES = [
   {
     id: 'capacity',
+    branch: 'collection',
+    requires: null,
     icon: _kenneyIcon('backpack', '#E8EAF6'),
     get name() { return I18n.t('shop.item.capacity.name'); },
     get description() { return I18n.t('shop.item.capacity.desc'); },
@@ -79,19 +120,9 @@ const SHOP_UPGRADES = [
     }
   },
   {
-    id: 'speed',
-    icon: _kenneyIcon('star', '#FFEE58'),
-    get name() { return I18n.t('shop.item.speed.name'); },
-    get description() { return I18n.t('shop.item.speed.desc'); },
-    baseCost: 60,
-    costScale: 1.8,
-    maxLevel: 4,
-    getValue(level) {
-      return 180 * (1 + level * 0.15);
-    }
-  },
-  {
     id: 'pickup',
+    branch: 'collection',
+    requires: 'capacity',
     icon: _magnetIcon('#EF5350'),
     get name() { return I18n.t('shop.item.pickup.name'); },
     get description() { return I18n.t('shop.item.pickup.desc'); },
@@ -103,40 +134,35 @@ const SHOP_UPGRADES = [
     }
   },
   {
-    id: 'stage_paper',
-    icon: _kenneyIcon('book', '#E8EAF6'),
-    get name() { return I18n.t('shop.item.stage_paper.name'); },
-    get description() { return I18n.t('shop.item.stage_paper.desc'); },
-    baseCost: 150,
-    costScale: 1.0,
-    maxLevel: 1,
+    // Automatyzacja (drone.js) - JEDYNE ulepszenie, które zbiera surowce
+    // BEZ obecności gracza w pobliżu (w przeciwieństwie do 'pickup' wyżej,
+    // który tylko poszerza zasięg PRZY graczu). getValue(level) = liczba
+    // dronów, czytana NA ŻYWO przez DroneManager (window.economyManager.
+    // upgradeLevels.drone) - zeruje się przy prestige() jak każde inne
+    // ulepszenie sklepowe, więc drony znikają/pojawiają się same, bez
+    // żadnego dodatkowego kodu w _applyUpgrade/prestige().
+    id: 'drone',
+    branch: 'collection',
+    requires: 'pickup',
+    icon: _kenneyIcon('gear', '#64B5F6'),
+    get name() { return I18n.t('shop.item.drone.name'); },
+    get description() { return I18n.t('shop.item.drone.desc'); },
+    baseCost: 300,
+    costScale: 2.0,
+    maxLevel: 3,
     getValue(level) {
       return level;
     }
   },
   {
-    // Tańszy, WCZEŚNIEJSZY stopień pośredni przed Filtrem Toksyn/Kombinezonem
-    // Radiacyjnym niżej - łagodzi karę prędkości w hazardzie, ale NIE daje
-    // pełnej odporności (patrz player.js _getHazardSpeedMult). Widoczny na
-    // postaci jako kask nad głową (_drawHelmet w player.js).
-    id: 'headlamp',
-    icon: _kenneyIcon('shield', '#FFD54F'),
-    get name() { return I18n.t('shop.item.headlamp.name'); },
-    get description() { return I18n.t('shop.item.headlamp.desc'); },
-    baseCost: 130,
-    costScale: 1.0,
-    maxLevel: 1,
-    getValue(level) {
-      return level;
-    }
-  },
-  {
-    // Ten sam duch co headlamp wyżej - częściowa, tania ulga PRZED pełnymi
-    // strojami niżej. Wydłuża czas przed utratą przedmiotu (patrz player.js
-    // _getHazardLossThreshold). Widoczny na postaci jako buty przy stopach
-    // (_drawBoots w player.js).
+    // Najtańszy, WCZEŚNIEJSZY stopień w gałęzi Ochrona - łagodzi karę
+    // (dłuższy czas przed utratą przedmiotu), ale NIE daje pełnej odporności
+    // (patrz player.js _getHazardLossThreshold). Widoczny na postaci jako
+    // buty przy stopach (_drawBoots w player.js).
     id: 'boots',
-    icon: _kenneyIcon('shield', '#A1887F'),
+    branch: 'protection',
+    requires: null,
+    icon: _protectionIcon('boot', '#A1887F'),
     get name() { return I18n.t('shop.item.boots.name'); },
     get description() { return I18n.t('shop.item.boots.desc'); },
     baseCost: 100,
@@ -147,8 +173,28 @@ const SHOP_UPGRADES = [
     }
   },
   {
+    // Kolejny stopień pośredni przed Filtrem Toksyn/Kombinezonem Radiacyjnym
+    // niżej - łagodzi karę prędkości w hazardzie, ale wciąż NIE daje pełnej
+    // odporności (patrz player.js _getHazardSpeedMult). Widoczny na postaci
+    // jako kask nad głową (_drawHelmet w player.js).
+    id: 'headlamp',
+    branch: 'protection',
+    requires: 'boots',
+    icon: _protectionIcon('helmet', '#FFD54F'),
+    get name() { return I18n.t('shop.item.headlamp.name'); },
+    get description() { return I18n.t('shop.item.headlamp.desc'); },
+    baseCost: 130,
+    costScale: 1.0,
+    maxLevel: 1,
+    getValue(level) {
+      return level;
+    }
+  },
+  {
     id: 'toxic_filter',
-    icon: _kenneyIcon('shield', '#66BB6A'),
+    branch: 'protection',
+    requires: 'headlamp',
+    icon: _protectionIcon('filter', '#66BB6A'),
     get name() { return I18n.t('shop.item.toxic_filter.name'); },
     get description() { return I18n.t('shop.item.toxic_filter.desc'); },
     baseCost: 250,
@@ -160,10 +206,40 @@ const SHOP_UPGRADES = [
   },
   {
     id: 'radiation_suit',
-    icon: _kenneyIcon('shield', '#FFC107'),
+    branch: 'protection',
+    requires: 'toxic_filter',
+    icon: _protectionIcon('radiation', '#FFC107'),
     get name() { return I18n.t('shop.item.radiation_suit.name'); },
     get description() { return I18n.t('shop.item.radiation_suit.desc'); },
     baseCost: 500,
+    costScale: 1.0,
+    maxLevel: 1,
+    getValue(level) {
+      return level;
+    }
+  },
+  {
+    id: 'speed',
+    branch: null,
+    requires: null,
+    icon: _kenneyIcon('star', '#FFEE58'),
+    get name() { return I18n.t('shop.item.speed.name'); },
+    get description() { return I18n.t('shop.item.speed.desc'); },
+    baseCost: 60,
+    costScale: 1.8,
+    maxLevel: 4,
+    getValue(level) {
+      return 180 * (1 + level * 0.15);
+    }
+  },
+  {
+    id: 'stage_paper',
+    branch: null,
+    requires: null,
+    icon: _kenneyIcon('book', '#E8EAF6'),
+    get name() { return I18n.t('shop.item.stage_paper.name'); },
+    get description() { return I18n.t('shop.item.stage_paper.desc'); },
+    baseCost: 150,
     costScale: 1.0,
     maxLevel: 1,
     getValue(level) {
@@ -178,31 +254,14 @@ const SHOP_UPGRADES = [
     // z tym, czym to ulepszenie faktycznie jest - patrz też SHIP_MODULE_PERKS
     // (free_minimap) niżej.
     id: 'minimap',
+    branch: null,
+    requires: null,
     icon: _kenneyIcon('target', '#FFD54F'),
     get name() { return I18n.t('shop.item.minimap.name'); },
     get description() { return I18n.t('shop.item.minimap.desc'); },
     baseCost: 350,
     costScale: 1.0,
     maxLevel: 1,
-    getValue(level) {
-      return level;
-    }
-  },
-  {
-    // Automatyzacja (drone.js) - JEDYNE ulepszenie, które zbiera surowce
-    // BEZ obecności gracza w pobliżu (w przeciwieństwie do 'pickup' wyżej,
-    // który tylko poszerza zasięg PRZY graczu). getValue(level) = liczba
-    // dronów, czytana NA ŻYWO przez DroneManager (window.economyManager.
-    // upgradeLevels.drone) - zeruje się przy prestige() jak każde inne
-    // ulepszenie sklepowe, więc drony znikają/pojawiają się same, bez
-    // żadnego dodatkowego kodu w _applyUpgrade/prestige().
-    id: 'drone',
-    icon: _kenneyIcon('gear', '#64B5F6'),
-    get name() { return I18n.t('shop.item.drone.name'); },
-    get description() { return I18n.t('shop.item.drone.desc'); },
-    baseCost: 300,
-    costScale: 2.0,
-    maxLevel: 3,
     getValue(level) {
       return level;
     }
@@ -1551,6 +1610,28 @@ class EconomyManager {
     return Math.round(def.baseCost * Math.pow(def.costScale, level));
   }
 
+  /** Czy węzeł drzewka jest odblokowany (kupowalny)? Korzeń gałęzi (requires:
+   * null) jest odblokowany zawsze - blokada dotyczy TYLKO węzłów z
+   * ustawionym `requires`, i to dopóki poziom rodzica wynosi 0. Świadomie
+   * "co najmniej 1 poziom", nie "rodzic na maksa" - Ochrona/Zbieranie mają
+   * mieszane maxLevel (1 vs 3/5), więc wymaganie pełnego wykupienia rodzica
+   * byłoby niespójne między gałęziami i dużo bardziej restrykcyjne, niż
+   * potrzeba do samego "poczucia budowania buildu".
+   *
+   * BUGFIX (kompatybilność wsteczna): gracz z zapisem SPRZED drzewka mógł
+   * legalnie kupić np. drone/radiation_suit BEZ pickup/toxic_filter - wtedy
+   * `requires` nie istniało. Bez poniższego warunku taki zapis po wczytaniu
+   * pokazywałby własny, opłacony poziom jako "zablokowany" i odcinał dalsze
+   * poziomy (drone ma maxLevel 3) - realna utrata dostępu do czegoś, za co
+   * gracz już zapłacił. "Masz już przynajmniej 1 poziom" = odblokowany,
+   * niezależnie od stanu rodzica. */
+  isUpgradeUnlocked(upgradeId) {
+    const def = SHOP_UPGRADES.find((u) => u.id === upgradeId);
+    if (!def || !def.requires) return true;
+    if (this.hasUpgrade(upgradeId)) return true;
+    return this.hasUpgrade(def.requires);
+  }
+
   getShopCatalog() {
     return SHOP_UPGRADES.map((def) => {
       const level = this.upgradeLevels[def.id] || 0;
@@ -1560,6 +1641,8 @@ class EconomyManager {
       // pieniądze, nic nie dając w zamian.
       const fromShip = this.isSupersededByShip(def.id);
       const maxed = level >= def.maxLevel || fromShip;
+      const unlocked = this.isUpgradeUnlocked(def.id);
+      const requiresDef = def.requires ? SHOP_UPGRADES.find((u) => u.id === def.requires) : null;
       return {
         id: def.id,
         icon: def.icon,
@@ -1572,7 +1655,14 @@ class EconomyManager {
         // UI rozróżnia "kupione na maksa" od "masz to ze statku" (ui.js) -
         // dla gracza to zupełnie inna informacja.
         fromShip,
-        nextValue: maxed ? def.getValue(level) : def.getValue(level + 1)
+        nextValue: maxed ? def.getValue(level) : def.getValue(level + 1),
+        // Drzewko zależności (patrz komentarz przy SHOP_UPGRADES) - `branch`
+        // grupuje węzły w ShopPanel, `locked`/`requiresName` dają UI gotowy
+        // tekst podpowiedzi ("Wymaga: X") bez własnego wyszukiwania po ID.
+        branch: def.branch || null,
+        requiresId: def.requires || null,
+        requiresName: requiresDef ? requiresDef.name : null,
+        locked: !unlocked
       };
     });
   }
@@ -1696,6 +1786,10 @@ class EconomyManager {
     // więc warunek musi stać TU, przy pobieraniu pieniędzy - nie tylko w
     // warstwie widoku.
     if (this.isSupersededByShip(upgradeId)) return false;
+    // Ten sam powód co wyżej, dla drzewka zależności - ShopPanel wyszarza
+    // zablokowany węzeł, ale buyUpgrade() jest publiczne (DEBUG itd.), więc
+    // realna blokada MUSI stać tutaj.
+    if (!this.isUpgradeUnlocked(upgradeId)) return false;
 
     const cost = this.getUpgradeCost(upgradeId);
     if (!this.canAfford(cost)) return false;
