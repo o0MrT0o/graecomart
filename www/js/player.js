@@ -1251,28 +1251,46 @@ class PlayerController {
    * soczewka patrząca wprost w ekran czytałaby się jako plaska kropka
    * bez kształtu, podczas gdy nachylona tuba jednoznacznie czyta się
    * jako źródło światła świecące w kierunku, w którym postać patrzy.
+   *
+   * BUGFIX (Tomek: "mocowanie niech dobrze i w dobrym miejscu leży na
+   * hełmie i będzie łączone z latarką"): pasek zaczynał się w INNYM
+   * miejscu (r*0.75) niż uchwyt tuby (r*0.92) - widoczna przerwa, nie
+   * jedno spójne mocowanie. Do tego samo r*0.92 było zgadywanką z
+   * this.radius (parametr KOLIZJI, nie rozmiar sylwetki - ten sam błąd,
+   * który wcześniej psuł buty/pasek, patrz komentarz przy
+   * PLAYER_ALIEN_BOOT_LEFT_FRAC) - wypadało WEWNĄTRZ sylwetki głowy
+   * zamiast na jej krawędzi. Zmierzone wprost na pikselach
+   * assets/player.png (wiersz 15, wysokość ~fraction 0.16): prawa
+   * krawędź głowy leży na 0.409 * spriteW od środka. Ta sama wartość
+   * działa dla WSZYSTKICH ciał (w przeciwieństwie do tułowia głowa ma
+   * identyczny zarys na default i na wszystkich PLAYER_ALIEN_BODY_IDS -
+   * zmierzone osobno, więc bez potrzeby _isAlienBodyActive tutaj).
+   * Pasek i uchwyt teraz startują z TEGO SAMEGO punktu (mountX, sideY).
    */
   _drawHelmet(ctx2, sideY) {
-    const r = this.radius * 0.62;
+    const r = this.radius * 0.62; // skala samych elementów (tuba/uchwyt/pasek), NIE ich pozycji
+    const { w: spriteW } = this._getSpriteDrawSize();
+    const mountX = spriteW * 0.409;
 
-    // Pasek opasujący głowę - łuk od miejsca mocowania (bok głowy) w górę
-    // i w stronę czubka, sugerujący "to owija głowę", bez rysowania
+    // Pasek opasujący głowę - łuk od miejsca mocowania (krawędź głowy) w
+    // górę i w stronę czubka, sugerujący "to owija głowę", bez rysowania
     // pełnej opaski dookoła (i tak w większości zasłoniłaby ją sylwetka).
     ctx2.save();
     ctx2.strokeStyle = 'rgba(40, 40, 40, 0.75)';
     ctx2.lineWidth = r * 0.12;
     ctx2.lineCap = 'round';
     ctx2.beginPath();
-    ctx2.moveTo(r * 0.75, sideY);
-    ctx2.quadraticCurveTo(r * 0.55, sideY - r * 0.75, r * 0.05, sideY - r * 0.55);
+    ctx2.moveTo(mountX, sideY);
+    ctx2.quadraticCurveTo(mountX * 0.65, sideY - r * 0.75, mountX * 0.1, sideY - r * 0.55);
     ctx2.stroke();
     ctx2.restore();
 
     // Latarka z boku głowy - własny lokalny układ (przesunięcie + obrót),
     // żeby tuba i jej soczewka nie musiały ręcznie przeliczać sinusów/
-    // cosinusów kąta nachylenia.
+    // cosinusów kąta nachylenia. Zakotwiczona w TYM SAMYM punkcie
+    // (mountX, sideY) co start paska powyżej - jedno spójne mocowanie.
     ctx2.save();
-    ctx2.translate(r * 0.92, sideY);
+    ctx2.translate(mountX, sideY);
     ctx2.rotate(-0.25);
 
     // Uchwyt łączący tubę z głową (z małym nitem/klamrą - miejsce, gdzie
