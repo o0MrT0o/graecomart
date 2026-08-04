@@ -152,13 +152,14 @@ canvas {
 }
 
 /* Pulsująca poświata za maskotką - ten sam duch co planet-glow w ceremonii
-   prestiżu, w kolorze samej maskotki (jasny błękit), nie złocie - dwa różne
-   ekrany zachowują własną tożsamość barwną. */
+   prestiżu, w złocie (--ui-gold-glow, ta sama zmienna co tytuł/pasek niżej) -
+   spójna z resztą karty, zamiast osobnej, niepowiązanej tożsamości barwnej
+   jak przy poprzednim płaskoniebieskim maskocie. */
 .loading-screen__badge-glow {
     position: absolute;
-    inset: -18px;
+    inset: -20px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(158, 202, 255, 0.55) 0%, transparent 70%);
+    background: radial-gradient(circle, var(--ui-gold-glow) 0%, transparent 70%);
     filter: blur(4px);
     animation: loading-screen-glow-pulse 2.2s ease-in-out infinite;
 }
@@ -168,21 +169,121 @@ canvas {
     50% { opacity: 1; transform: scale(1.08); }
 }
 
+/* BYŁ płaski assets/ui/mascot_badge.png (Tomek: "ta postać wygląda jak
+   gówno, jeden kolor, nic się nie dzieje") - zastąpiony PRAWDZIWYM sprite'em
+   gracza (assets/player/alien_green_walk.png, domyślny skin, ten sam plik co
+   w grze) z realnym cieniowaniem/twarzą. Sam .loading-screen__badge to tylko
+   pozycjonujący kontener (rozmiar JEDNEJ klatki, cień, animacja bob) - dwie
+   klatki chodu leżą jako OSOBNE, nałożone warstwy (.loading-screen__badge-frame
+   niżej) o STAŁYM background-position, przełączane samym opacity. */
 .loading-screen__badge {
     position: relative;
-    animation: loading-screen-bob 2.2s ease-in-out infinite;
+    width: 76px;
+    height: 104px;
     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
-}
-
-.loading-screen__badge img {
-    display: block;
-    width: 84px;
-    height: auto;
+    animation: loading-screen-bob 2.2s ease-in-out infinite;
 }
 
 @keyframes loading-screen-bob {
-    0%, 100% { transform: translateY(0) rotate(-4deg); }
-    50% { transform: translateY(-8px) rotate(4deg); }
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-10px) rotate(3deg); }
+}
+
+/* Dwie klatki spritesheetu jako osobne warstwy - KAŻDA ma raz ustawiony,
+   NIGDY nieanimowany background-position (frame a = 0%, frame b = 100%).
+   Jedyna animowana właściwość to opacity, naprzemiennie w twardych progach
+   (bez steps()/interpolacji - obie granice segmentu mają tę samą wartość,
+   więc "trzyma" ją, zero płynnego przenikania między klatkami, jak
+   przystało na sprite). BUGFIX: wcześniejsza wersja animowała
+   background-position JEDNEGO tła krokowo (steps(2)) - w połączeniu z
+   RÓWNOCZESNĄ animacją transform (bob) na tym samym elemencie Chromium
+   sporadycznie renderowało obie klatki naraz (widoczna "podwójna"
+   sylwetka) - potwierdzone zrzutami z kilku klatek w rzędzie. Dwie
+   statyczne warstwy + samo opacity nie mają tego problemu. */
+.loading-screen__badge-frame {
+    position: absolute;
+    inset: 0;
+    background-image: url('assets/player/alien_green_walk.png');
+    background-repeat: no-repeat;
+    background-size: 200% 100%;
+}
+
+.loading-screen__badge-frame--a {
+    background-position: 0% 0%;
+    animation: loading-screen-frame-a-vis 0.7s linear infinite;
+}
+
+.loading-screen__badge-frame--b {
+    background-position: 100% 0%;
+    animation: loading-screen-frame-b-vis 0.7s linear infinite;
+}
+
+@keyframes loading-screen-frame-a-vis {
+    0%, 49.9% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+@keyframes loading-screen-frame-b-vis {
+    0%, 49.9% { opacity: 0; }
+    50%, 100% { opacity: 1; }
+}
+
+/* Planety w tle (Tomek: "dodaj planety") - te same assety co ceremonia
+   prestiżu (assets/planets/), tu małe i przycięte przy krawędziach jako
+   odległe tło, nie jedna wielka na środku. Pierwsze trzy dzieci
+   #loading-screen PO warstwie drobinek, więc malują się NAD nią, ale POD
+   .loading-screen__content (kolejność w DOM = z-order, ten sam trik co
+   reszta ekranu, zero jawnego z-index). */
+.loading-screen__planet {
+    position: absolute;
+    border-radius: 50%;
+    filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.35));
+    opacity: 0.92;
+}
+
+.loading-screen__planet img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+.loading-screen__planet--a {
+    top: -6%;
+    left: -9%;
+    width: 34vw;
+    max-width: 150px;
+    animation: loading-screen-planet-spin 50s linear infinite, loading-screen-planet-float 9s ease-in-out infinite;
+}
+
+.loading-screen__planet--b {
+    top: 12%;
+    right: -8%;
+    width: 22vw;
+    max-width: 96px;
+    animation: loading-screen-planet-spin 38s linear infinite reverse, loading-screen-planet-float 7s ease-in-out infinite 1.2s;
+}
+
+.loading-screen__planet--c {
+    bottom: -4%;
+    left: 4%;
+    width: 16vw;
+    max-width: 68px;
+    animation: loading-screen-planet-spin 30s linear infinite, loading-screen-planet-float 8s ease-in-out infinite 0.5s;
+}
+
+@keyframes loading-screen-planet-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Osobna animacja od spinu (transform się sumuje przez wspólny box, ale
+   spin obraca WOKÓŁ ŚRODKA a float go tylko przesuwa - stąd dwie osobne
+   `animation` na tym samym elemencie zamiast jednej łączącej oba w
+   keyframes, gdzie musiałyby się zgadzać co do fazy). */
+@keyframes loading-screen-planet-float {
+    0%, 100% { margin-top: 0; }
+    50% { margin-top: -10px; }
 }
 
 .loading-screen__title {
