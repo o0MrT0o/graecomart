@@ -1110,19 +1110,35 @@ class Game {
 
   /**
    * Pole "gwiazd" (drobne, migoczące punkty) widoczne nocą - rozrzucone po
-   * CAŁYM ekranie (nie tylko górnej połowie - to widok z góry, nie ma tu
+   * CAŁEJ MAPIE (nie tylko górnej połowie - to widok z góry, nie ma tu
    * dosłownego "nieba"), więc czyta się jako nocna, magiczna poświata
    * otoczenia, nie fizyczne odwzorowanie gwiazdozbioru. Pozycje LOSOWANE
-   * RAZ i cache'owane (this._starField) - tylko jasność każdej migocze co
-   * klatkę (własny sinus + losowe przesunięcie fazy na gwiazdę, ten sam
-   * trik co _maybePlayShimmer w audio.js - bez tego wszystkie migotałyby
-   * identycznie i mechanicznie).
+   * RAZ we WSPÓŁRZĘDNYCH ŚWIATA (this.worldWidth/worldHeight) i cache'owane
+   * (this._starField) - tylko jasność każdej migocze co klatkę (własny
+   * sinus + losowe przesunięcie fazy na gwiazdę, ten sam trik co
+   * _maybePlayShimmer w audio.js - bez tego wszystkie migotałyby identycznie
+   * i mechanicznie).
+   *
+   * BUGFIX (Tomek: "ta poświata niech jest statyczna, niech nie lata za
+   * kamerą"): dawniej pozycje były ułamkami EKRANU (xFrac/yFrac razy
+   * innerWidth/innerHeight) rysowanymi na ctxUI - warstwie NIEPRZESUNIĘTEJ
+   * o kamerę (patrz draw(), ctxUI rysowane poza save()/translate()/restore()
+   * dla ctxGameplay). W efekcie gwiazdy trzymały się stałych miejsc na
+   * EKRANIE i realnie "leciały" razem z kamerą przy chodzeniu, zamiast
+   * siedzieć w miejscu jak reszta świata. Teraz pozycje są w świecie, a przy
+   * rysowaniu odejmujemy cameraX/cameraY ręcznie (ctxUI nie ma własnej
+   * transformacji, więc to jedyny sposób, żeby "przywiązać" je do świata
+   * bez przenoszenia całego rysowania na ctxGameplay). Liczba gwiazd
+   * podniesiona z 55 do 630 (~11x, proporcjonalnie do stosunku pola mapy
+   * GAME_WORLD_WIDTH*HEIGHT do typowego ekranu telefonu), żeby zachować
+   * podobną WIDOCZNĄ gęstość mimo że każda gwiazda pokrywa teraz tylko
+   * fragment dużo większego obszaru.
    */
   _drawStars(intensity) {
     if (!this._starField) {
-      this._starField = Array.from({ length: 55 }, () => ({
-        xFrac: Math.random(),
-        yFrac: Math.random(),
+      this._starField = Array.from({ length: 630 }, () => ({
+        wx: Math.random() * this.worldWidth,
+        wy: Math.random() * this.worldHeight,
         size: 1 + Math.random() * 1.6,
         phaseOffset: Math.random() * Math.PI * 2,
         speed: 0.0012 + Math.random() * 0.0022
@@ -1132,14 +1148,20 @@ class Game {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const now = performance.now();
+    // Mały margines, żeby gwiazdy częściowo wchodzące zza krawędzi ekranu
+    // (promień do ~2.6px) nie znikały o klatkę za wcześnie/za późno.
+    const margin = 4;
 
     this.ctxUI.save();
     this.ctxUI.fillStyle = '#FFFFFF';
     this._starField.forEach((star) => {
+      const sx = star.wx - this.cameraX;
+      const sy = star.wy - this.cameraY;
+      if (sx < -margin || sx > w + margin || sy < -margin || sy > h + margin) return;
       const twinkle = 0.5 + 0.5 * Math.sin(now * star.speed + star.phaseOffset);
       this.ctxUI.globalAlpha = intensity * (0.35 + twinkle * 0.65);
       this.ctxUI.beginPath();
-      this.ctxUI.arc(star.xFrac * w, star.yFrac * h, star.size, 0, Math.PI * 2);
+      this.ctxUI.arc(sx, sy, star.size, 0, Math.PI * 2);
       this.ctxUI.fill();
     });
     this.ctxUI.restore();
