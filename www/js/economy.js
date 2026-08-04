@@ -94,6 +94,78 @@ const _protectionIcon = (kind, color) => {
   return `<span class="ui-shop-item__icon-badge" style="background:${color}26"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${shapes[kind]}</svg></span>`;
 };
 
+// Wariant plakietki dla PRAWDZIWYCH, wielokolorowych sprite'ów Kenney (patrz
+// STALL_DECORATIONS niżej) - w przeciwieństwie do _kenneyIcon (jednokolorowa
+// maska CSS) tu chcemy NATYWNE barwy assetu (drewno skrzyni, zielona flaga,
+// pomarańczowy płomień), więc zwykły <img>, nie .ui-icon mask-image.
+const _stallIcon = (assetPath, bgColor) =>
+  `<span class="ui-shop-item__icon-badge" style="background:${bgColor}26"><img src="${assetPath}" alt="" width="22" height="22" style="display:block;object-fit:contain"></span>`;
+
+// --- Dekoracje Terminalu Handlowego (kosmetyka za gotówkę) -------------------
+// Tomek: "zacznijmy od kosmetyki straganu... Katalog dekoracji (5-8 pozycji)
+// — kupowane za gotówkę, ten sam wzorzec co Sklep (ikona/nazwa/opis/koszt)...
+// tylko żeby wszystko pasowało do siebie i było fajne ładne". Assety z Kenney
+// "Platformer Pack Remastered" - TA SAMA paczka, z której już pochodzą
+// crate.png/sign.png (ambientowe dekoracje Strefy C, patrz DECOR_TYPES w
+// game.js), więc gwarantowana spójność stylu z resztą rekwizytów w grze,
+// zamiast zgadywania z innej paczki.
+//
+// Kupowane RAZ (jak PLAYER_SKINS/PROGRESSION_UNLOCKS), TRWAŁE - NIE zerowane
+// przez prestige() (this.decorationsOwned, patrz konstruktor EconomyManager),
+// rysowane w stałych slotach wokół Terminalu (_drawStallDecorations w
+// market.js). Realna nagroda, nie tylko kosmetyka (ten sam duch co
+// MARKET_SEASONAL_PRICE_MULT w market.js): każda POSIADANA dekoracja dokłada
+// +2% do ceny sprzedaży na Terminalu (getDecorationPriceBonusMult niżej) -
+// stackuje się, komplet 6 sztuk = +12% na stałe.
+const STALL_DECORATION_PRICE_BONUS_PER_ITEM = 0.02;
+const STALL_DECORATIONS = [
+  {
+    id: 'crate',
+    icon: _stallIcon('assets/decor/crate.png', '#B98554'),
+    get name() { return I18n.t('decor.crate.name'); },
+    get desc() { return I18n.t('decor.crate.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 120
+  },
+  {
+    id: 'sign',
+    icon: _stallIcon('assets/decor/sign.png', '#B98554'),
+    get name() { return I18n.t('decor.sign.name'); },
+    get desc() { return I18n.t('decor.sign.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 120
+  },
+  {
+    id: 'mushroom',
+    icon: _stallIcon('assets/decor/stall_mushroom.png', '#E53935'),
+    get name() { return I18n.t('decor.mushroom.name'); },
+    get desc() { return I18n.t('decor.mushroom.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 180
+  },
+  {
+    id: 'flag',
+    icon: _stallIcon('assets/decor/stall_flag.png', '#66BB6A'),
+    get name() { return I18n.t('decor.flag.name'); },
+    get desc() { return I18n.t('decor.flag.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 280
+  },
+  {
+    // Dwie klatki (torch1/torch2) migoczącego płomienia - _drawStallDecorations
+    // w market.js przełącza je w pętli, ikona katalogu pokazuje tylko
+    // pierwszą (statyczna, wystarczy do rozpoznania w liście).
+    id: 'torch',
+    icon: _stallIcon('assets/decor/torch1.png', '#FFA726'),
+    get name() { return I18n.t('decor.torch.name'); },
+    get desc() { return I18n.t('decor.torch.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 320
+  },
+  {
+    id: 'fence',
+    icon: _stallIcon('assets/decor/stall_fence.png', '#B98554'),
+    get name() { return I18n.t('decor.fence.name'); },
+    get desc() { return I18n.t('decor.fence.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 400
+  }
+];
+
 // Drzewko zależności (Tomek: "Drzewko ulepszeń zamiast płaskiej listy - daje
 // poczucie budowania buildu, nie tylko klikania kup po kolei"). `branch`
 // grupuje węzły do pionowych kolumn w ShopPanel, `requires` blokuje zakup
@@ -1048,6 +1120,12 @@ class EconomyManager {
     // wyglądu postaci.
     this.selectedSkin = 'default';
     this.unlockedSkins = new Set(['default']);
+
+    // Dekoracje Terminalu Handlowego (patrz STALL_DECORATIONS) - TEN SAM
+    // powód co unlockedSkins wyżej: kupione raz, meta-postęp, NIE zerowane
+    // prestiżem. Pusty na start (w przeciwieństwie do unlockedSkins - nie ma
+    // odpowiednika "default", stragan zaczyna zupełnie goły).
+    this.decorationsOwned = new Set();
 
     // Lokalna tablica wyników - TEŻ meta-postęp, NIE zerowana prestiżem
     // (ten sam powód co unlockedSkins wyżej: przebiegi z CAŁEJ historii
@@ -2038,6 +2116,56 @@ class EconomyManager {
     return true;
   }
 
+  /** Katalog dekoracji straganu (patrz STALL_DECORATIONS) - ten sam kształt
+   * danych co getSkinCatalog() wyżej, tylko `owned` zamiast `unlocked`/
+   * `selected` (dekoracje nie mają wyboru "jedna na raz" - WSZYSTKIE
+   * posiadane są widoczne naraz, patrz _drawStallDecorations w market.js). */
+  getDecorationsCatalog() {
+    return STALL_DECORATIONS.map((def) => ({
+      id: def.id,
+      icon: def.icon,
+      name: def.name,
+      description: def.desc,
+      cost: def.cost,
+      owned: this.decorationsOwned.has(def.id)
+    }));
+  }
+
+  /** Czy stragan ma daną dekorację - czytane przez TradingPost.draw()
+   * (market.js) do zdecydowania, co narysować w każdym stałym slocie. */
+  isDecorationOwned(decorationId) {
+    return this.decorationsOwned.has(decorationId);
+  }
+
+  /** Kupuje dekorację NA STAŁE (bez "zakładania" jak przy skinach - dekoracja
+   * po prostu pojawia się w swoim slocie od razu po zakupie). Ten sam wzorzec
+   * co buyUpgrade() (SHOP_UPGRADES), płatne money, nie cores (Tomek: "kupowane
+   * za gotówkę" - w przeciwieństwie do skinów, to bramka Sklepu, nie Rdzeni). */
+  buyDecoration(decorationId) {
+    const def = STALL_DECORATIONS.find((d) => d.id === decorationId);
+    if (!def) return false;
+    if (this.decorationsOwned.has(decorationId)) return false;
+    if (!this.canAfford(def.cost)) return false;
+
+    this.money -= def.cost;
+    this.decorationsOwned.add(decorationId);
+    this._syncMoneyState();
+
+    Bus.publish(Events.FX_POPUP, {
+      text: I18n.t('economy.popup.upgrade'),
+      duration: 1200,
+      color: '#7CFC98'
+    });
+    return true;
+  }
+
+  /** Mnożnik ceny sprzedaży na Terminalu z posiadanych dekoracji (patrz
+   * STALL_DECORATION_PRICE_BONUS_PER_ITEM) - czytany przez MarketManager.
+   * getPrice() (market.js), ten sam hook co seasonalMult tam. */
+  getDecorationPriceBonusMult() {
+    return 1 + this.decorationsOwned.size * STALL_DECORATION_PRICE_BONUS_PER_ITEM;
+  }
+
   /**
    * Odlot na nową planetę - JEDYNY sposób na zdobycie Rdzeni. Zeruje CAŁY
    * przebieg (pieniądze, zwykłe SHOP_UPGRADES + ich efekty w innych modułach,
@@ -2517,6 +2645,10 @@ class EconomyManager {
     if (Array.isArray(data.unlockedSkins)) {
       data.unlockedSkins.forEach((id) => this.unlockedSkins.add(id));
     }
+    // Dekoracje straganu (meta, trwałe jak unlockedSkins) - ten sam powód/wzorzec.
+    if (Array.isArray(data.decorationsOwned)) {
+      data.decorationsOwned.forEach((id) => this.decorationsOwned.add(id));
+    }
     if (typeof data.selectedSkin === 'string' && this.unlockedSkins.has(data.selectedSkin)) {
       this.selectedSkin = data.selectedSkin;
     }
@@ -2588,6 +2720,7 @@ class EconomyManager {
       unlockedAchievements: Array.from(this.unlockedAchievements),
       selectedSkin: this.selectedSkin,
       unlockedSkins: Array.from(this.unlockedSkins),
+      decorationsOwned: Array.from(this.decorationsOwned),
       bestRunsByEarned: this.bestRunsByEarned.map((e) => ({ ...e })),
       bestRunsByTime: this.bestRunsByTime.map((e) => ({ ...e }))
     };

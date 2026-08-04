@@ -180,7 +180,13 @@ class MarketManager {
     const seasonalMult = (window.seasonalEventManager && window.seasonalEventManager.isActive())
       ? MARKET_SEASONAL_PRICE_MULT
       : 1;
-    return Math.max(1, Math.round(base * this.multipliers[typeId] * coreMult * planetMult * seasonalMult));
+    // Dekoracje straganu (economy.js STALL_DECORATIONS, Tomek: "kosmetyka
+    // straganu... żeby dawała coś realnego") - +2% za każdą posiadaną,
+    // stackuje się z sezonowym mnożnikiem wyżej zamiast go zastępować.
+    const decorationMult = (eco && typeof eco.getDecorationPriceBonusMult === 'function')
+      ? eco.getDecorationPriceBonusMult()
+      : 1;
+    return Math.max(1, Math.round(base * this.multipliers[typeId] * coreMult * planetMult * seasonalMult * decorationMult));
   }
 
   getTrend(typeId) {
@@ -225,6 +231,34 @@ const TRADING_POST_MIN_ICON = 20;
 // na tyle ms, dopóki gracz stoi w zasięgu i ma coś do sprzedania.
 const TRADING_POST_SELL_INTERVAL_MS = 150;
 const TRADING_POST_ACCEPTS = ['plastic', 'product', 'alloy', 'crystal', 'crystal_shard', 'crystal_gem'];
+
+// Stałe sloty dekoracji straganu (economy.js STALL_DECORATIONS) - dx/dy są
+// MNOŻNIKAMI hw/hh (patrz _drawStallDecorations), nie surowymi px, żeby
+// rozmieszczenie skalowało się razem z TRADING_POST_SIZE. Rozstawione poza
+// hw/hh (|dx|>1 lub dy poza hh), żeby żadna dekoracja nie nachodziła na
+// korpus/ekran terminala - to satelickie rekwizyty, nie część jego bryły.
+// `spriteKey` to funkcja (nie string) WYŁĄCZNIE dla pochodni - migocze
+// między dwiema klatkami (patrz komentarz przy torch1/torch2 niżej), reszta
+// zwraca stały klucz.
+// BUGFIX (weryfikacja Playwrightem - zrzut ekranu przy Terminalu): pierwsza
+// wersja tego układu miała sign (dx:1.30) i flag (dx:1.65) niemal w tym samym
+// miejscu (35px różnicy przy 62px szerokiej fladze) - flag (rysowany PO
+// sign w tej tablicy) całkowicie go zasłaniał. Przeprojektowane na DWA
+// sloty boczne (daleko od siebie, |dx|=1.55) + CZTERY w rzędzie z przodu
+// (dy>1, czyli POD stopką terminala, rozstawione co ~0.5-0.55 dx - przy
+// rozmiarach 32-62px żadne dwa się już nie stykają).
+const STALL_DECOR_SLOTS = [
+  { id: 'crate', dx: -1.55, dy: 0.3, size: 46, spriteKey: () => 'stall_crate' },
+  { id: 'fence', dx: 1.55, dy: 0.3, size: 42, spriteKey: () => 'stall_fence' },
+  { id: 'sign', dx: -0.85, dy: 1.25, size: 56, spriteKey: () => 'stall_sign' },
+  // Migotanie - dwie klatki przełączane co ~350ms na podstawie zegara, ten
+  // sam "twarde przełączenie, zero interpolacji" duch co maskotka ekranu
+  // ładowania (loading-screen-frame-a-vis w style.css), tylko liczony w JS
+  // (performance.now()) zamiast CSS keyframes - to canvas, nie DOM.
+  { id: 'torch', dx: -0.3, dy: 1.3, size: 48, spriteKey: () => (Math.floor(performance.now() / 350) % 2 === 0 ? 'stall_torch1' : 'stall_torch2') },
+  { id: 'mushroom', dx: 0.3, dy: 1.2, size: 32, spriteKey: () => 'stall_mushroom' },
+  { id: 'flag', dx: 0.85, dy: 1.15, size: 62, spriteKey: () => 'stall_flag' }
+];
 
 class TradingPost {
   constructor(canvas, marketManager) {
@@ -564,6 +598,48 @@ class TradingPost {
       ctx.font = '10px Arial';
       this._drawOutlinedText(ctx, hasSellable ? I18n.t('market.status.selling') : I18n.t('market.status.noStock'), this.x, this.y - hh - 74, statusColor);
     }
+
+    // Dekoracje straganu (economy.js STALL_DECORATIONS, Tomek: "kosmetyka
+    // straganu") - NA KOŃCU, po wszystkim innym, żeby nigdy nie wchodziły
+    // pod korpus/ekran terminala (sloty leżą poza jego hw/hh, patrz
+    // STALL_DECOR_SLOTS niżej, więc kolejność i tak rzadko ma znaczenie -
+    // to tylko dodatkowe zabezpieczenie).
+    this._drawStallDecorations(ctx, hw, hh);
+  }
+
+  /**
+   * Rysuje KAŻDĄ posiadaną dekorację (economyManager.isDecorationOwned) w
+   * jej WŁASNYM, stałym slocie wokół terminala - żadnego UI do rozmieszczania,
+   * żadnego losowania: id dekoracji -> zawsze ten sam slot, więc gracz wie,
+   * gdzie się pojawi, zanim jeszcze kupi. dx/dy w STALL_DECOR_SLOTS to
+   * mnożniki hw/hh (nie px), żeby sloty skalowały się razem z rozmiarem
+   * terminala, gdyby TRADING_POST_SIZE kiedyś się zmienił.
+   */
+  _drawStallDecorations(ctx, hw, hh) {
+    const eco = window.economyManager;
+    if (!eco || typeof eco.isDecorationOwned !== 'function') return;
+    const loader = window.spriteLoader;
+    if (!loader) return;
+
+    STALL_DECOR_SLOTS.forEach((slot) => {
+      if (!eco.isDecorationOwned(slot.id)) return;
+      const img = loader.get(slot.spriteKey());
+      if (!img || !img.complete || !img.naturalWidth) return;
+
+      const cx = this.x + slot.dx * hw;
+      const cy = this.y + slot.dy * hh;
+      const w = slot.size;
+      const h = slot.size * (img.naturalHeight / img.naturalWidth);
+
+      // Cień - ten sam płaski elips co pod korpusem (draw()), tylko
+      // mniejszy, proporcjonalny do rozmiaru dekoracji.
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + h * 0.42, w * 0.36, w * 0.12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+    });
   }
 
   /**
