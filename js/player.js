@@ -1266,22 +1266,39 @@ class PlayerController {
    * identyczny zarys na default i na wszystkich PLAYER_ALIEN_BODY_IDS -
    * zmierzone osobno, więc bez potrzeby _isAlienBodyActive tutaj).
    * Pasek i uchwyt teraz startują z TEGO SAMEGO punktu (mountX, sideY).
+   *
+   * BUGFIX (Tomek: "mocowanie nie idzie po krzywiźnie hełmu tylko jakoś
+   * tak schodzi"): quadraticCurveTo z RĘCZNIE zgadniętym punktem
+   * kontrolnym cięła po skosie przez środek twarzy zamiast trzymać się
+   * krawędzi głowy. Zastąpione łamaną PRZEZ realnie zmierzone punkty
+   * prawej krawędzi assets/player.png (wiersze 3/6/9/12/15, ta sama
+   * tabela co wyżej) - pasek fizycznie leży NA sylwetce, więc opływa jej
+   * krzywiznę niezależnie od kształtu, zamiast rysować własną, niezależną
+   * krzywą, która akurat CZASEM się z nią pokrywa.
    */
   _drawHelmet(ctx2, sideY) {
     const r = this.radius * 0.62; // skala samych elementów (tuba/uchwyt/pasek), NIE ich pozycji
     const { w: spriteW } = this._getSpriteDrawSize();
     const mountX = spriteW * 0.409;
 
-    // Pasek opasujący głowę - łuk od miejsca mocowania (krawędź głowy) w
-    // górę i w stronę czubka, sugerujący "to owija głowę", bez rysowania
-    // pełnej opaski dookoła (i tak w większości zasłoniłaby ją sylwetka).
+    // Pasek opasujący głowę - łamana PO zmierzonej krawędzi (patrz BUGFIX
+    // wyżej), od miejsca mocowania w górę do okolic czubka głowy, bez
+    // rysowania pełnej opaski dookoła (i tak w większości zasłoniłaby ją
+    // sylwetka).
+    const STRAP_EDGE_FRACS = [0.163, 0.13, 0.098, 0.065, 0.033]; // wysokość (_getBodyPointY)
+    const STRAP_EDGE_X = [0.909, 0.879, 0.833, 0.788, 0.727]; // prawa krawędź głowy na tej wysokości
     ctx2.save();
     ctx2.strokeStyle = 'rgba(40, 40, 40, 0.75)';
     ctx2.lineWidth = r * 0.12;
     ctx2.lineCap = 'round';
+    ctx2.lineJoin = 'round';
     ctx2.beginPath();
     ctx2.moveTo(mountX, sideY);
-    ctx2.quadraticCurveTo(mountX * 0.65, sideY - r * 0.75, mountX * 0.1, sideY - r * 0.55);
+    STRAP_EDGE_FRACS.slice(1).forEach((frac, i) => {
+      const px = (STRAP_EDGE_X[i + 1] - 0.5) * spriteW;
+      const py = this._getBodyPointY(frac);
+      ctx2.lineTo(px, py);
+    });
     ctx2.stroke();
     ctx2.restore();
 
