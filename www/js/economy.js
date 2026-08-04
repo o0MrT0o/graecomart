@@ -69,8 +69,8 @@ const SHOP_UPGRADES = [
   {
     id: 'capacity',
     icon: _kenneyIcon('backpack', '#E8EAF6'),
-    name: 'Większy plecak',
-    description: '+2 miejsca na stosie',
+    get name() { return I18n.t('shop.item.capacity.name'); },
+    get description() { return I18n.t('shop.item.capacity.desc'); },
     baseCost: 40,
     costScale: 1.65,
     maxLevel: 5,
@@ -81,8 +81,8 @@ const SHOP_UPGRADES = [
   {
     id: 'speed',
     icon: _kenneyIcon('star', '#FFEE58'),
-    name: 'Szybsze buty',
-    description: '+15% prędkości ruchu',
+    get name() { return I18n.t('shop.item.speed.name'); },
+    get description() { return I18n.t('shop.item.speed.desc'); },
     baseCost: 60,
     costScale: 1.8,
     maxLevel: 4,
@@ -93,8 +93,8 @@ const SHOP_UPGRADES = [
   {
     id: 'pickup',
     icon: _magnetIcon('#EF5350'),
-    name: 'Magnes na śmieci',
-    description: '+10 px zasięgu podnoszenia',
+    get name() { return I18n.t('shop.item.pickup.name'); },
+    get description() { return I18n.t('shop.item.pickup.desc'); },
     baseCost: 35,
     costScale: 1.5,
     maxLevel: 3,
@@ -105,8 +105,8 @@ const SHOP_UPGRADES = [
   {
     id: 'stage_paper',
     icon: _kenneyIcon('book', '#E8EAF6'),
-    name: 'Licencja: Papier',
-    description: 'Odblokowuje papierowe odpady na mapie',
+    get name() { return I18n.t('shop.item.stage_paper.name'); },
+    get description() { return I18n.t('shop.item.stage_paper.desc'); },
     baseCost: 150,
     costScale: 1.0,
     maxLevel: 1,
@@ -121,8 +121,8 @@ const SHOP_UPGRADES = [
     // postaci jako kask nad głową (_drawHelmet w player.js).
     id: 'headlamp',
     icon: _kenneyIcon('shield', '#FFD54F'),
-    name: 'Kask z Latarką',
-    description: 'Mniejsza kara prędkości w strefach skażenia bez pełnej ochrony',
+    get name() { return I18n.t('shop.item.headlamp.name'); },
+    get description() { return I18n.t('shop.item.headlamp.desc'); },
     baseCost: 130,
     costScale: 1.0,
     maxLevel: 1,
@@ -137,8 +137,8 @@ const SHOP_UPGRADES = [
     // (_drawBoots w player.js).
     id: 'boots',
     icon: _kenneyIcon('shield', '#A1887F'),
-    name: 'Robocze Buty',
-    description: 'Więcej czasu, zanim stracisz przedmiot w hazardzie bez pełnej ochrony',
+    get name() { return I18n.t('shop.item.boots.name'); },
+    get description() { return I18n.t('shop.item.boots.desc'); },
     baseCost: 100,
     costScale: 1.0,
     maxLevel: 1,
@@ -149,8 +149,8 @@ const SHOP_UPGRADES = [
   {
     id: 'toxic_filter',
     icon: _kenneyIcon('shield', '#66BB6A'),
-    name: 'Filtr Toksyn',
-    description: 'Bez spowolnienia ani utraty przedmiotów w Strefie Bagiennej (szkło)',
+    get name() { return I18n.t('shop.item.toxic_filter.name'); },
+    get description() { return I18n.t('shop.item.toxic_filter.desc'); },
     baseCost: 250,
     costScale: 1.0,
     maxLevel: 1,
@@ -161,8 +161,8 @@ const SHOP_UPGRADES = [
   {
     id: 'radiation_suit',
     icon: _kenneyIcon('shield', '#FFC107'),
-    name: 'Kombinezon Radiacyjny',
-    description: 'Bez spowolnienia ani utraty przedmiotów w Strefie Atomowej (metal)',
+    get name() { return I18n.t('shop.item.radiation_suit.name'); },
+    get description() { return I18n.t('shop.item.radiation_suit.desc'); },
     baseCost: 500,
     costScale: 1.0,
     maxLevel: 1,
@@ -179,8 +179,8 @@ const SHOP_UPGRADES = [
     // (free_minimap) niżej.
     id: 'minimap',
     icon: _kenneyIcon('target', '#FFD54F'),
-    name: 'Minimapa',
-    description: 'Mały radar w rogu ekranu - pokazuje pobliskie maszyny, statek, terminal i surowce',
+    get name() { return I18n.t('shop.item.minimap.name'); },
+    get description() { return I18n.t('shop.item.minimap.desc'); },
     baseCost: 350,
     costScale: 1.0,
     maxLevel: 1,
@@ -198,8 +198,8 @@ const SHOP_UPGRADES = [
     // żadnego dodatkowego kodu w _applyUpgrade/prestige().
     id: 'drone',
     icon: _kenneyIcon('gear', '#64B5F6'),
-    name: 'Dron Recyklingowy',
-    description: '+1 dron - lata po mapie i sam zbiera pobliskie surowce',
+    get name() { return I18n.t('shop.item.drone.name'); },
+    get description() { return I18n.t('shop.item.drone.desc'); },
     baseCost: 300,
     costScale: 2.0,
     maxLevel: 3,
@@ -246,8 +246,8 @@ const PRESTIGE_UPGRADES = [
   {
     id: 'core_income',
     icon: _kenneyIcon('coin', '#FFD54F'),
-    name: 'Wzmacniacz Zarobku',
-    description: '+10% do każdej wypłaty, na zawsze - NIE zeruje się na nowej planecie',
+    get name() { return I18n.t('core.item.core_income.name'); },
+    get description() { return I18n.t('core.item.core_income.desc'); },
     baseCost: 3,
     costScale: 1.7,
     maxLevel: 10,
@@ -258,8 +258,8 @@ const PRESTIGE_UPGRADES = [
   {
     id: 'core_headstart',
     icon: _kenneyIcon('pouch', '#81D4FA'),
-    name: 'Zapasy Startowe',
-    description: '+200 gotówki na start każdej nowej planety',
+    get name() { return I18n.t('core.item.core_headstart.name'); },
+    get description() { return I18n.t('core.item.core_headstart.desc'); },
     baseCost: 2,
     costScale: 1.6,
     maxLevel: 8,
@@ -276,8 +276,8 @@ const PRESTIGE_UPGRADES = [
   {
     id: 'core_machine_speed',
     icon: _kenneyIcon('gear', '#66BB6A'),
-    name: 'Turbo Maszyn',
-    description: 'Wszystkie maszyny przetwarzają o 8% szybciej za poziom',
+    get name() { return I18n.t('core.item.core_machine_speed.name'); },
+    get description() { return I18n.t('core.item.core_machine_speed.desc'); },
     baseCost: 3,
     costScale: 1.65,
     maxLevel: 8,
@@ -290,8 +290,8 @@ const PRESTIGE_UPGRADES = [
   {
     id: 'core_magnet',
     icon: _magnetIcon('#FF8A80'),
-    name: 'Magnes Kwantowy',
-    description: '+12 px zasięgu podnoszenia za poziom - działa od razu na nowej planecie',
+    get name() { return I18n.t('core.item.core_magnet.name'); },
+    get description() { return I18n.t('core.item.core_magnet.desc'); },
     baseCost: 2,
     costScale: 1.55,
     maxLevel: 6,
@@ -302,8 +302,8 @@ const PRESTIGE_UPGRADES = [
   {
     id: 'core_prices',
     icon: _kenneyIcon('chart', '#FFD54F'),
-    name: 'Kontrakty Handlowe',
-    description: '+6% do ceny KAŻDEGO surowca na targu za poziom',
+    get name() { return I18n.t('core.item.core_prices.name'); },
+    get description() { return I18n.t('core.item.core_prices.desc'); },
     baseCost: 4,
     costScale: 1.7,
     maxLevel: 8,
@@ -314,8 +314,8 @@ const PRESTIGE_UPGRADES = [
   {
     id: 'core_backpack',
     icon: _kenneyIcon('backpack', '#AB47BC'),
-    name: 'Wymiarowy Plecak',
-    description: '+3 miejsca na stosie na start każdej nowej planety',
+    get name() { return I18n.t('core.item.core_backpack.name'); },
+    get description() { return I18n.t('core.item.core_backpack.desc'); },
     baseCost: 3,
     costScale: 1.6,
     maxLevel: 6,
@@ -338,8 +338,8 @@ const PRESTIGE_UPGRADES = [
   {
     id: 'core_combo_master',
     icon: _kenneyIcon('fire', '#FF7043'),
-    name: 'Mistrz Combo',
-    description: '+1 do maks. poziomu combo za poziom - dłuższe serie sprzedaży, zanim mnożnik przestanie rosnąć',
+    get name() { return I18n.t('core.item.core_combo_master.name'); },
+    get description() { return I18n.t('core.item.core_combo_master.desc'); },
     baseCost: 6,
     costScale: 1.9,
     maxLevel: 6,
@@ -351,8 +351,8 @@ const PRESTIGE_UPGRADES = [
   {
     id: 'core_offline_master',
     icon: _kenneyIcon('hourglass', '#26C6DA'),
-    name: 'Zdalne Zarządzanie',
-    description: '+5% skuteczności produkcji offline za poziom',
+    get name() { return I18n.t('core.item.core_offline_master.name'); },
+    get description() { return I18n.t('core.item.core_offline_master.desc'); },
     baseCost: 8,
     costScale: 1.85,
     maxLevel: 6,
@@ -364,8 +364,8 @@ const PRESTIGE_UPGRADES = [
   {
     id: 'core_daily_master',
     icon: _kenneyIcon('award', '#EC407A'),
-    name: 'Stały Bywalec',
-    description: '+8% do nagrody za passę codziennego logowania za poziom',
+    get name() { return I18n.t('core.item.core_daily_master.name'); },
+    get description() { return I18n.t('core.item.core_daily_master.desc'); },
     baseCost: 6,
     costScale: 1.85,
     maxLevel: 6,
@@ -377,8 +377,8 @@ const PRESTIGE_UPGRADES = [
   {
     id: 'core_prestige_boost',
     icon: _kenneyIcon('diamond', '#7E57C2'),
-    name: 'Głębsza Analiza',
-    description: '+10% Rdzeni z każdego odlotu za poziom',
+    get name() { return I18n.t('core.item.core_prestige_boost.name'); },
+    get description() { return I18n.t('core.item.core_prestige_boost.desc'); },
     baseCost: 10,
     costScale: 2.0,
     maxLevel: 5,
@@ -406,8 +406,8 @@ const PRESTIGE_UPGRADES = [
 const MACHINE_UPGRADE_KINDS = [
   {
     id: 'speed',
-    name: 'Przyspieszenie',
-    description: 'Skraca czas przetwarzania o 12%',
+    get name() { return I18n.t('machineUpgrade.speed.name'); },
+    get description() { return I18n.t('machineUpgrade.speed.desc'); },
     icon: _kenneyIcon('gear', '#4FC3F7'),
     maxLevel: 4,
     // Mnożnik czasu: 1.0 -> 0.52 przy maksie (prawie 2x szybciej).
@@ -417,8 +417,8 @@ const MACHINE_UPGRADE_KINDS = [
   },
   {
     id: 'yield',
-    name: 'Zwiększona Produkcja',
-    description: '+1 sztuka na każdym cyklu przetwarzania',
+    get name() { return I18n.t('machineUpgrade.yield.name'); },
+    get description() { return I18n.t('machineUpgrade.yield.desc'); },
     icon: _kenneyIcon('award', '#FFB74D'),
     maxLevel: 2,
     // Ile sztuk wypada z jednego cyklu: 1 -> 3 przy maksie.
@@ -446,11 +446,11 @@ const MACHINE_UPGRADE_BASE_COST = {
 // Nazwy maszyn do UI - własna kopia etykiet z MACHINE_DEFINITIONS (machines.js),
 // zgodnie z konwencją projektu (brak współdzielonych utili).
 const MACHINE_UPGRADE_LABELS = {
-  recycle_a: 'Recykler',
-  press_b: 'Prasa',
-  furnace_c: 'Piec',
-  refinery_b: 'Oczyszczalnia',
-  crystal_polisher: 'Szlifiernia'
+  get recycle_a() { return I18n.t('machine.recycle_a.label'); },
+  get press_b() { return I18n.t('machine.press_b.label'); },
+  get furnace_c() { return I18n.t('machine.furnace_c.label'); },
+  get refinery_b() { return I18n.t('machine.refinery_b.label'); },
+  get crystal_polisher() { return I18n.t('machine.crystal_polisher.label'); }
 };
 // O ile drożeje każdy kolejny poziom TEJ SAMEJ maszyny.
 const MACHINE_UPGRADE_COST_SCALE = 1.85;
@@ -503,27 +503,27 @@ const OFFLINE_MIN_PLAYTIME_SECONDS = 120;
 // 'sell' i 'earn' liczone są w sellItem(); 'collect' w _onItemPickup;
 // 'process' w _onMachineReceived (patrz handlery w konstruktorze).
 const DAILY_CHALLENGE_TEMPLATES = [
-  { type: 'collect', material: 'trash', target: 20, reward: 90, label: 'Zbierz 20x Śmieci' },
-  { type: 'collect', material: 'plastic', target: 15, reward: 100, label: 'Zbierz 15x Plastiku' },
-  { type: 'collect', material: 'paper', target: 15, reward: 100, label: 'Zbierz 15x Papieru' },
-  { type: 'collect', material: 'glass', target: 10, reward: 110, label: 'Zbierz 10x Szkła' },
-  { type: 'collect', material: 'metal', target: 10, reward: 110, label: 'Zbierz 10x Metalu' },
+  { type: 'collect', material: 'trash', target: 20, reward: 90, get label() { return I18n.t('challenge.0.label'); } },
+  { type: 'collect', material: 'plastic', target: 15, reward: 100, get label() { return I18n.t('challenge.1.label'); } },
+  { type: 'collect', material: 'paper', target: 15, reward: 100, get label() { return I18n.t('challenge.2.label'); } },
+  { type: 'collect', material: 'glass', target: 10, reward: 110, get label() { return I18n.t('challenge.3.label'); } },
+  { type: 'collect', material: 'metal', target: 10, reward: 110, get label() { return I18n.t('challenge.4.label'); } },
   // Odłamek Kryształu (Strefa D) - jedyny surowiec BEZ maszyny-odbiorcy (od
   // razu na targ, patrz TRADING_POST_ACCEPTS w market.js), więc niższy cel
   // niż reszta "collect" (8, nie 10-20) - dotarcie do Grani samo w sobie
   // kosztuje więcej (pełna ochrona), zbieranie ma być krótkim dodatkiem, nie
   // drugim wyzwaniem. Nagroda wyższa - najcenniejszy surowiec w grze.
-  { type: 'collect', material: 'crystal_shard', target: 8, reward: 240, label: 'Zbierz 8x Odłamków Kryształu' },
-  { type: 'earn', target: 180, reward: 100, label: `Zarób 180${ECONOMY_CREDIT_ICON_SVG}` },
-  { type: 'earn', target: 400, reward: 200, label: `Zarób 400${ECONOMY_CREDIT_ICON_SVG}` },
+  { type: 'collect', material: 'crystal_shard', target: 8, reward: 240, get label() { return I18n.t('challenge.5.label'); } },
+  { type: 'earn', target: 180, reward: 100, get label() { return I18n.t('challenge.6.label', { icon: ECONOMY_CREDIT_ICON_SVG }); } },
+  { type: 'earn', target: 400, reward: 200, get label() { return I18n.t('challenge.7.label', { icon: ECONOMY_CREDIT_ICON_SVG }); } },
   // Trzeci próg 'earn' (po 180/400) - reszta typów ma już 2 poziomy trudności,
   // 'earn' miało tylko dwa, mimo że to najbardziej uniwersalny typ (działa
   // od pierwszej sekundy, nie wymaga żadnego konkretnego surowca/strefy).
-  { type: 'earn', target: 800, reward: 320, label: `Zarób 800${ECONOMY_CREDIT_ICON_SVG}` },
-  { type: 'process', target: 15, reward: 90, label: 'Nakarm maszyny 15 razy' },
-  { type: 'process', target: 30, reward: 160, label: 'Nakarm maszyny 30 razy' },
-  { type: 'sell', target: 20, reward: 110, label: 'Sprzedaj 20 przedmiotów' },
-  { type: 'sell', target: 40, reward: 190, label: 'Sprzedaj 40 przedmiotów' }
+  { type: 'earn', target: 800, reward: 320, get label() { return I18n.t('challenge.8.label', { icon: ECONOMY_CREDIT_ICON_SVG }); } },
+  { type: 'process', target: 15, reward: 90, get label() { return I18n.t('challenge.9.label'); } },
+  { type: 'process', target: 30, reward: 160, get label() { return I18n.t('challenge.10.label'); } },
+  { type: 'sell', target: 20, reward: 110, get label() { return I18n.t('challenge.11.label'); } },
+  { type: 'sell', target: 40, reward: 190, get label() { return I18n.t('challenge.12.label'); } }
 ];
 
 // --- Osiągnięcia (meta-progresja) -------------------------------------------
@@ -577,50 +577,50 @@ const _formatRunTime = (totalSeconds) => {
 
 
 const ACHIEVEMENTS = [
-  { id: 'first_pickup', icon: _kenneyIcon('trashcan', '#81C784'), name: 'Pierwszy krok', desc: 'Zbierz pierwszy surowiec', stat: 'itemsCollected', target: 1 },
-  { id: 'collector_100', icon: _kenneyIcon('trashcan', '#66BB6A'), name: 'Recyklingowicz', desc: 'Zbierz łącznie 100 surowców', stat: 'itemsCollected', target: 100 },
-  { id: 'collector_1000', icon: _kenneyIcon('trashcan', '#4FC3F7'), name: 'Strażnik planety', desc: 'Zbierz łącznie 1000 surowców', stat: 'itemsCollected', target: 1000 },
-  { id: 'feeder_50', icon: _kenneyIcon('wrench', '#FFB74D'), name: 'Taśmowa produkcja', desc: 'Nakarm maszyny 50 razy', stat: 'machinesFed', target: 50 },
-  { id: 'feeder_500', icon: _kenneyIcon('wrench', '#FFD54F'), name: 'Król fabryki', desc: 'Nakarm maszyny 500 razy', stat: 'machinesFed', target: 500 },
-  { id: 'earn_500', icon: _kenneyIcon('coin', '#A5D6A7'), name: 'Pierwsze zarobki', desc: `Zarób łącznie 500${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 500 },
-  { id: 'earn_10000', icon: _kenneyIcon('coin', '#FFD54F'), name: 'Magnat odpadów', desc: `Zarób łącznie 10 000${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 10000 },
-  { id: 'shopper_10', icon: _kenneyIcon('cart', '#FFE082'), name: 'Zakupoholik', desc: 'Kup 10 ulepszeń', stat: 'upgradesBought', target: 10 },
-  { id: 'first_planet', icon: _kenneyIcon('flag', '#81D4FA'), name: 'Odlot', desc: 'Ukończ pierwszą planetę', stat: 'planetsCompleted', target: 1 },
-  { id: 'planets_3', icon: _kenneyIcon('flag', '#B39DDB'), name: 'Podróżnik', desc: 'Ukończ 3 planety', stat: 'planetsCompleted', target: 3 },
-  { id: 'modules_5', icon: _kenneyIcon('wrench', '#B0BEC5'), name: 'Mechanik', desc: 'Ukończ 5 modułów statku', stat: 'shipModulesCompleted', target: 5 },
-  { id: 'streak_3', icon: _kenneyIcon('fire', '#FF7043'), name: 'Codzienny gracz', desc: 'Zaloguj się 3 dni z rzędu', stat: 'maxLoginStreak', target: 3 },
-  { id: 'challenges_5', icon: _kenneyIcon('target', '#CE93D8'), name: 'Wyzwaniowiec', desc: 'Odbierz 5 wyzwań dnia', stat: 'challengesClaimed', target: 5 },
+  { id: 'first_pickup', icon: _kenneyIcon('trashcan', '#81C784'), get name() { return I18n.t('achievement.first_pickup.name'); }, get desc() { return I18n.t('achievement.first_pickup.desc'); }, stat: 'itemsCollected', target: 1 },
+  { id: 'collector_100', icon: _kenneyIcon('trashcan', '#66BB6A'), get name() { return I18n.t('achievement.collector_100.name'); }, get desc() { return I18n.t('achievement.collector_100.desc'); }, stat: 'itemsCollected', target: 100 },
+  { id: 'collector_1000', icon: _kenneyIcon('trashcan', '#4FC3F7'), get name() { return I18n.t('achievement.collector_1000.name'); }, get desc() { return I18n.t('achievement.collector_1000.desc'); }, stat: 'itemsCollected', target: 1000 },
+  { id: 'feeder_50', icon: _kenneyIcon('wrench', '#FFB74D'), get name() { return I18n.t('achievement.feeder_50.name'); }, get desc() { return I18n.t('achievement.feeder_50.desc'); }, stat: 'machinesFed', target: 50 },
+  { id: 'feeder_500', icon: _kenneyIcon('wrench', '#FFD54F'), get name() { return I18n.t('achievement.feeder_500.name'); }, get desc() { return I18n.t('achievement.feeder_500.desc'); }, stat: 'machinesFed', target: 500 },
+  { id: 'earn_500', icon: _kenneyIcon('coin', '#A5D6A7'), get name() { return I18n.t('achievement.earn_500.name'); }, get desc() { return I18n.t('achievement.earn_500.desc', { icon: ECONOMY_CREDIT_ICON_SVG }); }, stat: 'lifetimeEarned', target: 500 },
+  { id: 'earn_10000', icon: _kenneyIcon('coin', '#FFD54F'), get name() { return I18n.t('achievement.earn_10000.name'); }, get desc() { return I18n.t('achievement.earn_10000.desc', { icon: ECONOMY_CREDIT_ICON_SVG }); }, stat: 'lifetimeEarned', target: 10000 },
+  { id: 'shopper_10', icon: _kenneyIcon('cart', '#FFE082'), get name() { return I18n.t('achievement.shopper_10.name'); }, get desc() { return I18n.t('achievement.shopper_10.desc'); }, stat: 'upgradesBought', target: 10 },
+  { id: 'first_planet', icon: _kenneyIcon('flag', '#81D4FA'), get name() { return I18n.t('achievement.first_planet.name'); }, get desc() { return I18n.t('achievement.first_planet.desc'); }, stat: 'planetsCompleted', target: 1 },
+  { id: 'planets_3', icon: _kenneyIcon('flag', '#B39DDB'), get name() { return I18n.t('achievement.planets_3.name'); }, get desc() { return I18n.t('achievement.planets_3.desc'); }, stat: 'planetsCompleted', target: 3 },
+  { id: 'modules_5', icon: _kenneyIcon('wrench', '#B0BEC5'), get name() { return I18n.t('achievement.modules_5.name'); }, get desc() { return I18n.t('achievement.modules_5.desc'); }, stat: 'shipModulesCompleted', target: 5 },
+  { id: 'streak_3', icon: _kenneyIcon('fire', '#FF7043'), get name() { return I18n.t('achievement.streak_3.name'); }, get desc() { return I18n.t('achievement.streak_3.desc'); }, stat: 'maxLoginStreak', target: 3 },
+  { id: 'challenges_5', icon: _kenneyIcon('target', '#CE93D8'), get name() { return I18n.t('achievement.challenges_5.name'); }, get desc() { return I18n.t('achievement.challenges_5.desc'); }, stat: 'challengesClaimed', target: 5 },
   // --- Tier 3 (późna gra) - dla graczy, którzy ograli komplet powyższych.
   // Progi wielokrotnie wyższe niż tier 2, żeby dać sens dalszemu, wielo-
   // planetowemu grindowi (patrz balans previewPrestigeCores - pełne
   // zmaksowanie ulepszeń Rdzeni to i tak ~60-100 odlotów).
-  { id: 'collector_10000', icon: _kenneyIcon('medal1', '#FFD54F'), name: 'Legenda recyklingu', desc: 'Zbierz łącznie 10 000 surowców', stat: 'itemsCollected', target: 10000 },
-  { id: 'feeder_2000', icon: _kenneyIcon('medal2', '#FFA726'), name: 'Mistrz fabryki', desc: 'Nakarm maszyny 2000 razy', stat: 'machinesFed', target: 2000 },
-  { id: 'earn_100000', icon: _kenneyIcon('crown', '#FFCA28'), name: 'Potentat odpadów', desc: `Zarób łącznie 100 000${ECONOMY_CREDIT_ICON_SVG}`, stat: 'lifetimeEarned', target: 100000 },
-  { id: 'shopper_50', icon: _kenneyIcon('gear', '#B0BEC5'), name: 'Inżynier ulepszeń', desc: 'Kup 50 ulepszeń', stat: 'upgradesBought', target: 50 },
-  { id: 'planets_10', icon: _kenneyIcon('flag', '#B39DDB'), name: 'Odkrywca galaktyki', desc: 'Ukończ 10 planet', stat: 'planetsCompleted', target: 10 },
-  { id: 'modules_25', icon: _kenneyIcon('wrench', '#CFD8DC'), name: 'Konstruktor floty', desc: 'Ukończ łącznie 25 modułów statku', stat: 'shipModulesCompleted', target: 25 },
+  { id: 'collector_10000', icon: _kenneyIcon('medal1', '#FFD54F'), get name() { return I18n.t('achievement.collector_10000.name'); }, get desc() { return I18n.t('achievement.collector_10000.desc'); }, stat: 'itemsCollected', target: 10000 },
+  { id: 'feeder_2000', icon: _kenneyIcon('medal2', '#FFA726'), get name() { return I18n.t('achievement.feeder_2000.name'); }, get desc() { return I18n.t('achievement.feeder_2000.desc'); }, stat: 'machinesFed', target: 2000 },
+  { id: 'earn_100000', icon: _kenneyIcon('crown', '#FFCA28'), get name() { return I18n.t('achievement.earn_100000.name'); }, get desc() { return I18n.t('achievement.earn_100000.desc', { icon: ECONOMY_CREDIT_ICON_SVG }); }, stat: 'lifetimeEarned', target: 100000 },
+  { id: 'shopper_50', icon: _kenneyIcon('gear', '#B0BEC5'), get name() { return I18n.t('achievement.shopper_50.name'); }, get desc() { return I18n.t('achievement.shopper_50.desc'); }, stat: 'upgradesBought', target: 50 },
+  { id: 'planets_10', icon: _kenneyIcon('flag', '#B39DDB'), get name() { return I18n.t('achievement.planets_10.name'); }, get desc() { return I18n.t('achievement.planets_10.desc'); }, stat: 'planetsCompleted', target: 10 },
+  { id: 'modules_25', icon: _kenneyIcon('wrench', '#CFD8DC'), get name() { return I18n.t('achievement.modules_25.name'); }, get desc() { return I18n.t('achievement.modules_25.desc'); }, stat: 'shipModulesCompleted', target: 25 },
   // DAILY_STREAK_CAP_DAYS (economy.js) = 20 - powyżej tego dalsze dni nie
   // podbijają już nagrody streaka, więc 20 to naturalny "pełny" próg.
-  { id: 'streak_20', icon: _kenneyIcon('fire', '#FF5722'), name: 'Weteran', desc: 'Zaloguj się 20 dni z rzędu', stat: 'maxLoginStreak', target: 20 },
-  { id: 'challenges_30', icon: _kenneyIcon('target', '#CE93D8'), name: 'Perfekcjonista', desc: 'Odbierz 30 wyzwań dnia', stat: 'challengesClaimed', target: 30 },
+  { id: 'streak_20', icon: _kenneyIcon('fire', '#FF5722'), get name() { return I18n.t('achievement.streak_20.name'); }, get desc() { return I18n.t('achievement.streak_20.desc'); }, stat: 'maxLoginStreak', target: 20 },
+  { id: 'challenges_30', icon: _kenneyIcon('target', '#CE93D8'), get name() { return I18n.t('achievement.challenges_30.name'); }, get desc() { return I18n.t('achievement.challenges_30.desc'); }, stat: 'challengesClaimed', target: 30 },
   // Jedyny nowy licznik (stats.coresEarned) - patrz komentarz przy nim w
   // konstruktorze i przy prestige() (rośnie tam obok this.cores).
-  { id: 'cores_100', icon: _kenneyIcon('diamond', '#81D4FA'), name: 'Kolekcjoner Rdzeni', desc: 'Zdobądź łącznie 100 Rdzeni Prestiżu', stat: 'coresEarned', target: 100 },
+  { id: 'cores_100', icon: _kenneyIcon('diamond', '#81D4FA'), get name() { return I18n.t('achievement.cores_100.name'); }, get desc() { return I18n.t('achievement.cores_100.desc'); }, stat: 'coresEarned', target: 100 },
   // stats.lifetimePlaytimeSeconds istniało już wcześniej (zasila wiersz
   // "Czas gry łącznie" w getStatsCatalog) - liczony na bieżąco w update(),
   // ale dotąd BEZ żadnego osiągnięcia na nim opartego, jedyny licznik w
   // this.stats zupełnie nieużyty przez ACHIEVEMENTS. hourglass - jedyna
   // ikona z puli, której żadne inne osiągnięcie jeszcze nie zajęło.
-  { id: 'playtime_60', icon: _kenneyIcon('hourglass', '#A5D6A7'), name: 'Wciągnęło Cię', desc: 'Zagraj łącznie godzinę', stat: 'lifetimePlaytimeSeconds', target: 3600 },
-  { id: 'playtime_600', icon: _kenneyIcon('hourglass', '#26C6DA'), name: 'Nałóg recyklingowy', desc: 'Zagraj łącznie 10 godzin', stat: 'lifetimePlaytimeSeconds', target: 36000 },
+  { id: 'playtime_60', icon: _kenneyIcon('hourglass', '#A5D6A7'), get name() { return I18n.t('achievement.playtime_60.name'); }, get desc() { return I18n.t('achievement.playtime_60.desc'); }, stat: 'lifetimePlaytimeSeconds', target: 3600 },
+  { id: 'playtime_600', icon: _kenneyIcon('hourglass', '#26C6DA'), get name() { return I18n.t('achievement.playtime_600.name'); }, get desc() { return I18n.t('achievement.playtime_600.desc'); }, stat: 'lifetimePlaytimeSeconds', target: 36000 },
   // stats.skinsCollected (nowy licznik, patrz konstruktor/buySkin) - brush,
   // ten sam motyw co nagłówek panelu Skinów (SHIRT_ICON_SVG w ui.js).
-  { id: 'skins_4', icon: _kenneyIcon('brush', '#F06292'), name: 'Stylowy recykler', desc: 'Odblokuj 4 różne skiny', stat: 'skinsCollected', target: 4 },
+  { id: 'skins_4', icon: _kenneyIcon('brush', '#F06292'), get name() { return I18n.t('achievement.skins_4.name'); }, get desc() { return I18n.t('achievement.skins_4.desc'); }, stat: 'skinsCollected', target: 4 },
   // Wszystkie 7 (patrz PLAYER_SKINS niżej) - włącznie z sezonowym
   // Meteorytowym, więc realnie wymaga trafienia na Deszcz Meteorytów, nie
   // tylko zebrania Rdzeni - stąd tier3 (najwyższy próg w tej grupie).
-  { id: 'skins_7', icon: _kenneyIcon('brush', '#BA68C8'), name: 'Kolekcjoner stylu', desc: 'Odblokuj wszystkie 7 skinów', stat: 'skinsCollected', target: 7 }
+  { id: 'skins_7', icon: _kenneyIcon('brush', '#BA68C8'), get name() { return I18n.t('achievement.skins_7.name'); }, get desc() { return I18n.t('achievement.skins_7.desc'); }, stat: 'skinsCollected', target: 7 }
 ];
 
 // --- Progresywne odblokowania (walka z "martwo - wszystko dostępne od razu") --
@@ -643,15 +643,15 @@ const ACHIEVEMENTS = [
 // kind: 'machine' (bramka w machines.js) albo 'zone' (bramka spawnu w items.js).
 // zone odblokowuje JEDNOCZEŚNIE spawn surowca I sens wejścia tam (piec).
 const PROGRESSION_UNLOCKS = [
-  { id: 'press_b', kind: 'machine', threshold: 60, name: 'Prasa', desc: 'Przetwarza plastik w produkty' },
-  { id: 'zone_B', kind: 'zone', threshold: 200, name: 'Strefa Bagienna', desc: 'Szkło + dostęp do wraku' },
-  { id: 'furnace_c', kind: 'machine', threshold: 350, name: 'Piec Hutniczy', desc: 'Wytapia stop z metalu i szkła' },
-  { id: 'zone_C', kind: 'zone', threshold: 550, name: 'Strefa Atomowa', desc: 'Metal - najcenniejszy surowiec' },
+  { id: 'press_b', kind: 'machine', threshold: 60, get name() { return I18n.t('unlock.press_b.name'); }, get desc() { return I18n.t('unlock.press_b.desc'); } },
+  { id: 'zone_B', kind: 'zone', threshold: 200, get name() { return I18n.t('unlock.zone_B.name'); }, get desc() { return I18n.t('unlock.zone_B.desc'); } },
+  { id: 'furnace_c', kind: 'machine', threshold: 350, get name() { return I18n.t('unlock.furnace_c.name'); }, get desc() { return I18n.t('unlock.furnace_c.desc'); } },
+  { id: 'zone_C', kind: 'zone', threshold: 550, get name() { return I18n.t('unlock.zone_C.name'); }, get desc() { return I18n.t('unlock.zone_C.desc'); } },
   // Oczyszczalnia - odblokowana najpóźniej (po wszystkich strefach), bo daje
   // najdroższy produkt (kryształ, patrz MARKET_BASE_PRICES). Wypełnia lukę w
   // progresji między ostatnią strefą (550$) a pierwszym modułem statku (800$),
   // dając konkretny nowy cel zamiast tylko mielenia w kółko.
-  { id: 'refinery_b', kind: 'machine', threshold: 750, name: 'Oczyszczalnia', desc: 'Rafinuje szkło w drogie kryształy' },
+  { id: 'refinery_b', kind: 'machine', threshold: 750, get name() { return I18n.t('unlock.refinery_b.name'); }, get desc() { return I18n.t('unlock.refinery_b.desc'); } },
   // Strefa D (Kryształowa Grań) - NAJPÓŹNIEJSZE odblokowanie ze wszystkich.
   // W przeciwieństwie do B/C nie wystarczy próg zarobku - _hasGearForZone('D')
   // w player.js dodatkowo wymaga OBU strojów ochronnych naraz (Filtr +
@@ -661,14 +661,14 @@ const PROGRESSION_UNLOCKS = [
   // to DODATKOWE 750$ ponad totalEarned potrzebne, żeby faktycznie wejść do
   // strefy, więc sam próg 950 dawał za mało czasu na uzbieranie obu naraz
   // (progresja liczy totalEarned, nie zapas gotówki). 1200 daje realny bufor.
-  { id: 'zone_D', kind: 'zone', threshold: 1200, name: 'Kryształowa Grań', desc: 'Odłamki Kryształu - wymaga PEŁNEJ ochrony (Filtr + Kombinezon)' },
+  { id: 'zone_D', kind: 'zone', threshold: 1200, get name() { return I18n.t('unlock.zone_D.name'); }, get desc() { return I18n.t('unlock.zone_D.desc'); } },
   // Szlifiernia Kryształów - kapitalizuje Grań (odblokowaną wyżej) drugim,
   // wolniejszym zastosowaniem odłamka obok bezpośredniej sprzedaży (ten sam
   // duch co Oczyszczalnia dla szkła: surowiec ma teraz realny wybór -
   // szybko i pewnie na targ, albo przez maszynę na coś droższego). Próg
   // WYŻSZY niż zone_D (1200), bo wymaga, żeby gracz zdążył już nazbierać
   // odłamków - wypełnia lukę między Granią a 3. modułem statku (1600$).
-  { id: 'crystal_polisher', kind: 'machine', threshold: 1400, name: 'Szlifiernia Kryształów', desc: 'Szlifuje Odłamki Kryształu w najcenniejszy towar w grze' }
+  { id: 'crystal_polisher', kind: 'machine', threshold: 1400, get name() { return I18n.t('unlock.crystal_polisher.name'); }, get desc() { return I18n.t('unlock.crystal_polisher.desc'); } }
 ];
 
 // --- Zdolności z modułów statku ---------------------------------------------
@@ -690,11 +690,11 @@ const PROGRESSION_UNLOCKS = [
 // planeta = nowy zepsuty statek), więc perki też znikają. To celowe i zgodne
 // z tematem, inaczej niż PROGRESSION_UNLOCKS (wiedza o świecie = trwała).
 const SHIP_MODULE_PERKS = {
-  life_support: { perk: 'hazard_grace', label: 'Strefy skażone odbierają przedmioty 2x wolniej' },
-  navigation: { perk: 'free_minimap', label: 'Minimapa za darmo' },
-  shields: { perk: 'hazard_immunity', label: 'Pełna odporność na strefy skażone' },
-  engine: { perk: 'speed_boost', label: '+25% prędkości ruchu na stałe' },
-  hyperdrive: { perk: null, label: 'Statek gotowy do odlotu!' }
+  life_support: { perk: 'hazard_grace', get label() { return I18n.t('shipPerk.life_support.label'); } },
+  navigation: { perk: 'free_minimap', get label() { return I18n.t('shipPerk.navigation.label'); } },
+  shields: { perk: 'hazard_immunity', get label() { return I18n.t('shipPerk.shields.label'); } },
+  engine: { perk: 'speed_boost', get label() { return I18n.t('shipPerk.engine.label'); } },
+  hyperdrive: { perk: null, get label() { return I18n.t('shipPerk.hyperdrive.label'); } }
 };
 
 // Które ulepszenia ze sklepu stają się BEZUŻYTECZNE, gdy gracz ma dany perk
@@ -745,46 +745,46 @@ const PLANET_MODIFIERS = [
   {
     id: 'bountiful',
     icon: _kenneyIcon('star', '#C5E1A5'),
-    name: 'Obfite Złoża',
-    desc: 'Surowce pojawiają się o 40% częściej, ale targ płaci o 15% mniej',
+    get name() { return I18n.t('planetMod.bountiful.name'); },
+    get desc() { return I18n.t('planetMod.bountiful.desc'); },
     spawnMult: 1.4,
     priceMult: 0.85
   },
   {
     id: 'scarce',
     icon: _kenneyIcon('diamond', '#D7B98E'),
-    name: 'Jałowa Gleba',
-    desc: 'Surowce pojawiają się o 30% rzadziej, za to targ płaci o 25% więcej',
+    get name() { return I18n.t('planetMod.scarce.name'); },
+    get desc() { return I18n.t('planetMod.scarce.desc'); },
     spawnMult: 0.7,
     priceMult: 1.25
   },
   {
     id: 'efficient_factory',
     icon: _kenneyIcon('gear', '#66BB6A'),
-    name: 'Sprawna Fabryka',
-    desc: 'Wszystkie maszyny przetwarzają o 20% szybciej',
+    get name() { return I18n.t('planetMod.efficient_factory.name'); },
+    get desc() { return I18n.t('planetMod.efficient_factory.desc'); },
     machineSpeedMult: 0.8
   },
   {
     id: 'rusty_gear',
     icon: _kenneyIcon('wrench', '#D08A5C'),
-    name: 'Zardzewiały Sprzęt',
-    desc: 'Maszyny przetwarzają o 15% wolniej, ale surowce pojawiają się o 25% częściej',
+    get name() { return I18n.t('planetMod.rusty_gear.name'); },
+    get desc() { return I18n.t('planetMod.rusty_gear.desc'); },
     machineSpeedMult: 1.15,
     spawnMult: 1.25
   },
   {
     id: 'gold_rush',
     icon: _kenneyIcon('coin', '#FFD54F'),
-    name: 'Gorączka Złota',
-    desc: 'Targ płaci o 20% więcej za wszystko',
+    get name() { return I18n.t('planetMod.gold_rush.name'); },
+    get desc() { return I18n.t('planetMod.gold_rush.desc'); },
     priceMult: 1.2
   },
   {
     id: 'soft_landing',
     icon: _kenneyIcon('pouch', '#90CAF9'),
-    name: 'Miękkie Lądowanie',
-    desc: `+150${ECONOMY_CREDIT_ICON_SVG} gotówki na start tej planety`,
+    get name() { return I18n.t('planetMod.soft_landing.name'); },
+    get desc() { return I18n.t('planetMod.soft_landing.desc', { icon: ECONOMY_CREDIT_ICON_SVG }); },
     cashBonus: 150
   }
 ];
@@ -822,18 +822,18 @@ const PLANET_MODIFIERS = [
 // (gear, patrz SHOP_UPGRADES) - dwie zupełnie różne rzeczy o niemal tej
 // samej nazwie.
 const PLAYER_SKINS = [
-  { id: 'default', name: 'Domyślny kolor', desc: 'Klasyczny wygląd - bez dopłaty', tint: null, body: null, cost: 0 },
+  { id: 'default', get name() { return I18n.t('skin.default.name'); }, get desc() { return I18n.t('skin.default.desc'); }, tint: null, body: null, cost: 0 },
   // previewColor: tylko dla skinów BEZ tint (natywny kolor ciała paczki) -
   // używane jako awaryjny kolor kółka/proceduralnej sylwetki, zanim sprite
   // się wczyta (patrz ui.js SkinsPanel/_drawProcedural w tym pliku) - dla
   // skinów Z tint ten sam cel spełnia samo pole tint, previewColor zbędne.
-  { id: 'verde', name: 'Zielony', desc: 'W barwach Strefy Łąkowej', tint: null, body: 'green', previewColor: '#5FBF7A', cost: 2 },
-  { id: 'crimson', name: 'Czerwony', desc: 'Czerwony jak żar Pieca Plazmowego', tint: '#E53935', body: 'pink', cost: 2 },
-  { id: 'amber', name: 'Bursztynowy', desc: 'Ciepły odcień pustynnego piasku', tint: '#FFB74D', body: 'beige', cost: 4 },
+  { id: 'verde', get name() { return I18n.t('skin.verde.name'); }, get desc() { return I18n.t('skin.verde.desc'); }, tint: null, body: 'green', previewColor: '#5FBF7A', cost: 2 },
+  { id: 'crimson', get name() { return I18n.t('skin.crimson.name'); }, get desc() { return I18n.t('skin.crimson.desc'); }, tint: '#E53935', body: 'pink', cost: 2 },
+  { id: 'amber', get name() { return I18n.t('skin.amber.name'); }, get desc() { return I18n.t('skin.amber.desc'); }, tint: '#FFB74D', body: 'beige', cost: 4 },
   // Barwy Kryształowej Grani (patrz _bakeCrystalGroundTexture w game.js) -
   // nagroda-nawiązanie do najtrudniej dostępnej strefy, nie wymaga jednak
   // faktycznego jej odblokowania (kupowana wyłącznie za Rdzenie, jak reszta).
-  { id: 'crystal', name: 'Kryształowy', desc: 'W barwach Kryształowej Grani', tint: '#B388FF', body: 'pink', cost: 8 },
+  { id: 'crystal', get name() { return I18n.t('skin.crystal.name'); }, get desc() { return I18n.t('skin.crystal.desc'); }, tint: '#B388FF', body: 'pink', cost: 8 },
   // BUGFIX (Tomek: "żółty jest za mały usuń go"): body:'yellow' (jedyny
   // skin, który go używał) renderował się ~11% mniejszy niż reszta -
   // wcześniejsza próba naprawy (pad_top 10px na alien_yellow.png, patrz
@@ -845,14 +845,14 @@ const PLAYER_SKINS = [
   // łatki na tym samym, kruchym assetcie: wraca do domyślnego ciała (tint
   // zamiast natywnego koloru paczki) - ten sam złoty odcień co dawny
   // previewColor, teraz jako realny tint zamiast samego kolora zastępczego.
-  { id: 'gold', name: 'Złoty', desc: 'Dla tych, którzy zebrali sporo Rdzeni', tint: '#F5C542', body: null, cost: 15 },
+  { id: 'gold', get name() { return I18n.t('skin.gold.name'); }, get desc() { return I18n.t('skin.gold.desc'); }, tint: '#F5C542', body: null, cost: 15 },
   // Wydarzenie sezonowe "Deszcz Meteorytów" (events.js) - kupowalny WYŁĄCZNIE
   // gdy trwa (sobota/niedziela wg zegara urządzenia), ale raz kupiony
   // zostaje NA STAŁE (unlockedSkins się nie zeruje) - jak każdy inny skin,
   // po prostu okno zakupu jest ograniczone w czasie. Zostaje na oryginalnym
   // ciele (body: null) - najrzadziej noszony skin, nie wart dodatkowego
   // powielania sylwetki.
-  { id: 'meteor', name: 'Meteorytowy', desc: 'Dostępny tylko podczas Weekendowego Deszczu Meteorytów', tint: '#FF6E40', body: null, cost: 12, eventOnly: true }
+  { id: 'meteor', get name() { return I18n.t('skin.meteor.name'); }, get desc() { return I18n.t('skin.meteor.desc'); }, tint: '#FF6E40', body: null, cost: 12, eventOnly: true }
 ];
 
 class EconomyManager {
@@ -1113,18 +1113,18 @@ class EconomyManager {
     };
 
     return [
-      { id: 'planet', icon: planetIcon, label: 'Bieżąca planeta', value: `#${this.planetNumber}` },
-      { id: 'cores', icon: coreIcon, label: 'Rdzenie Prestiżu', value: `${this.cores}` },
-      { id: 'lifetimeEarned', icon: kenneyIcon('coin', '#FFD54F'), label: 'Zarobione łącznie', value: `${this.stats.lifetimeEarned.toLocaleString('pl-PL')}${ECONOMY_CREDIT_ICON_SVG}` },
-      { id: 'itemsCollected', icon: achIcon('collector_1000'), label: 'Surowce zebrane', value: this.stats.itemsCollected.toLocaleString('pl-PL') },
-      { id: 'machinesFed', icon: achIcon('feeder_500'), label: 'Maszyny nakarmione', value: this.stats.machinesFed.toLocaleString('pl-PL') },
-      { id: 'upgradesBought', icon: kenneyIcon('cart', '#FFE082'), label: 'Ulepszenia kupione', value: this.stats.upgradesBought.toLocaleString('pl-PL') },
-      { id: 'planetsCompleted', icon: achIcon('planets_3'), label: 'Ukończone planety', value: this.stats.planetsCompleted.toLocaleString('pl-PL') },
-      { id: 'shipModulesCompleted', icon: kenneyIcon('wrench', '#B0BEC5'), label: 'Moduły statku ukończone', value: this.stats.shipModulesCompleted.toLocaleString('pl-PL') },
-      { id: 'maxLoginStreak', icon: kenneyIcon('fire', '#FF7043'), label: 'Najdłuższy streak logowania', value: `${this.stats.maxLoginStreak} dni` },
-      { id: 'challengesClaimed', icon: achIcon('challenges_5'), label: 'Wyzwania dnia odebrane', value: this.stats.challengesClaimed.toLocaleString('pl-PL') },
-      { id: 'achievements', icon: kenneyIcon('trophy', '#FFD54F'), label: 'Osiągnięcia zdobyte', value: `${this.unlockedAchievements.size} / ${ACHIEVEMENTS.length} (+${this.getAchievementIncomeBonusPercent()}% zarobku)` },
-      { id: 'playtime', icon: kenneyIcon('hourglass', '#A5D6A7'), label: 'Czas gry łącznie', value: fmtPlaytime(this.stats.lifetimePlaytimeSeconds) }
+      { id: 'planet', icon: planetIcon, label: I18n.t('stats.planet'), value: `#${this.planetNumber}` },
+      { id: 'cores', icon: coreIcon, label: I18n.t('stats.cores'), value: `${this.cores}` },
+      { id: 'lifetimeEarned', icon: kenneyIcon('coin', '#FFD54F'), label: I18n.t('stats.lifetimeEarned'), value: `${this.stats.lifetimeEarned.toLocaleString('pl-PL')}${ECONOMY_CREDIT_ICON_SVG}` },
+      { id: 'itemsCollected', icon: achIcon('collector_1000'), label: I18n.t('stats.itemsCollected'), value: this.stats.itemsCollected.toLocaleString('pl-PL') },
+      { id: 'machinesFed', icon: achIcon('feeder_500'), label: I18n.t('stats.machinesFed'), value: this.stats.machinesFed.toLocaleString('pl-PL') },
+      { id: 'upgradesBought', icon: kenneyIcon('cart', '#FFE082'), label: I18n.t('stats.upgradesBought'), value: this.stats.upgradesBought.toLocaleString('pl-PL') },
+      { id: 'planetsCompleted', icon: achIcon('planets_3'), label: I18n.t('stats.planetsCompleted'), value: this.stats.planetsCompleted.toLocaleString('pl-PL') },
+      { id: 'shipModulesCompleted', icon: kenneyIcon('wrench', '#B0BEC5'), label: I18n.t('stats.shipModulesCompleted'), value: this.stats.shipModulesCompleted.toLocaleString('pl-PL') },
+      { id: 'maxLoginStreak', icon: kenneyIcon('fire', '#FF7043'), label: I18n.t('stats.maxLoginStreak'), value: I18n.t('stats.maxLoginStreak.value', { days: this.stats.maxLoginStreak }) },
+      { id: 'challengesClaimed', icon: achIcon('challenges_5'), label: I18n.t('stats.challengesClaimed'), value: this.stats.challengesClaimed.toLocaleString('pl-PL') },
+      { id: 'achievements', icon: kenneyIcon('trophy', '#FFD54F'), label: I18n.t('stats.achievements'), value: I18n.t('stats.achievements.value', { unlocked: this.unlockedAchievements.size, total: ACHIEVEMENTS.length, bonus: this.getAchievementIncomeBonusPercent() }) },
+      { id: 'playtime', icon: kenneyIcon('hourglass', '#A5D6A7'), label: I18n.t('stats.playtime'), value: fmtPlaytime(this.stats.lifetimePlaytimeSeconds) }
     ];
   }
 
@@ -1694,7 +1694,7 @@ class EconomyManager {
       // BUGFIX: był `${def.icon} Ulepszenie!` - def.icon to teraz SVG (napis
       // do UI w ui.js), a ten popup rysuje się przez ctx.fillText na
       // canvasie, który SVG/HTML po prostu wypisałby jako surowy tekst.
-      text: 'Ulepszenie!',
+      text: I18n.t('economy.popup.upgrade'),
       duration: 1200,
       color: '#7CFC98'
     });
@@ -1846,7 +1846,7 @@ class EconomyManager {
     Bus.publish(Events.FX_POPUP, {
       // BUGFIX: ten sam powód co przy zwykłym zakupie wyżej - def.icon to
       // teraz SVG, nie da się tego narysować przez ctx.fillText.
-      text: 'Trwałe ulepszenie!',
+      text: I18n.t('economy.popup.coreUpgrade'),
       duration: 1200,
       color: '#81D4FA'
     });
