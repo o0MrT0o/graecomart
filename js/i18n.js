@@ -95,7 +95,19 @@ const I18N_STRINGS = {
     'panel.stats.title': 'Statystyki',
     'panel.stats.close': 'Zamknij statystyki',
     'panel.leaderboard.title': 'Tablica wyników',
-    'panel.leaderboard.close': 'Zamknij tablicę wyników'
+    'panel.leaderboard.close': 'Zamknij tablicę wyników',
+
+    'tutorial.title': 'Samouczek',
+    'tutorial.dismiss': 'Pomiń samouczek',
+    'tutorial.prev': 'Poprzedni krok',
+    'tutorial.next': 'Następny krok',
+    'tutorial.step.move': 'Dotknij ekranu i przeciągnij, żeby się poruszać',
+    'tutorial.step.collect': 'Zbierz przedmioty widoczne na mapie',
+    'tutorial.step.feed': 'Zanieś je do pasującej maszyny (np. Recyklera) - nakarmi się sama, gdy staniesz obok',
+    'tutorial.step.process': 'Poczekaj, aż maszyna skończy przetwarzać surowiec na coś nowego',
+    'tutorial.step.sell': 'Zanieś gotowy produkt do Terminalu Handlowego i sprzedaj za gotówkę',
+    'tutorial.step.done': 'Świetnie, wiesz już jak grać! Sklep i Statek czekają, gdy będziesz gotów.',
+    'tutorial.completed': 'Samouczek ukończony! +{amount}{icon}'
   },
   en: {
     'common.show': 'Show',
@@ -165,7 +177,19 @@ const I18N_STRINGS = {
     'panel.stats.title': 'Stats',
     'panel.stats.close': 'Close stats',
     'panel.leaderboard.title': 'Leaderboard',
-    'panel.leaderboard.close': 'Close leaderboard'
+    'panel.leaderboard.close': 'Close leaderboard',
+
+    'tutorial.title': 'Tutorial',
+    'tutorial.dismiss': 'Skip tutorial',
+    'tutorial.prev': 'Previous step',
+    'tutorial.next': 'Next step',
+    'tutorial.step.move': 'Touch the screen and drag to move',
+    'tutorial.step.collect': 'Collect items you see on the map',
+    'tutorial.step.feed': 'Bring them to a matching machine (e.g. the Recycler) - it feeds itself when you stand next to it',
+    'tutorial.step.process': 'Wait for the machine to finish turning the material into something new',
+    'tutorial.step.sell': 'Bring the finished product to the Trading Terminal and sell it for cash',
+    'tutorial.step.done': "Great, you know how to play now! The Shop and Ship are waiting whenever you're ready.",
+    'tutorial.completed': 'Tutorial complete! +{amount}{icon}'
   }
 };
 

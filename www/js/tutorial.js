@@ -52,46 +52,50 @@ const TUTORIAL_GRADUATE_ICON_SVG = '<span class="ui-icon ui-icon--award" aria-hi
 // _goToStep w klasie niżej wstawia je przez innerHTML (patrz BUGFIX tam).
 // Plain .ui-icon span bez kolorowej plakietki - .tutorial-window__icon to
 // mały, pojedynczy slot ikony (jak toast), nie wiersz listy .ui-shop-item.
+// UWAGA: text budowany LENIWIE (funkcja, nie string) - I18n.t() musi się
+// wołać PO ustawieniu języka w I18nService (patrz i18n.js), ale ta stała
+// parsuje się na starcie razem z resztą pliku, więc string na sztywno
+// zamroziłby język z chwili wczytania skryptu.
 const TUTORIAL_STEPS = [
   {
     id: 'move',
     icon: '<span class="ui-icon ui-icon--pointer" aria-hidden="true" style="color:#FFE082"></span>',
-    text: 'Dotknij ekranu i przeciągnij, żeby się poruszać',
+    text: () => I18n.t('tutorial.step.move'),
     event: 'PLAYER_MOVED',
     matches: (d) => d.speed > TUTORIAL_MOVE_SPEED_THRESHOLD
   },
   {
     id: 'collect',
     icon: '<span class="ui-icon ui-icon--trashcan" aria-hidden="true" style="color:#A5D6A7"></span>',
-    text: 'Zbierz przedmioty widoczne na mapie',
+    text: () => I18n.t('tutorial.step.collect'),
     event: 'STACK_ADDED',
     matches: () => true
   },
   {
     id: 'feed',
     icon: '<span class="ui-icon ui-icon--wrench" aria-hidden="true" style="color:#90CAF9"></span>',
-    text: 'Zanieś je do pasującej maszyny (np. Recyklera) - nakarmi się sama, gdy staniesz obok',
+    text: () => I18n.t('tutorial.step.feed'),
     event: 'MACHINE_RECEIVED',
     matches: () => true
   },
   {
     id: 'process',
     icon: '<span class="ui-icon ui-icon--hourglass" aria-hidden="true" style="color:#FFD54F"></span>',
-    text: 'Poczekaj, aż maszyna skończy przetwarzać surowiec na coś nowego',
+    text: () => I18n.t('tutorial.step.process'),
     event: 'MACHINE_OUTPUT',
     matches: () => true
   },
   {
     id: 'sell',
     icon: '<span class="ui-icon ui-icon--coin" aria-hidden="true" style="color:#81C784"></span>',
-    text: 'Zanieś gotowy produkt do Terminalu Handlowego i sprzedaj za gotówkę',
+    text: () => I18n.t('tutorial.step.sell'),
     event: 'MONEY_COLLECTED',
     matches: (d) => d.amount > 0
   },
   {
     id: 'done',
     icon: '<span class="ui-icon ui-icon--flag" aria-hidden="true" style="color:#FFD54F"></span>',
-    text: 'Świetnie, wiesz już jak grać! Sklep i Statek czekają, gdy będziesz gotów.',
+    text: () => I18n.t('tutorial.step.done'),
     event: null,
     matches: null
   }
@@ -137,8 +141,8 @@ class TutorialManager {
     const header = document.createElement('header');
     header.className = 'tutorial-window__header';
     header.innerHTML = `
-      <span class="tutorial-window__title">Samouczek <span class="tutorial-window__step"></span></span>
-      <button type="button" class="tutorial-window__close" aria-label="Pomiń samouczek">${TUTORIAL_CLOSE_ICON_SVG}</button>
+      <span class="tutorial-window__title">${I18n.t('tutorial.title')} <span class="tutorial-window__step"></span></span>
+      <button type="button" class="tutorial-window__close" aria-label="${I18n.t('tutorial.dismiss')}">${TUTORIAL_CLOSE_ICON_SVG}</button>
     `;
     header.querySelector('.tutorial-window__close').addEventListener('click', () => this._dismiss());
     this.stepEl = header.querySelector('.tutorial-window__step');
@@ -154,7 +158,7 @@ class TutorialManager {
     this.prevBtn = document.createElement('button');
     this.prevBtn.type = 'button';
     this.prevBtn.className = 'tutorial-window__nav tutorial-window__nav--prev';
-    this.prevBtn.setAttribute('aria-label', 'Poprzedni krok');
+    this.prevBtn.setAttribute('aria-label', I18n.t('tutorial.prev'));
     this.prevBtn.textContent = '◀';
     this.prevBtn.addEventListener('click', () => this._goToStep(this.economyManager.tutorialStep - 1));
 
@@ -168,7 +172,7 @@ class TutorialManager {
     this.nextBtn = document.createElement('button');
     this.nextBtn.type = 'button';
     this.nextBtn.className = 'tutorial-window__nav tutorial-window__nav--next';
-    this.nextBtn.setAttribute('aria-label', 'Następny krok');
+    this.nextBtn.setAttribute('aria-label', I18n.t('tutorial.next'));
     this.nextBtn.textContent = '▶';
     this.nextBtn.addEventListener('click', () => this._goToStep(this.economyManager.tutorialStep + 1));
 
@@ -199,7 +203,7 @@ class TutorialManager {
     this.economyManager.tutorialStep = index;
     // innerHTML (nie textContent) - step.icon to teraz SVG, nie emoji.
     if (this.iconEl) this.iconEl.innerHTML = step.icon;
-    if (this.textEl) this.textEl.textContent = step.text;
+    if (this.textEl) this.textEl.textContent = step.text();
     if (this.stepEl) this.stepEl.textContent = `${index + 1}/${TUTORIAL_STEPS.length}`;
     if (this.prevBtn) this.prevBtn.disabled = index === 0;
 
@@ -247,7 +251,7 @@ class TutorialManager {
     this.economyManager.tutorialStep = TUTORIAL_STEPS.length;
     const paidOut = this.economyManager._addMoney(TUTORIAL_COMPLETION_BONUS);
     if (window.uiManager && window.uiManager.notifications) {
-      window.uiManager.notifications.show(`Samouczek ukończony! +${paidOut}${TUTORIAL_CREDIT_ICON_SVG}`, {
+      window.uiManager.notifications.show(I18n.t('tutorial.completed', { amount: paidOut, icon: TUTORIAL_CREDIT_ICON_SVG }), {
         type: 'success',
         icon: TUTORIAL_GRADUATE_ICON_SVG,
         duration: 3400
