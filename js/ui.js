@@ -1278,7 +1278,7 @@ class SettingsPanel {
     if (!this.bodyEl) return;
     this.bodyEl.innerHTML = '';
     this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
-    this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildTutorialRow(), this._buildFpsRow()]));
+    this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildMusicVolumeRow(), this._buildTutorialRow(), this._buildFpsRow()]));
     this.bodyEl.appendChild(this._buildSection('Dane', [this._buildResetRow()]));
     this.bodyEl.appendChild(this._buildSection('O grze', [this._buildAboutRow()]));
   }
@@ -1396,6 +1396,48 @@ class SettingsPanel {
       }
     });
     return this._buildRow(SPEAKER_ICON_SVG, 'Dźwięk', 'Włącz lub wycisz efekty dźwiękowe gry', btn.mount());
+  }
+
+  /**
+   * Suwak głośności muzyki (Tomek: "przygotuj już suwak głośności i pliki,
+   * a muzykę dodam później") - steruje window.audioManager.musicVolume
+   * (patrz setMusicVolume w audio.js), NIEZALEŻNIE od przełącznika Dźwięk
+   * wyżej (ten wycisza WSZYSTKO - efekty i muzykę razem; ten suwak tylko
+   * WZGLĘDNĄ głośność samej muzyki, gdy nie jest wyciszona). Własny layout
+   * zamiast _buildRow - suwak potrzebuje pełnej szerokości wiersza, nie
+   * wąskiej kolumny __action (patrz .ui-volume-slider w style.css, grid-
+   * column: 1 / -1, dokłada się jako CZWARTY element do tej samej siatki).
+   */
+  _buildMusicVolumeRow() {
+    const audio = window.audioManager;
+    const initial = audio ? Math.round(audio.musicVolume * 100) : 100;
+
+    const row = document.createElement('article');
+    row.className = 'ui-shop-item ui-shop-item--slider';
+    row.innerHTML = `
+      <div class="ui-shop-item__icon" aria-hidden="true">${SPEAKER_ICON_SVG}</div>
+      <div class="ui-shop-item__info">
+        <span class="ui-shop-item__name">Głośność muzyki</span>
+        <span class="ui-shop-item__desc">Podkład w tle, osobno od przełącznika Dźwięk</span>
+      </div>
+      <div class="ui-shop-item__action">
+        <span class="ui-volume-row__value">${initial}%</span>
+      </div>
+      <input type="range" class="ui-volume-slider" min="0" max="100" step="5" value="${initial}" aria-label="Głośność muzyki">
+    `;
+
+    const valueEl = row.querySelector('.ui-volume-row__value');
+    const slider = row.querySelector('.ui-volume-slider');
+    slider.addEventListener('input', () => {
+      const pct = Number(slider.value);
+      valueEl.textContent = `${pct}%`;
+      if (window.audioManager) window.audioManager.setMusicVolume(pct / 100);
+    });
+    slider.addEventListener('change', () => {
+      if (typeof this.onChange === 'function') this.onChange();
+    });
+
+    return row;
   }
 
   /** Nakładka FPS/jakości (DEBUG.fps() w main.js) - dotąd dostępna tylko z

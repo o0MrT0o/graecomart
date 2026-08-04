@@ -247,10 +247,26 @@ const AUDIO_STEP_FILE_VOLUME = 0.3;
 
 // Klucz w localStorage do zapamiętania preferencji wyciszenia między sesjami.
 const AUDIO_MUTE_STORAGE_KEY = 'ecomart_muted';
+// Klucz w localStorage dla suwaka głośności muzyki (SettingsPanel w ui.js) -
+// osobny od wyciszenia (AUDIO_MUTE_STORAGE_KEY): mute to "cisza teraz", to
+// tutaj to "jak głośno, gdy NIE wyciszone" - dwie niezależne preferencje.
+const AUDIO_MUSIC_VOLUME_STORAGE_KEY = 'ecomart_music_volume';
+
+// Prawdziwy podkład muzyczny (Tomek: "suwak i pliki już, muzykę dodam
+// później") - gdy plik istnieje pod tą ścieżką, ZASTĘPUJE proceduralny pad
+// niżej (patrz _tryStartRealMusicTrack). Dopóki go nie ma, ładowanie po
+// prostu zawodzi (błąd sieci na ten JEDEN plik, złapany przez 'error' niżej)
+// i cicho spadamy z powrotem na już działającą muzykę proceduralną - zero
+// zmiany w zachowaniu gry, dopóki plik faktycznie nie trafi do repo pod tą
+// nazwą. Format mp3 dla szerokiej kompatybilności (Safari/iOS nie gra ogg).
+const AUDIO_MUSIC_TRACK_SRC = 'assets/audio/music_theme.mp3';
 
 // --- Muzyka w tle (proceduralna - patrz startMusic) --------------------------
 // Wyraźnie ciszej niż JAKIKOLWIEK efekt (najcichszy to krok, 0.14) - to ma być
 // tło, którego się nie zauważa, a nie drugi plan konkurujący z dźwiękami gry.
+// Traktowane jako SUFIT proceduralnego pada - suwak głośności (musicVolume,
+// 0..1) mnoży tę wartość, więc domyślne musicVolume=1 daje DOKŁADNIE
+// dotychczasowe brzmienie (zero zmiany, dopóki gracz sam nie ruszy suwaka).
 const AUDIO_MUSIC_VOLUME = 0.075;
 // Skala pentatoniczna (A-moll: A C D E G) w dwóch oktawach. Pentatonika NIE
 // zawiera półtonów ani trytonu, więc DOWOLNE dwie nuty z tej listy brzmią
@@ -318,9 +334,18 @@ class AudioManager {
     this._lastPlayedAt = {};
     this._footstepIndex = 0;
     this.muted = this._loadMutePreference();
+    // Suwak głośności muzyki (SettingsPanel._buildMusicVolumeRow, ui.js) -
+    // 0..1, mnożony przez sufit odpowiedniego backendu (AUDIO_MUSIC_VOLUME
+    // dla pada, wprost jako .volume dla prawdziwego pliku - patrz
+    // setMusicVolume). Domyślnie 1 = dotychczasowe brzmienie bez zmian.
+    this.musicVolume = this._loadMusicVolumePreference();
 
-    // Muzyka w tle (proceduralna) - tworzone leniwie w startMusic(), patrz
-    // komentarz tam (autoplay policy przeglądarek).
+    // Muzyka w tle - startMusic() najpierw PRÓBUJE prawdziwego pliku
+    // (AUDIO_MUSIC_TRACK_SRC), a dopiero gdy ten zawiedzie, tworzy poniższe
+    // proceduralnie (leniwie, patrz komentarz przy startMusic - autoplay
+    // policy przeglądarek).
+    this._musicStarted = false;
+    this._realMusicEl = null;
     this._audioCtx = null;
     this._musicGain = null;
     this._musicTimer = null;
@@ -585,7 +610,7 @@ class AudioManager {
     this._audioCtx = new Ctx();
 
     this._musicGain = this._audioCtx.createGain();
-    this._musicGain.gain.value = this.muted ? 0 : AUDIO_MUSIC_VOLUME;
+    this._musicGain.gain.value = this.muted ? 0 : this.musicVolume * AUDIO_MUSIC_VOLUME;
     this._musicGain.connect(this._audioCtx.destination);
 
     // Osobna szyna dla syntezowanych kroków - własna głośność, niezależna
@@ -607,7 +632,47 @@ class AudioManager {
     return true;
   }
 
+  /**
+   * PRÓBUJE prawdziwego pliku (AUDIO_MUSIC_TRACK_SRC) jako pierwszy wybór -
+   * dopiero gdy ten zawiedzie (patrz _tryStartRealMusicTrack), startuje
+   * proceduralny pad (_startProceduralMusic, dawne zachowanie tej metody).
+   * Idempotentne przez _musicStarted - druga i kolejne wywołania (np. gdyby
+   * odpaliło się więcej niż jedno zdarzenie "pierwsza interakcja" w main.js)
+   * nic nie robią.
+   */
   startMusic() {
+    if (this._musicStarted) return;
+    this._musicStarted = true;
+    this._tryStartRealMusicTrack();
+  }
+
+  /**
+   * BUGFIX/FEATURE (Tomek: "przygotuj już suwak głośności i pliki, a
+   * muzykę dodam później"): dopóki AUDIO_MUSIC_TRACK_SRC nie istnieje w
+   * repo, 'error' poniżej złapie nieudane wczytanie i cicho przełączy na
+   * _startProceduralMusic - grę dziś to NIE zmienia (dalej gra pad), tylko
+   * przygotowuje ścieżkę, pod którą wystarczy podmienić plik, żeby zabrzmiał
+   * PRAWDZIWY utwór, bez dalszych zmian w kodzie.
+   */
+  _tryStartRealMusicTrack() {
+    const el = new Audio();
+    el.loop = true;
+    el.volume = this.muted ? 0 : this.musicVolume;
+    el.addEventListener('canplaythrough', () => {
+      if (this._realMusicEl) return; // już wystartowało (podwójny event)
+      this._realMusicEl = el;
+      el.play().catch(() => {}); // autoplay policy - ciche niepowodzenie, i tak wołane po geście użytkownika
+    }, { once: true });
+    el.addEventListener('error', () => {
+      this._startProceduralMusic();
+    }, { once: true });
+    el.src = AUDIO_MUSIC_TRACK_SRC;
+    el.load();
+  }
+
+  /** Dawna treść startMusic() - proceduralny pad (patrz _scheduleNextNote),
+   * teraz FALLBACK gdy prawdziwego pliku nie ma (patrz _tryStartRealMusicTrack). */
+  _startProceduralMusic() {
     if (this._musicTimer) return; // już gra
     try {
       if (!this._ensureAudioContext()) return;
@@ -621,6 +686,10 @@ class AudioManager {
     if (this._musicTimer) {
       clearTimeout(this._musicTimer);
       this._musicTimer = null;
+    }
+    if (this._realMusicEl) {
+      this._realMusicEl.pause();
+      this._realMusicEl = null;
     }
   }
 
@@ -773,13 +842,37 @@ class AudioManager {
     this.muted = muted;
     this._saveMutePreference(muted);
     // Wyciszenie musi łapać też muzykę - efekty sprawdzają this.muted przy
-    // każdym play(), ale muzyka leci przez własny węzeł wzmocnienia.
+    // każdym play(), ale muzyka leci przez własny węzeł wzmocnienia (pad)
+    // albo własny <audio> (prawdziwy plik, patrz _realMusicEl) - obie ścieżki
+    // trzeba wyciszyć osobno.
     if (this._musicGain && this._audioCtx) {
       this._musicGain.gain.setTargetAtTime(
-        muted ? 0 : AUDIO_MUSIC_VOLUME,
+        muted ? 0 : this.musicVolume * AUDIO_MUSIC_VOLUME,
         this._audioCtx.currentTime,
         0.05
       );
+    }
+    if (this._realMusicEl) {
+      this._realMusicEl.volume = muted ? 0 : this.musicVolume;
+    }
+  }
+
+  /**
+   * Suwak głośności muzyki (SettingsPanel._buildMusicVolumeRow, ui.js) -
+   * JEDEN suwak steruje oboma możliwymi backendami naraz (proceduralny pad
+   * PRZEZ _musicGain, prawdziwy plik wprost przez .volume elementu audio),
+   * więc Tomek nie musi wiedzieć/pamiętać, który akurat gra.
+   * @param {number} value - 0..1
+   */
+  setMusicVolume(value) {
+    this.musicVolume = Math.max(0, Math.min(1, value));
+    this._saveMusicVolumePreference(this.musicVolume);
+    if (this.muted) return; // i tak wyciszone - nic do zastosowania NA RAZ
+    if (this._musicGain && this._audioCtx) {
+      this._musicGain.gain.setTargetAtTime(this.musicVolume * AUDIO_MUSIC_VOLUME, this._audioCtx.currentTime, 0.05);
+    }
+    if (this._realMusicEl) {
+      this._realMusicEl.volume = this.musicVolume;
     }
   }
 
@@ -797,6 +890,25 @@ class AudioManager {
     } catch (e) {
       // localStorage niedostepny (np. tryb prywatny) - cicho ignorujemy,
       // wyciszenie po prostu nie przetrwa do nastepnej sesji.
+    }
+  }
+
+  _loadMusicVolumePreference() {
+    try {
+      const raw = localStorage.getItem(AUDIO_MUSIC_VOLUME_STORAGE_KEY);
+      if (raw === null) return 1; // domyślnie = dotychczasowe brzmienie (patrz AUDIO_MUSIC_VOLUME)
+      const val = parseFloat(raw);
+      return Number.isFinite(val) ? Math.max(0, Math.min(1, val)) : 1;
+    } catch (e) {
+      return 1;
+    }
+  }
+
+  _saveMusicVolumePreference(value) {
+    try {
+      localStorage.setItem(AUDIO_MUSIC_VOLUME_STORAGE_KEY, String(value));
+    } catch (e) {
+      // localStorage niedostepny - cicho ignorujemy, jak przy _saveMutePreference.
     }
   }
 
