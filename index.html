@@ -88,15 +88,43 @@
          zniknie normalnie, tylko bez animacji paska. -->
     <script>
     (function () {
-        var tips = [
-            'Sadzimy trawę…',
-            'Ustawiamy maszyny…',
-            'Rozkładamy stragan…',
-            'Pakujemy plecak…',
-            'Szykujemy statek…'
-        ];
+        // Ten sam klucz/domyślna wartość co I18N_STORAGE_KEY/I18N_DEFAULT_LANG
+        // w i18n.js (który tu jeszcze NIE jest załadowany, patrz komentarz
+        // wyżej "zero zależności od Bus/reszty gry") - localStorage jest
+        // jednak dostępny synchronicznie od razu, więc podpowiedzi mogą
+        // odczytać zapisany język BEZ czekania na resztę gry. Duplikat stałej
+        // (nie import) - ta sama konwencja projektu co reszta plików
+        // ("brak współdzielonych utili").
+        var lang = 'pl';
+        try {
+            var saved = localStorage.getItem('ecomart_lang');
+            if (saved === 'pl' || saved === 'en') lang = saved;
+        } catch (e) {
+            // localStorage niedostępny (np. tryb prywatny) - zostajemy przy 'pl'.
+        }
+        var tipsByLang = {
+            pl: [
+                'Sadzimy trawę…',
+                'Ustawiamy maszyny…',
+                'Rozkładamy stragan…',
+                'Pakujemy plecak…',
+                'Szykujemy statek…'
+            ],
+            en: [
+                'Planting grass…',
+                'Setting up machines…',
+                'Unpacking the stall…',
+                'Packing the backpack…',
+                'Prepping the ship…'
+            ]
+        };
+        var tips = tipsByLang[lang];
         var tipEl = document.getElementById('loading-tip');
         if (tipEl) {
+            // Nadpisuje polski tekst zaszyty wprost w HTML (pierwszy render,
+            // zanim ten skrypt zdąży się wykonać) - dla gracza z lang='en' bez
+            // tego migałby ułamek sekundy polski tekst przed podmianą.
+            tipEl.textContent = tips[0];
             // Przenikanie zamiast twardego podskoku tekstu - CSS transition na
             // opacity (patrz .loading-screen__tip w style.css), skrypt tylko
             // ją wyzwala: schowaj -> podmień tekst PO zakończeniu zanikania ->
