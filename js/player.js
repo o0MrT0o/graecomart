@@ -1069,13 +1069,14 @@ class PlayerController {
     if (eco.hasUpgrade('toxic_filter')) {
       this._drawGasMask(ctx2, this._getBodyPointY(0.32));
     }
-    // Kask NAD maską (patrz _drawHelmet - podniesiony ponad nią), buty PRZY
-    // stopach - żaden z gearów rysowanych TU (kask/maska/pasy/buty) nie
+    // Latarka NA WYSOKOŚCI SKRONI, wyżej niż maska (patrz _drawHelmet -
+    // bez kopuły hełmu, sama latarka przypięta z boku głowy), buty PRZY
+    // stopach - żaden z gearów rysowanych TU (latarka/maska/pasy/buty) nie
     // nakłada się na inny. Plecak NIE jest już tutaj - rysuje się PRZED
     // sylwetką w draw(), żeby postać go częściowo zasłaniała (patrz
     // komentarz tam i przy _drawBackpack).
     if (eco.hasUpgrade('headlamp')) {
-      this._drawHelmet(ctx2, this._getBodyPointY(0));
+      this._drawHelmet(ctx2, this._getBodyPointY(0.16));
     }
     if (eco.hasUpgrade('boots')) {
       this._drawBoots(ctx2);
@@ -1228,66 +1229,29 @@ class PlayerController {
   }
 
   /**
-   * "Kask z Latarką" (sklep) - kopuła nad głową + latarka przypięta z boku.
-   * Zakotwiczony DOKŁADNIE na czubku głowy (fraction=0, patrz
-   * _getBodyPointY) - kopuła i tak rysuje się w górę od tego punktu
-   * (arc od PI do 0 = górna połówka), więc wizualnie "siedzi" na czubku,
-   * wyraźnie nad maską na twarzy (fraction=0.28) - zero kolizji.
+   * "Kask z Latarką" (sklep) - WYŁĄCZNIE latarka przypięta z boku głowy,
+   * bez kopuły hełmu (patrz BUGFIX niżej). Zakotwiczona na wysokości
+   * skroni (fraction=0.16, patrz _getBodyPointY) - wyraźnie wyżej niż
+   * maska na twarzy (fraction=0.32, środek całej twarzy), więc czyta się
+   * jako coś przypiętego DO głowy z boku, nie unoszące się nad nią.
    *
-   * BUGFIX (Tomek: "zrób jakąś latarkę z boku hełmu, ten kask źle
-   * wygląda"): lampka wcześniej była tylko świecącą kropką na czole
-   * kopuły - z daleka nieczytelna jako latarka, bardziej jak plama
-   * koloru na hełmie. Zastąpiona osobnym, rozpoznawalnym PRZEDMIOTEM -
-   * metalową tubą na uchwycie z BOKU kopuły, z soczewką (ten sam
-   * pulsujący blask co wcześniej) na końcu. r jest kolizyjnym promieniem
-   * (this.radius), ale kopuła rysuje się symetrycznie wokół x=0, więc -
-   * inaczej niż przy butach/pasku (patrz _isAlienBodyActive) - różnice
-   * szerokości sylwetki między ciałami nie psują tu wycentrowania.
+   * BUGFIX (Tomek: "kask usuń, a latarkę daj z boku głowy"): wcześniejsza
+   * wersja miała żółtą kopułę hełmu POD latarką (patrz historia tej
+   * funkcji - najpierw lampka na czole kopuły, potem tuba z boku kopuły).
+   * Teraz zostaje WYŁĄCZNIE sama latarka (uchwyt + tuba + soczewka),
+   * przypięta wprost do sylwetki głowy - bez kopuły w ogóle.
    */
-  _drawHelmet(ctx2, topY) {
+  _drawHelmet(ctx2, sideY) {
     const r = this.radius * 0.62;
 
-    ctx2.save();
-    ctx2.translate(0, topY);
-
-    // Kopuła - radialny gradient (jasny punkt w lewym górnym rogu, jak
-    // światło padające z góry), zamiast płaskiego wypełnienia - ten sam
-    // "obiekt ma objętość" zabieg co _drawBackpack/machines.js.
-    const domeGrad = ctx2.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r * 1.1);
-    domeGrad.addColorStop(0, '#FFD54F');
-    domeGrad.addColorStop(0.6, '#FFB300');
-    domeGrad.addColorStop(1, '#E68900');
-    ctx2.fillStyle = domeGrad;
-    ctx2.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx2.lineWidth = 1.3;
-    ctx2.beginPath();
-    ctx2.arc(0, 0, r, Math.PI, 0);
-    ctx2.lineTo(r, r * 0.22);
-    ctx2.lineTo(-r, r * 0.22);
-    ctx2.closePath();
-    ctx2.fill();
-    ctx2.stroke();
-
-    // Nity wzdłuż dolnej krawędzi kopuły - drobny, ale realny "sprzętowy"
-    // detal, którego płaska wersja nie miała w ogóle.
-    ctx2.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    [-0.62, -0.3, 0.3, 0.62].forEach((frac) => {
-      ctx2.beginPath();
-      ctx2.arc(r * frac, r * 0.12, r * 0.045, 0, Math.PI * 2);
-      ctx2.fill();
-    });
-
-    ctx2.fillStyle = 'rgba(93, 64, 55, 0.5)';
-    ctx2.fillRect(-r, r * 0.05, r * 2, r * 0.17);
-
-    // Latarka z boku kopuły - własny lokalny układ (przesunięcie + obrót),
+    // Latarka z boku głowy - własny lokalny układ (przesunięcie + obrót),
     // żeby tuba i jej soczewka nie musiały ręcznie przeliczać sinusów/
     // cosinusów kąta nachylenia.
     ctx2.save();
-    ctx2.translate(r * 0.78, r * 0.02);
+    ctx2.translate(r * 0.92, sideY);
     ctx2.rotate(-0.25);
 
-    // Uchwyt łączący tubę z kopułą.
+    // Uchwyt łączący tubę z głową.
     ctx2.fillStyle = 'rgba(0, 0, 0, 0.4)';
     ctx2.fillRect(-r * 0.22, -r * 0.08, r * 0.3, r * 0.16);
 
@@ -1323,8 +1287,6 @@ class PlayerController {
     ctx2.beginPath();
     ctx2.arc(tubeLen, 0, tubeW * 0.42, 0, Math.PI * 2);
     ctx2.fill();
-    ctx2.restore();
-
     ctx2.restore();
 
     ctx2.restore();
