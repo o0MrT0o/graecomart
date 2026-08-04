@@ -545,14 +545,14 @@ class TradingPost {
     ctx.font = 'bold 11px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    this._drawOutlinedText(ctx, 'Terminal Handlowy', this.x, this.y - hh - 60, '#FFFFFF');
+    this._drawOutlinedText(ctx, I18n.t('market.terminalLabel'), this.x, this.y - hh - 60, '#FFFFFF');
 
     if (this.inRange) {
       const stack = window.stackController;
       const hasSellable = stack && !stack.isEmpty() && stack.find((item) => this.acceptsType.includes(item.typeId));
       const statusColor = hasSellable ? '#A5D6A7' : 'rgba(255, 255, 255, 0.75)';
       ctx.font = '10px Arial';
-      this._drawOutlinedText(ctx, hasSellable ? 'Sprzedaję...' : 'Brak towaru do sprzedania', this.x, this.y - hh - 74, statusColor);
+      this._drawOutlinedText(ctx, hasSellable ? I18n.t('market.status.selling') : I18n.t('market.status.noStock'), this.x, this.y - hh - 74, statusColor);
     }
   }
 

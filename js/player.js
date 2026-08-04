@@ -617,9 +617,9 @@ class PlayerController {
         // zupełnie inną przy wejściu bez sprzętu. Ujednolicone na "Strefa
         // Bagienna" wszędzie (to ona pojawia się PIERWSZA, przy odblokowaniu).
         const zoneWarnings = {
-          B: 'Strefa Bagienna - bez Filtra Toksyn stracisz przedmiot!',
-          C: 'Strefa Atomowa - bez Kombinezonu Radiacyjnego stracisz przedmiot!',
-          D: 'Kryształowa Grań - potrzebujesz Filtra I Kombinezonu naraz!'
+          B: I18n.t('player.zoneWarning.B'),
+          C: I18n.t('player.zoneWarning.C'),
+          D: I18n.t('player.zoneWarning.D')
         };
         // BUGFIX: brak jawnego x/y powodował, że popup renderował się w
         // stałym punkcie ŚWIATA (fallback w gamefeel.js), a nie nad graczem
@@ -629,7 +629,7 @@ class PlayerController {
         // wyświetla się nad ash" - tekst i tak nie miał związku z pozycją
         // gracza. y - 70, żeby popup wystartował nad głową, nie na twarzy.
         Bus.publish(Events.FX_POPUP, {
-          text: zoneWarnings[this.currentZone] || 'Strefa niebezpieczna',
+          text: zoneWarnings[this.currentZone] || I18n.t('player.zoneWarning.default'),
           // Trójkąt ostrzegawczy rysowany PROCEDURALNIE nad popupem (patrz
           // _drawPopupIcon w gamefeel.js) zamiast dawnego ⚠️ wtopionego w text.
           icon: 'warning',
@@ -792,7 +792,7 @@ class PlayerController {
     // <script> w index.html - więc jego statyczne metody są tu bezpieczne
     // do użycia (ten sam wzorzec co StackController.draw() w stacking.js).
     const meta = (typeof ItemRenderer !== 'undefined') ? ItemRenderer.getTypeMeta(item.typeId) : null;
-    const niceName = (meta && meta.name) || 'przedmiot';
+    const niceName = (meta && meta.name) || I18n.t('player.genericItem');
 
     Bus.publish(Events.FX_SHAKE, {
       intensity: ZONE_HAZARD_LOSS_SHAKE_INTENSITY,
@@ -806,7 +806,7 @@ class PlayerController {
     });
     if (Events.ITEM_LOST) Bus.publish(Events.ITEM_LOST, { typeId: item.typeId });
     Bus.publish(Events.FX_POPUP, {
-      text: `Zgubiono: ${niceName}`,
+      text: I18n.t('player.itemLostToast', { name: niceName }),
       // X rysowany PROCEDURALNIE nad popupem (patrz _drawPopupIcon w
       // gamefeel.js) zamiast dawnego 💢 wtopionego w text. item.label (emoji
       // per typ z ITEM_TYPES) też usunięty z treści - nazwa (niceName) już

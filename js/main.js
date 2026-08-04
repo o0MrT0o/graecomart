@@ -153,7 +153,7 @@ function startGame() {
         // łatwe przeoczyć przy pierwszym spojrzeniu na ekran.
         if (window.seasonalEventManager.isActive()) {
             window.uiManager.notifications.show(
-                `${SPARKLE_ICON_SVG} Deszcz Meteorytów! Złoty Bonus częściej, ekskluzywny skin w Skinach.`,
+                I18n.t('toast.seasonalEvent.meteorShower', { icon: SPARKLE_ICON_SVG }),
                 { type: 'success', duration: 4200 }
             );
         }

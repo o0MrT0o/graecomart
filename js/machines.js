@@ -44,7 +44,7 @@ const MACHINE_DEFINITIONS = [
     // maxInventory NIETKNIĘTE (czysto wizualna zmiana), patrz bespoke
     // _drawRecycleMachine w draw() zamiast dawnego assets/machines/recycle.png.
     id: 'recycle_a',
-    label: 'Reaktor Recyklingowy',
+    get label() { return I18n.t('machine.recycle_a.worldLabel'); },
     xRatio: 0.32,
     yRatio: 0.4,
     color: '#66BB6A',
@@ -69,7 +69,7 @@ const MACHINE_DEFINITIONS = [
     // "Prasa" -> "Kompresor Grawitonowy" - ten sam powód co przy recycle_a
     // wyżej, patrz bespoke _drawPressMachine.
     id: 'press_b',
-    label: 'Kompresor Grawitonowy',
+    get label() { return I18n.t('machine.press_b.worldLabel'); },
     xRatio: 0.28,
     yRatio: 0.72,
     color: '#FFA726',
@@ -88,7 +88,7 @@ const MACHINE_DEFINITIONS = [
     // press_b wyżej, patrz bespoke _drawFurnaceMachine (zastępuje dawny
     // assets/machines/piechutniczy.png + głośny różowy fallback).
     id: 'furnace_c',
-    label: 'Piec Plazmowy',
+    get label() { return I18n.t('machine.furnace_c.worldLabel'); },
     xRatio: 0.59,
     yRatio: 0.35,
     color: '#EF5350',
@@ -111,7 +111,7 @@ const MACHINE_DEFINITIONS = [
     // economy.js) - id MUSI się zgadzać, inaczej _isMachineUnlocked nie
     // zadziała.
     id: 'refinery_b',
-    label: 'Oczyszczalnia',
+    get label() { return I18n.t('machine.refinery_b.worldLabel'); },
     xRatio: 0.8,
     yRatio: 0.62,
     color: '#7E57C2',
@@ -133,7 +133,7 @@ const MACHINE_DEFINITIONS = [
     // Oczyszczalnia dla szkła. Bryła złożona z prawdziwego sprite'a Kenney,
     // patrz _drawCrystalPolisherMachine.
     id: 'crystal_polisher',
-    label: 'Szlifiernia Kryształów',
+    get label() { return I18n.t('machine.crystal_polisher.worldLabel'); },
     xRatio: 1.15,
     yRatio: 0.28,
     color: '#4DD0C8',
@@ -593,18 +593,18 @@ class MachineManager {
       if (isActive) {
         statusBold = true;
         if (m.processing) {
-          statusText = 'Przetwarzam…';
+          statusText = I18n.t('machine.status.processing');
           statusColor = '#FF8A80';
         } else if (m.inventory >= m.maxInventory) {
-          statusText = 'Pełna';
+          statusText = I18n.t('machine.status.full');
           statusColor = '#FF8A80';
         } else {
-          statusText = 'Przyjmuje:';
+          statusText = I18n.t('machine.status.accepting');
           statusColor = '#A5D6A7';
           showMaterials = true;
         }
       } else if (isNearby) {
-        statusText = 'Chce:';
+        statusText = I18n.t('machine.status.wants');
         statusColor = 'rgba(255, 255, 255, 0.55)';
         showMaterials = true;
       }
@@ -1343,7 +1343,7 @@ class MachineManager {
         // fillText, nie DOM, więc nie da się tu wstawić CREDIT_ICON_SVG
         // (ui.js) jak w reszcie gry; złoty kolor + kontekst (mała podpowiedź
         // "ile brakuje" nad zablokowaną maszyną) wystarczą bez symbolu.
-        this._drawOutlinedText(ctx, `za ${Math.ceil(next.remaining)}`, m.x, m.y - hh - 8, '#FFD54F');
+        this._drawOutlinedText(ctx, I18n.t('machine.lockedCost', { amount: Math.ceil(next.remaining) }), m.x, m.y - hh - 8, '#FFD54F');
       }
     }
   }

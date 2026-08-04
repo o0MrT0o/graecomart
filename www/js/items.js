@@ -15,17 +15,17 @@
 // emoji na żadnym etapie). Pole zostaje w kształcie danych (inne miejsca w
 // grze wciąż je odczytują/przekazują dalej), ale bez wartości do wyświetlenia.
 const ITEM_TYPES = [
-  { id: 'trash', label: '', color: '#78909C', name: 'Śmieci', rarity: 'common' },
-  { id: 'plastic', label: '', color: '#42A5F5', name: 'Plastik', rarity: 'common' },
-  { id: 'paper', label: '', color: '#FFF176', name: 'Papier', rarity: 'common' },
-  { id: 'metal', label: '', color: '#B0BEC5', name: 'Metal', rarity: 'uncommon' },
-  { id: 'glass', label: '', color: '#80DEEA', name: 'Szkło', rarity: 'uncommon' },
-  { id: 'product', label: '', color: '#AB47BC', name: 'Produkt', rarity: 'rare' },
+  { id: 'trash', label: '', color: '#78909C', get name() { return I18n.t('item.trash.name'); }, rarity: 'common' },
+  { id: 'plastic', label: '', color: '#42A5F5', get name() { return I18n.t('item.plastic.name'); }, rarity: 'common' },
+  { id: 'paper', label: '', color: '#FFF176', get name() { return I18n.t('item.paper.name'); }, rarity: 'common' },
+  { id: 'metal', label: '', color: '#B0BEC5', get name() { return I18n.t('item.metal.name'); }, rarity: 'uncommon' },
+  { id: 'glass', label: '', color: '#80DEEA', get name() { return I18n.t('item.glass.name'); }, rarity: 'uncommon' },
+  { id: 'product', label: '', color: '#AB47BC', get name() { return I18n.t('item.product.name'); }, rarity: 'rare' },
   // Jedyny surowiec Strefy D (Kryształowa Grań) - patrz ITEM_TYPE_ZONE niżej.
   // Pierwszy przedmiot z rzadkością 'epic' (dotąd zdefiniowaną w ITEM_RARITY,
   // ale niewykorzystaną) - najrzadszy, najcenniejszy surowiec ze świata,
   // zgodnie z tym, że D to najtrudniej dostępna strefa (wymaga OBU strojów).
-  { id: 'crystal_shard', label: '', color: '#9575CD', name: 'Odłamek Kryształu', rarity: 'epic' }
+  { id: 'crystal_shard', label: '', color: '#9575CD', get name() { return I18n.t('item.crystal_shard.name'); }, rarity: 'epic' }
 ];
 
 // --- Świat (Faza 2b: mapa większa niż ekran) --------------------------------
@@ -81,10 +81,10 @@ const ITEM_KEEP_AWAY = [
 ].map((p) => ({ x: ITEM_ZONE_CORE_WIDTH * p.xr, y: ITEM_WORLD_HEIGHT * p.yr, r: 170 }));
 
 const ITEM_RARITY = {
-  common:    { border: '#B0BEC5', glow: 'rgba(176, 190, 197, 0.55)', label: 'Zwykły' },
-  uncommon:  { border: '#66BB6A', glow: 'rgba(102, 187, 106, 0.6)', label: 'Nietypowy' },
-  rare:      { border: '#FFD54F', glow: 'rgba(255, 213, 79, 0.75)', label: 'Rzadki' },
-  epic:      { border: '#AB47BC', glow: 'rgba(171, 71, 188, 0.75)', label: 'Epicki' }
+  common:    { border: '#B0BEC5', glow: 'rgba(176, 190, 197, 0.55)', get label() { return I18n.t('rarity.common'); } },
+  uncommon:  { border: '#66BB6A', glow: 'rgba(102, 187, 106, 0.6)', get label() { return I18n.t('rarity.uncommon'); } },
+  rare:      { border: '#FFD54F', glow: 'rgba(255, 213, 79, 0.75)', get label() { return I18n.t('rarity.rare'); } },
+  epic:      { border: '#AB47BC', glow: 'rgba(171, 71, 188, 0.75)', get label() { return I18n.t('rarity.epic'); } }
 };
 
 const ITEM_SPAWN_MARGIN = 24;

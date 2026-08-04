@@ -44,11 +44,11 @@ const SHIP_WORLD_HEIGHT = 2000;
 // plastic/product/alloy, które gra już zna, żadnych nowych surowców/maszyn.
 // Koszty rosną z każdym modułem (naturalny ramp trudności do finału).
 const SHIP_MODULE_DEFINITIONS = [
-  { id: 'life_support', name: 'Podtrzymywanie Życia', money: 300, materials: { plastic: 10 } },
-  { id: 'navigation', name: 'Nawigacja', money: 500, materials: { plastic: 5, product: 8 } },
-  { id: 'shields', name: 'Osłony', money: 800, materials: { product: 6, alloy: 8 } },
-  { id: 'engine', name: 'Silnik', money: 1200, materials: { product: 4, alloy: 14 } },
-  { id: 'hyperdrive', name: 'Hipernapęd', money: 2000, materials: { plastic: 5, product: 10, alloy: 12 } }
+  { id: 'life_support', get name() { return I18n.t('ship.module.life_support'); }, money: 300, materials: { plastic: 10 } },
+  { id: 'navigation', get name() { return I18n.t('ship.module.navigation'); }, money: 500, materials: { plastic: 5, product: 8 } },
+  { id: 'shields', get name() { return I18n.t('ship.module.shields'); }, money: 800, materials: { product: 6, alloy: 8 } },
+  { id: 'engine', get name() { return I18n.t('ship.module.engine'); }, money: 1200, materials: { product: 4, alloy: 14 } },
+  { id: 'hyperdrive', get name() { return I18n.t('ship.module.hyperdrive'); }, money: 2000, materials: { plastic: 5, product: 10, alloy: 12 } }
 ];
 
 // Wartości puste - BYŁY emoji (ten sam powód co ITEM_TYPES.label w items.js).
@@ -393,7 +393,7 @@ class Ship {
     ctx.font = 'bold 12px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    this._drawOutlinedText(ctx, this._won ? 'Gotowy do startu!' : 'Rozbity Statek', this.x, this.y - hh - 40, '#FFFFFF');
+    this._drawOutlinedText(ctx, this._won ? I18n.t('ship.readyLabel') : I18n.t('ship.wreckedLabel'), this.x, this.y - hh - 40, '#FFFFFF');
 
     // 5 ikon modułów - jasna/zielona = gotowa, przygaszona = jeszcze nie,
     // większa = aktualna. Proceduralne kształty (_drawModuleIcon) zamiast

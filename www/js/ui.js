@@ -514,7 +514,7 @@ class UnlockProgressDisplay extends UIComponent {
       // jako znacznik, nie surowy tekst (ten sam powód co ChallengeDisplay
       // wyżej). next.name to wewnętrzna nazwa strefy/maszyny, nie dane
       // użytkownika, więc bezpieczne do wstawienia bez sanityzacji.
-      this.textEl.innerHTML = `${next.name} — jeszcze ${Math.ceil(next.remaining)}${CREDIT_ICON_SVG}`;
+      this.textEl.innerHTML = I18n.t('ui.nextUnlock.text', { name: next.name, amount: Math.ceil(next.remaining), icon: CREDIT_ICON_SVG });
     }
     if (this.fillEl) {
       this.fillEl.style.width = `${pct}%`;

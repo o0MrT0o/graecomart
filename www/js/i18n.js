@@ -372,7 +372,56 @@ const I18N_STRINGS = {
 
     'ui.ceremony.title': 'Odlot!',
     'ui.ceremony.cores': 'Rdzeni',
-    'ui.ceremony.planet': 'Planeta #{n}{modSuffix}'
+    'ui.ceremony.planet': 'Planeta #{n}{modSuffix}',
+
+    'player.zoneWarning.B': 'Strefa Bagienna - bez Filtra Toksyn stracisz przedmiot!',
+    'player.zoneWarning.C': 'Strefa Atomowa - bez Kombinezonu Radiacyjnego stracisz przedmiot!',
+    'player.zoneWarning.D': 'Kryształowa Grań - potrzebujesz Filtra I Kombinezonu naraz!',
+    'player.zoneWarning.default': 'Strefa niebezpieczna',
+
+    'ship.module.life_support': 'Podtrzymywanie Życia',
+    'ship.module.navigation': 'Nawigacja',
+    'ship.module.shields': 'Osłony',
+    'ship.module.engine': 'Silnik',
+    'ship.module.hyperdrive': 'Hipernapęd',
+
+    'market.status.selling': 'Sprzedaję...',
+    'market.status.noStock': 'Brak towaru do sprzedania',
+
+    'machine.status.full': 'Pełna',
+    'machine.status.processing': 'Przetwarzam…',
+    'machine.status.accepting': 'Przyjmuje:',
+    'machine.status.wants': 'Chce:',
+    'machine.recycle_a.worldLabel': 'Reaktor Recyklingowy',
+    'machine.press_b.worldLabel': 'Kompresor Grawitonowy',
+    'machine.furnace_c.worldLabel': 'Piec Plazmowy',
+    'machine.refinery_b.worldLabel': 'Oczyszczalnia',
+    'machine.crystal_polisher.worldLabel': 'Szlifiernia Kryształów',
+
+    'item.trash.name': 'Śmieci',
+    'item.plastic.name': 'Plastik',
+    'item.paper.name': 'Papier',
+    'item.metal.name': 'Metal',
+    'item.glass.name': 'Szkło',
+    'item.product.name': 'Produkt',
+    'item.crystal_shard.name': 'Odłamek Kryształu',
+    'rarity.common': 'Zwykły',
+    'rarity.uncommon': 'Nietypowy',
+    'rarity.rare': 'Rzadki',
+    'rarity.epic': 'Epicki',
+
+    'player.genericItem': 'przedmiot',
+    'player.itemLostToast': 'Zgubiono: {name}',
+
+    'machine.lockedCost': 'za {amount}',
+    'ship.readyLabel': 'Gotowy do startu!',
+    'ship.wreckedLabel': 'Rozbity Statek',
+    'ui.nextUnlock.text': '{name} — jeszcze {amount}{icon}',
+    'market.terminalLabel': 'Terminal Handlowy',
+
+    'notification.offlineReminder.withReward': 'Twój sklep już zarabia (+{amount}$) - wróć po odbiór!',
+    'notification.offlineReminder.default': 'Twój sklep czeka na Ciebie w Eco Mart!',
+    'toast.seasonalEvent.meteorShower': '{icon} Deszcz Meteorytów! Złoty Bonus częściej, ekskluzywny skin w Skinach.'
   },
   en: {
     'common.show': 'Show',
@@ -719,7 +768,56 @@ const I18N_STRINGS = {
 
     'ui.ceremony.title': 'Launch!',
     'ui.ceremony.cores': 'Cores',
-    'ui.ceremony.planet': 'Planet #{n}{modSuffix}'
+    'ui.ceremony.planet': 'Planet #{n}{modSuffix}',
+
+    'player.zoneWarning.B': 'Swamp Zone - without the Toxin Filter you will lose an item!',
+    'player.zoneWarning.C': 'Atomic Zone - without the Radiation Suit you will lose an item!',
+    'player.zoneWarning.D': 'Crystal Ridge - you need the Filter AND the Suit at once!',
+    'player.zoneWarning.default': 'Hazard zone',
+
+    'ship.module.life_support': 'Life Support',
+    'ship.module.navigation': 'Navigation',
+    'ship.module.shields': 'Shields',
+    'ship.module.engine': 'Engine',
+    'ship.module.hyperdrive': 'Hyperdrive',
+
+    'market.status.selling': 'Selling...',
+    'market.status.noStock': 'No goods to sell',
+
+    'machine.status.full': 'Full',
+    'machine.status.processing': 'Processing…',
+    'machine.status.accepting': 'Accepting:',
+    'machine.status.wants': 'Wants:',
+    'machine.recycle_a.worldLabel': 'Recycling Reactor',
+    'machine.press_b.worldLabel': 'Graviton Compressor',
+    'machine.furnace_c.worldLabel': 'Plasma Furnace',
+    'machine.refinery_b.worldLabel': 'Refinery',
+    'machine.crystal_polisher.worldLabel': 'Crystal Polisher',
+
+    'item.trash.name': 'Trash',
+    'item.plastic.name': 'Plastic',
+    'item.paper.name': 'Paper',
+    'item.metal.name': 'Metal',
+    'item.glass.name': 'Glass',
+    'item.product.name': 'Product',
+    'item.crystal_shard.name': 'Crystal Shard',
+    'rarity.common': 'Common',
+    'rarity.uncommon': 'Uncommon',
+    'rarity.rare': 'Rare',
+    'rarity.epic': 'Epic',
+
+    'player.genericItem': 'item',
+    'player.itemLostToast': 'Lost: {name}',
+
+    'machine.lockedCost': '{amount} to go',
+    'ship.readyLabel': 'Ready for liftoff!',
+    'ship.wreckedLabel': 'Crashed Ship',
+    'ui.nextUnlock.text': '{name} — {amount} more{icon}',
+    'market.terminalLabel': 'Trading Terminal',
+
+    'notification.offlineReminder.withReward': 'Your shop is already earning (+{amount}$) - come back to collect!',
+    'notification.offlineReminder.default': 'Your shop is waiting for you in Eco Mart!',
+    'toast.seasonalEvent.meteorShower': '{icon} Meteor Shower! More frequent Gold Bonuses, exclusive skin in Skins.'
   }
 };
 

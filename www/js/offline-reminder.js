@@ -85,8 +85,8 @@ class OfflineReminderManager {
       ? this.economyManager.computeOfflineReward(OFFLINE_REMINDER_DELAY_SECONDS * 1000)
       : null;
     const body = preview
-      ? `Twój sklep już zarabia (+${preview.reward}$) - wróć po odbiór!`
-      : 'Twój sklep czeka na Ciebie w Eco Mart!';
+      ? I18n.t('notification.offlineReminder.withReward', { amount: preview.reward })
+      : I18n.t('notification.offlineReminder.default');
     window.NativeNotifications.scheduleOfflineReminder(OFFLINE_REMINDER_DELAY_SECONDS, 'Eco Mart', body);
   }
 
