@@ -72,16 +72,18 @@ canvas {
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Radialny gradient w tonacji łąki (Strefa A, #6fae5b to dawny płaski
-       kolor tego ekranu i JEDNOCZEŚNIE awaryjny kolor tła świata dopóki
-       grass.png się nie wczyta - patrz GAME_ZONE fallback w game.js) -
-       zanikanie do gry pod spodem nigdy nie "skacze" kolorem, tylko
-       dokłada głębi zamiast płaskiej plamy. Paleta NIETKNIĘTA celowo (patrz
-       Tomek: "ładniejszy od ceremonii prestiżu") - dodajemy blichtr WOKÓŁ
-       tych samych barw, nie zmieniamy tożsamości koloru, bo to zepsułoby
-       bezszwowe przejście do świata pod spodem. */
+    /* BYŁ zielony gradient w tonacji łąki (dopasowany do awaryjnego koloru
+       tła świata #6fae5b, patrz GAME_ZONE fallback w game.js) - Tomek: "tło
+       niech będzie kosmiczne a nie zielone, jakieś ciemne". Kolor już
+       ŚWIADOMIE się rozjeżdża z tłem świata pod spodem - ekran znika przez
+       PŁYNNE opacity (0.5s, patrz transition niżej), więc rozjazd barw daje
+       ciemne->zielone przenikanie (dissolve), nie twardy "flash" - ten sam
+       efekt jak w każdym crossfade z dwoma różnymi kolorami. Odcień
+       ciemnogranatowy (nie czysta czerń) - te same rodziny barw co
+       ceremonia prestiżu (kosmos), ale WŁASNY ton, żeby oba ekrany dalej
+       czuć jako osobne momenty. */
     background:
-        radial-gradient(ellipse at 50% 38%, #86c46e 0%, #6fae5b 46%, #4a7a3d 100%);
+        radial-gradient(ellipse at 50% 34%, #263457 0%, #131b2c 48%, #060911 100%);
     overflow: hidden;
     transition: opacity 0.5s ease;
 }
@@ -128,7 +130,7 @@ canvas {
     gap: 10px;
     padding: 36px 44px;
     border-radius: 20px;
-    background: rgba(15, 23, 20, 0.22);
+    background: rgba(18, 22, 34, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.16);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
     backdrop-filter: blur(2px);
@@ -286,6 +288,10 @@ canvas {
     50% { margin-top: -10px; }
 }
 
+/* BYŁ "Eco Mart" + osobny podtytuł "ARCADE IDLE" pod spodem - Tomek: "nie
+   musi być tam napisu arcade idle". Podtytuł usunięty (z HTML i stąd),
+   margin-bottom przeniesiony NA tytuł (14px, ta sama wartość co dawniej
+   niósł podtytuł), żeby odstęp tytuł->pasek postępu zostały taki sam. */
 .loading-screen__title {
     color: #fff;
     font-family: var(--ui-font);
@@ -293,20 +299,9 @@ canvas {
     font-size: 1.6rem;
     letter-spacing: 0.03em;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 26px rgba(255, 213, 79, 0.3);
-    opacity: 0;
-    animation: loading-screen-rise-in 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.15s both;
-}
-
-.loading-screen__subtitle {
-    color: rgba(255, 255, 255, 0.78);
-    font-family: var(--ui-font);
-    font-weight: 600;
-    font-size: 0.78rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
     margin-bottom: 14px;
     opacity: 0;
-    animation: loading-screen-rise-in 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.28s both;
+    animation: loading-screen-rise-in 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.15s both;
 }
 
 @keyframes loading-screen-rise-in {
