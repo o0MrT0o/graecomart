@@ -121,11 +121,6 @@ const WRENCH_ICON_SVG = '<span class="ui-icon ui-icon--wrench" aria-hidden="true
 const PLANET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B39DDB" stroke-width="1.8"><circle cx="11" cy="12" r="6" fill="#B39DDB" fill-opacity="0.25"/><ellipse cx="11" cy="12" rx="10" ry="3.2" transform="rotate(-18 11 12)"/></svg>';
 const FLAME_ICON_SVG = '<span class="ui-icon ui-icon--fire" aria-hidden="true" style="color:#FF7043"></span>';
 const SHIRT_ICON_SVG = '<span class="ui-icon ui-icon--brush" aria-hidden="true" style="color:#90CAF9"></span>';
-// Dekoracje straganu (economy.js STALL_DECORATIONS) - flaga, bo jedna z
-// samych dekoracji dosłownie NIĄ jest, i bo ogólnie czyta się jako
-// "oznacz/upiększ swoje miejsce", ten sam duch przypisania kształtu do
-// znaczenia co SHIRT_ICON_SVG wyżej (pędzel -> kosmetyka postaci).
-const DECOR_ICON_SVG = '<span class="ui-icon ui-icon--flag" aria-hidden="true" style="color:#81C784"></span>';
 // Tytuł LeaderboardPanel (medal, nie trophy/chart - te dwa już zajęte przez
 // Osiągnięcia/Statystyki, patrz TROPHY_ICON_SVG/CHART_ICON_SVG wyżej -
 // inny motyw, żeby trzy panele w Menu dało się odróżnić na pierwszy rzut oka).
@@ -1293,11 +1288,10 @@ class SettingsPanel {
    * nie potrzebuje (dawniej synchronizował ikonę osobnego przycisku Wycisz
    * w fabRow - ten przycisk usunięty, patrz komentarz w UIManager._render:
    * dźwięk włącza/wyłącza się TYLKO stąd, z Menu, nie z ekranu gry). */
-  constructor(onChange, onOpenAchievements, onOpenSkins, onOpenDecorations, onOpenStats, onOpenLeaderboard) {
+  constructor(onChange, onOpenAchievements, onOpenSkins, onOpenStats, onOpenLeaderboard) {
     this.onChange = onChange;
     this.onOpenAchievements = onOpenAchievements;
     this.onOpenSkins = onOpenSkins;
-    this.onOpenDecorations = onOpenDecorations;
     this.onOpenStats = onOpenStats;
     this.onOpenLeaderboard = onOpenLeaderboard;
     this.el = null;
@@ -1378,7 +1372,7 @@ class SettingsPanel {
   refresh() {
     if (!this.bodyEl) return;
     this.bodyEl.innerHTML = '';
-    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.progress'), [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildDecorationsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
+    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.progress'), [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
     this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.preferences'), [this._buildSoundRow(), this._buildMusicVolumeRow(), this._buildLanguageRow(), this._buildTutorialRow()]));
     this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.data'), [this._buildCloudSaveRow(), this._buildExportRow(), this._buildImportRow(), this._buildResetRow()]));
     this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.about'), [this._buildAboutRow()]));
@@ -1418,23 +1412,6 @@ class SettingsPanel {
       }
     });
     return this._buildRow(SHIRT_ICON_SVG, I18n.t('settings.skins.name'), I18n.t('settings.skins.desc', { unlocked, total: catalog.length }), btn.mount());
-  }
-
-  /** Wiersz "Dekoracje" - ten sam wzorzec co Skiny wyżej, otwiera osobny
-   * panel (DecorationsPanel, patrz onOpenDecorations w UIManager). */
-  _buildDecorationsRow() {
-    const eco = window.economyManager;
-    const catalog = (eco && typeof eco.getDecorationsCatalog === 'function') ? eco.getDecorationsCatalog() : [];
-    const owned = catalog.filter((d) => d.owned).length;
-    const btn = new UIButton({
-      label: I18n.t('common.show'),
-      variant: 'ghost',
-      onClick: () => {
-        this.close();
-        if (typeof this.onOpenDecorations === 'function') this.onOpenDecorations();
-      }
-    });
-    return this._buildRow(DECOR_ICON_SVG, I18n.t('settings.decorations.name'), I18n.t('settings.decorations.desc', { owned, total: catalog.length }), btn.mount());
   }
 
   /** Wiersz "Statystyki" - ten sam wzorzec co Osiągnięcia/Skiny wyżej,
@@ -2404,155 +2381,6 @@ class SkinsPanel {
   }
 }
 
-/**
- * Dekoracje straganu (economy.js STALL_DECORATIONS) - Tomek: "zacznijmy od
- * kosmetyki straganu". Ten sam szkielet co SkinsPanel wyżej, ale prostszy:
- * dekoracje nie mają "załóż" (WSZYSTKIE posiadane są widoczne naraz przy
- * Terminalu, patrz _drawStallDecorations w market.js), więc wiersz to tylko
- * kup/posiadam - dokładnie ten sam dwu-stanowy wzorzec co jednorazowe
- * pozycje w ShopPanel (maxLevel:1), tylko własna, niezależna klasa (panel
- * ma inny nagłówek/katalog/metodę zakupu niż Sklep).
- */
-class DecorationsPanel {
-  constructor(economyManager) {
-    this.economyManager = economyManager;
-    this.el = null;
-    this.bodyEl = null;
-    this.isOpen = false;
-
-    this._onKeyDown = (e) => {
-      if (e.key === 'Escape' && this.isOpen) this.close();
-    };
-  }
-
-  mount(parent) {
-    if (!this.el) this._render();
-    if (parent && this.el.parentNode !== parent) parent.appendChild(this.el);
-    return this.el;
-  }
-
-  _render() {
-    this.el = document.createElement('div');
-    this.el.className = 'ui-shop';
-
-    const backdrop = document.createElement('div');
-    backdrop.className = 'ui-shop-backdrop';
-    backdrop.addEventListener('click', () => this.close());
-
-    const sheet = document.createElement('div');
-    sheet.className = 'ui-shop-sheet';
-    sheet.setAttribute('role', 'dialog');
-    sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', I18n.t('panel.decorations.title'));
-    sheet.innerHTML = `
-      <div class="ui-shop-sheet__handle"></div>
-      <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">${DECOR_ICON_SVG}</span> ${I18n.t('panel.decorations.title')}</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('panel.decorations.close')}">${CLOSE_ICON_SVG}</button>
-      </header>
-      <div class="ui-shop-sheet__body"></div>
-    `;
-    sheet.querySelector('.ui-shop-sheet__close').addEventListener('click', () => this.close());
-    sheet.addEventListener('click', (e) => e.stopPropagation());
-
-    this.bodyEl = sheet.querySelector('.ui-shop-sheet__body');
-
-    this.el.appendChild(backdrop);
-    this.el.appendChild(sheet);
-
-    this.refresh();
-  }
-
-  open() {
-    if (!this.el) this._render();
-    this.isOpen = true;
-    this.el.classList.add('ui-shop--open');
-    document.addEventListener('keydown', this._onKeyDown);
-    this.refresh();
-  }
-
-  close() {
-    this.isOpen = false;
-    if (this.el) this.el.classList.remove('ui-shop--open');
-    document.removeEventListener('keydown', this._onKeyDown);
-  }
-
-  toggle() {
-    if (this.isOpen) this.close();
-    else this.open();
-  }
-
-  refresh() {
-    if (!this.bodyEl || !this.economyManager) return;
-    const catalog = this.economyManager.getDecorationsCatalog();
-    const money = this.economyManager.getMoney();
-
-    this.bodyEl.innerHTML = '';
-
-    const section = document.createElement('div');
-    section.className = 'ui-shop-section';
-    const heading = document.createElement('h3');
-    heading.className = 'ui-shop-section__title';
-    heading.innerHTML = I18n.t('panel.decorations.haveMoney', { icon: CREDIT_ICON_SVG, amount: money });
-    section.appendChild(heading);
-
-    const list = document.createElement('div');
-    list.className = 'ui-shop-list';
-    catalog.forEach((d) => list.appendChild(this._buildRow(d, money)));
-    section.appendChild(list);
-
-    this.bodyEl.appendChild(section);
-  }
-
-  _buildRow(d, money) {
-    const row = document.createElement('article');
-    row.className = 'ui-shop-item';
-    if (d.owned) row.classList.add('ui-shop-item--maxed');
-
-    const canBuy = !d.owned && money >= d.cost;
-    if (canBuy) row.classList.add('ui-shop-item--afford');
-
-    row.innerHTML = `
-      <div class="ui-shop-item__icon" aria-hidden="true">${d.icon}</div>
-      <div class="ui-shop-item__info">
-        <span class="ui-shop-item__name">${d.name}</span>
-        <span class="ui-shop-item__desc">${d.description}</span>
-      </div>
-      <div class="ui-shop-item__action"></div>
-    `;
-
-    const actionEl = row.querySelector('.ui-shop-item__action');
-    if (d.owned) {
-      const badge = document.createElement('span');
-      badge.className = 'ui-shop-item__done';
-      badge.setAttribute('aria-label', I18n.t('ui.decoration.owned'));
-      badge.innerHTML = CHECK_ICON_SVG;
-      actionEl.appendChild(badge);
-    } else {
-      // Kłódka gdy nie stać - patrz identyczny komentarz w ShopPanel._buildRow.
-      const costLabel = canBuy ? `${d.cost}${CREDIT_ICON_SVG}` : `${LOCK_ICON_SVG} ${d.cost}${CREDIT_ICON_SVG}`;
-      const btn = new UIButton({
-        label: costLabel,
-        variant: canBuy ? 'accent' : 'ghost',
-        denied: !canBuy,
-        title: canBuy ? I18n.t('ui.buyDecoration.title') : I18n.t('ui.notEnoughMoney.title'),
-        onClick: () => {
-          if (this.economyManager.buyDecoration(d.id)) this.refresh();
-        }
-      });
-      actionEl.appendChild(btn.mount());
-    }
-
-    row.dataset.tooltip = `${d.name}: ${d.description}`;
-    return row;
-  }
-
-  destroy() {
-    document.removeEventListener('keydown', this._onKeyDown);
-    if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
-  }
-}
-
 // --- Powiadomienia (toast) --------------------------------------------------
 
 class NotificationManager {
@@ -2653,7 +2481,6 @@ class UIManager {
     this.settingsPanel = null;
     this.achievementsPanel = null;
     this.skinsPanel = null;
-    this.decorationsPanel = null;
     this.statsPanel = null;
     this.leaderboardPanel = null;
     this.offlineModal = null;
@@ -2771,7 +2598,6 @@ class UIManager {
       if (this.settingsPanel) this.settingsPanel.close();
       if (this.achievementsPanel) this.achievementsPanel.close();
       if (this.skinsPanel) this.skinsPanel.close();
-      if (this.decorationsPanel) this.decorationsPanel.close();
       if (this.statsPanel) this.statsPanel.close();
       if (this.leaderboardPanel) this.leaderboardPanel.close();
       if (this.prestigePanel) this.prestigePanel.open();
@@ -2895,7 +2721,6 @@ class UIManager {
     });
     this.achievementsPanel = new AchievementsPanel(economy);
     this.skinsPanel = new SkinsPanel(economy);
-    this.decorationsPanel = new DecorationsPanel(economy);
     this.statsPanel = new StatsPanel(economy);
     this.leaderboardPanel = new LeaderboardPanel(economy);
     // Dźwięk włącza/wyłącza się TYLKO z Menu (SettingsPanel._buildSoundRow) -
@@ -2906,7 +2731,6 @@ class UIManager {
       null,
       () => this.achievementsPanel.open(),
       () => this.skinsPanel.open(),
-      () => this.decorationsPanel.open(),
       () => this.statsPanel.open(),
       () => this.leaderboardPanel.open()
     );
@@ -2933,7 +2757,6 @@ class UIManager {
         if (this.settingsPanel) this.settingsPanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
         if (this.skinsPanel) this.skinsPanel.close();
-        if (this.decorationsPanel) this.decorationsPanel.close();
         if (this.statsPanel) this.statsPanel.close();
         if (this.leaderboardPanel) this.leaderboardPanel.close();
         this.shopPanel.toggle();
@@ -2953,7 +2776,6 @@ class UIManager {
         if (this.settingsPanel) this.settingsPanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
         if (this.skinsPanel) this.skinsPanel.close();
-        if (this.decorationsPanel) this.decorationsPanel.close();
         if (this.statsPanel) this.statsPanel.close();
         if (this.leaderboardPanel) this.leaderboardPanel.close();
         this.prestigePanel.toggle();
@@ -2974,7 +2796,6 @@ class UIManager {
         if (this.prestigePanel) this.prestigePanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
         if (this.skinsPanel) this.skinsPanel.close();
-        if (this.decorationsPanel) this.decorationsPanel.close();
         if (this.statsPanel) this.statsPanel.close();
         if (this.leaderboardPanel) this.leaderboardPanel.close();
         this.settingsPanel.toggle();
@@ -3020,7 +2841,6 @@ class UIManager {
     this.root.appendChild(this.settingsPanel.mount());
     this.root.appendChild(this.achievementsPanel.mount());
     this.root.appendChild(this.skinsPanel.mount());
-    this.root.appendChild(this.decorationsPanel.mount());
     this.root.appendChild(this.statsPanel.mount());
     this.root.appendChild(this.leaderboardPanel.mount());
     this.offlineModal = new OfflineRewardModal(window.economyManager, () => this._syncMoney(true));
@@ -3181,7 +3001,6 @@ class UIManager {
     if (this.settingsPanel) this.settingsPanel.close();
     if (this.achievementsPanel) this.achievementsPanel.close();
     if (this.skinsPanel) this.skinsPanel.close();
-    if (this.decorationsPanel) this.decorationsPanel.close();
     if (this.statsPanel) this.statsPanel.close();
     if (this.leaderboardPanel) this.leaderboardPanel.close();
     if (this.offlineModal) this.offlineModal.open(data);
@@ -3283,7 +3102,6 @@ class UIManager {
     if (this.settingsPanel) this.settingsPanel.destroy();
     if (this.achievementsPanel) this.achievementsPanel.destroy();
     if (this.skinsPanel) this.skinsPanel.destroy();
-    if (this.decorationsPanel) this.decorationsPanel.destroy();
     if (this.statsPanel) this.statsPanel.destroy();
     if (this.leaderboardPanel) this.leaderboardPanel.destroy();
     if (this.offlineModal) this.offlineModal.destroy();
