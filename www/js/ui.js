@@ -1199,7 +1199,14 @@ const SETTINGS_APP_VERSION = '1.0.0';
 // Ile ms "ceremonia" prestiżu zostaje na ekranie zanim sama zniknie (patrz
 // UIManager._playPrestigeCeremony) - gracz może ją też ściąć wcześniej
 // dotknięciem gdziekolwiek na overlayu.
-const PRESTIGE_CEREMONY_DURATION_MS = 3200;
+const PRESTIGE_CEREMONY_DURATION_MS = 3800;
+// Tomek: "daj jakąś fajną grafikę planety, mamy paczki przecież użyć tego" -
+// 10 gotowych, w pełni wyrenderowanych kul (Kenney Planets, CC0) zamiast
+// samego tekstu/ikonki. Wybierana DETERMINISTYCZNIE z numeru planety
+// (planetNumber % 10), więc ta sama planeta w numeracji zawsze wygląda tak
+// samo między przebiegami, a kolejne odloty w jednym przebiegu widzą inny
+// obrazek (naturalna wizualna odmiana bez losowości do zapamiętania w save).
+const PRESTIGE_CEREMONY_PLANET_COUNT = 10;
 
 class SettingsPanel {
   /** onChange - wołane po KAŻDEJ akcji w panelu (na razie tylko dźwięk) -
@@ -2645,30 +2652,39 @@ class UIManager {
 
   /**
    * "Ceremonia" prestiżu (Tomek: "coś w rodzaju animacji/efektu na cały
-   * ekran przy odlocie/resecie, zamiast cichej zmiany liczb") - pełnoekranowy
-   * moment PO prestige() (economy.js): błysk zapłonu, rakieta odlatująca w
-   * górę, tekst z numerem nowej planety i licznik zdobytych Rdzeni
-   * odliczający się w górę od zera (patrz _animatePrestigeCoresCount).
-   * Element tworzony RAZ i cache'owany (this._prestigeCeremonyEl) jak inne
-   * panele w tym pliku - kolejne odloty tylko podmieniają treść i odpalają
-   * animację od nowa (patrz trik z offsetWidth niżej, ten sam co przy
-   * .ui-money--pulse w _syncMoney/MoneyDisplay).
+   * ekran przy odlocie/resecie, zamiast cichej zmiany liczb", potem "zrób
+   * tą ceremonię o wiele ładniejsza, daj jakąś fajną grafikę planety, mamy
+   * paczki przecież użyć tego") - pełnoekranowy moment PO prestige()
+   * (economy.js): migoczące gwiazdy w tle, błysk zapłonu, rakieta
+   * odlatująca w górę, PRAWDZIWA grafika nowej planety (patrz
+   * PRESTIGE_CEREMONY_PLANET_COUNT/assets/planets/) obracająca się
+   * powoli za tekstem, i licznik zdobytych Rdzeni odliczający się w górę
+   * od zera (patrz _animatePrestigeCoresCount). Element tworzony RAZ i
+   * cache'owany (this._prestigeCeremonyEl) jak inne panele w tym pliku -
+   * kolejne odloty tylko podmieniają treść i odpalają animację od nowa
+   * (patrz trik z offsetWidth niżej, ten sam co przy .ui-money--pulse w
+   * _syncMoney/MoneyDisplay).
    */
   _playPrestigeCeremony(planetNumber, coresEarned, modifier) {
     if (!this._prestigeCeremonyEl) {
       const el = document.createElement('div');
       el.className = 'ui-prestige-ceremony';
       el.innerHTML = `
+        <div class="ui-prestige-ceremony__stars" aria-hidden="true"></div>
         <div class="ui-prestige-ceremony__flash"></div>
         <div class="ui-prestige-ceremony__rocket" aria-hidden="true">${ROCKET_ICON_SVG}</div>
+        <div class="ui-prestige-ceremony__planet-wrap">
+          <div class="ui-prestige-ceremony__planet-glow" aria-hidden="true"></div>
+          <img class="ui-prestige-ceremony__planet" alt="" width="220" height="220">
+        </div>
         <div class="ui-prestige-ceremony__content">
-          <div class="ui-prestige-ceremony__title">${PLANET_ICON_SVG} Odlot!</div>
-          <div class="ui-prestige-ceremony__planet"></div>
+          <div class="ui-prestige-ceremony__title">Odlot!</div>
+          <div class="ui-prestige-ceremony__planet-name"></div>
           <div class="ui-prestige-ceremony__cores">+<span class="ui-prestige-ceremony__cores-num">0</span> ${CORE_ICON_SVG} Rdzeni</div>
         </div>
       `;
       // Dotknięcie GDZIEKOLWIEK na overlayu ścina ceremonię wcześniej -
-      // gracz, który już to widział, nie musi czekać pełnych 3.2s za
+      // gracz, który już to widział, nie musi czekać pełnych 3.8s za
       // każdym kolejnym odlotem.
       el.addEventListener('click', () => this._dismissPrestigeCeremony());
       document.body.appendChild(el);
@@ -2677,7 +2693,11 @@ class UIManager {
 
     const el = this._prestigeCeremonyEl;
     const modSuffix = modifier ? ` — ${modifier.icon} ${modifier.name}` : '';
-    el.querySelector('.ui-prestige-ceremony__planet').innerHTML = `Planeta #${planetNumber}${modSuffix}`;
+    el.querySelector('.ui-prestige-ceremony__planet-name').innerHTML = `Planeta #${planetNumber}${modSuffix}`;
+
+    const planetIndex = ((planetNumber - 1) % PRESTIGE_CEREMONY_PLANET_COUNT + PRESTIGE_CEREMONY_PLANET_COUNT) % PRESTIGE_CEREMONY_PLANET_COUNT;
+    const planetImg = el.querySelector('.ui-prestige-ceremony__planet');
+    planetImg.src = `assets/planets/planet${String(planetIndex).padStart(2, '0')}.png`;
 
     el.classList.remove('ui-prestige-ceremony--visible');
     void el.offsetWidth; // wymuszony reflow - restart CSS animacji od zera
