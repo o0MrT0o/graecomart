@@ -79,6 +79,10 @@
 
     <!-- KOLEJNOŚĆ WAŻNA — nie zmieniaj -->
     <script src="js/eventbus.js"></script>
+    <!-- Przełącznik języka (window.I18n.t()) - zaraz po eventbus.js, przed
+         KAŻDYM plikiem, który buduje tekst UI, żeby I18n było gotowe zanim
+         cokolwiek go użyje. -->
+    <script src="js/i18n.js"></script>
     <script src="js/audio.js"></script>
     <!-- Bundlowane osobno (esbuild) - jedyne trzy pliki w projekcie z importem
          npm (@capacitor-community/admob, @capacitor/local-notifications,

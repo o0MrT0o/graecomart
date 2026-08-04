@@ -80,6 +80,13 @@ const CORE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 2
 // dla pieniędzy). WSTAWIANY JAKO SUFIKS (`${amount}${CREDIT_ICON_SVG}`),
 // nie prefiks jak CORE_ICON_SVG - dokładnie tam, gdzie dotąd stało "$".
 const CREDIT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px" fill="#FFD54F" stroke="none"><path fill-rule="evenodd" d="M21 12 16.5 19.79 7.5 19.79 3 12 7.5 4.21 16.5 4.21Z M14.2 12A2.2 2.2 0 1 1 9.8 12A2.2 2.2 0 1 1 14.2 12Z"/></svg>';
+// Ikona wiersza "Język" (SettingsPanel._buildLanguageRow) - żaden z
+// wypakowanych paczek Kenney (game-icons/board-game-icons/generic-items) nie
+// ma glifu globusa/języka (patrz audyt przy dodawaniu i18n.js), więc custom
+// SVG w tym samym duchu co CORE/CREDIT wyżej: okrąg + elipsa "południka" +
+// dwie linie "równoleżników" - klasyczny, rozpoznawalny kształt globusa bez
+// potrzeby nowego assetu.
+const LANGUAGE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px" fill="none" stroke="#4DD0E1" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5"/><path d="M4 9.5h16M4 14.5h16"/></svg>';
 // LOCK PODMIENIONY (był ten sam cienki, ręcznie rysowany kłódkowy kontur co
 // reszta tej fali - patrz komentarz przy CART/GEAR/PAY wyżej) - dodany
 // niedawno (kłódka "za mało kasy"), ale od razu na docelowej ikonie
@@ -548,12 +555,12 @@ class ShopPanel {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Sklep');
+    sheet.setAttribute('aria-label', I18n.t('shop.title'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">${CART_ICON_SVG}</span> Sklep</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij sklep">${CLOSE_ICON_SVG}</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${CART_ICON_SVG}</span> ${I18n.t('shop.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('shop.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -613,10 +620,10 @@ class ShopPanel {
       : [];
 
     this.bodyEl.innerHTML = '';
-    if (upgrades.length > 0) this.bodyEl.appendChild(this._buildSection('Ulepszenia', upgrades, money));
-    if (licenses.length > 0) this.bodyEl.appendChild(this._buildSection('Licencje i sprzęt', licenses, money));
+    if (upgrades.length > 0) this.bodyEl.appendChild(this._buildSection(I18n.t('shop.section.upgrades'), upgrades, money));
+    if (licenses.length > 0) this.bodyEl.appendChild(this._buildSection(I18n.t('shop.section.licenses'), licenses, money));
     if (machineUpgrades.length > 0) {
-      this.bodyEl.appendChild(this._buildSection('Maszyny', machineUpgrades, money));
+      this.bodyEl.appendChild(this._buildSection(I18n.t('shop.section.machines'), machineUpgrades, money));
     }
   }
 
@@ -1254,12 +1261,12 @@ class SettingsPanel {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Menu');
+    sheet.setAttribute('aria-label', I18n.t('settings.title'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">${GEAR_ICON_SVG}</span> Menu</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij menu">${CLOSE_ICON_SVG}</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${GEAR_ICON_SVG}</span> ${I18n.t('settings.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('settings.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -1296,10 +1303,10 @@ class SettingsPanel {
   refresh() {
     if (!this.bodyEl) return;
     this.bodyEl.innerHTML = '';
-    this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
-    this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildMusicVolumeRow(), this._buildTutorialRow()]));
-    this.bodyEl.appendChild(this._buildSection('Dane', [this._buildExportRow(), this._buildImportRow(), this._buildResetRow()]));
-    this.bodyEl.appendChild(this._buildSection('O grze', [this._buildAboutRow()]));
+    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.progress'), [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
+    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.preferences'), [this._buildSoundRow(), this._buildMusicVolumeRow(), this._buildLanguageRow(), this._buildTutorialRow()]));
+    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.data'), [this._buildExportRow(), this._buildImportRow(), this._buildResetRow()]));
+    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.about'), [this._buildAboutRow()]));
   }
 
   /** Wiersz "Osiągnięcia" - pokazuje ile zdobyto (X/Y) i otwiera osobny
@@ -1311,14 +1318,14 @@ class SettingsPanel {
     const unlocked = catalog.filter((a) => a.unlocked).length;
     const bonusPct = (eco && typeof eco.getAchievementIncomeBonusPercent === 'function') ? eco.getAchievementIncomeBonusPercent() : 0;
     const btn = new UIButton({
-      label: 'Pokaż',
+      label: I18n.t('common.show'),
       variant: 'ghost',
       onClick: () => {
         this.close();
         if (typeof this.onOpenAchievements === 'function') this.onOpenAchievements();
       }
     });
-    return this._buildRow(TROPHY_ICON_SVG, 'Osiągnięcia', `Zdobyte: ${unlocked}/${catalog.length} — bonus zarobku: +${bonusPct}%`, btn.mount());
+    return this._buildRow(TROPHY_ICON_SVG, I18n.t('settings.achievements.name'), I18n.t('settings.achievements.desc', { unlocked, total: catalog.length, bonus: bonusPct }), btn.mount());
   }
 
   /** Wiersz "Skiny" - ten sam wzorzec co Osiągnięcia wyżej, otwiera osobny
@@ -1328,28 +1335,28 @@ class SettingsPanel {
     const catalog = (eco && typeof eco.getSkinCatalog === 'function') ? eco.getSkinCatalog() : [];
     const unlocked = catalog.filter((s) => s.unlocked).length;
     const btn = new UIButton({
-      label: 'Pokaż',
+      label: I18n.t('common.show'),
       variant: 'ghost',
       onClick: () => {
         this.close();
         if (typeof this.onOpenSkins === 'function') this.onOpenSkins();
       }
     });
-    return this._buildRow(SHIRT_ICON_SVG, 'Skiny', `Odblokowane: ${unlocked}/${catalog.length}`, btn.mount());
+    return this._buildRow(SHIRT_ICON_SVG, I18n.t('settings.skins.name'), I18n.t('settings.skins.desc', { unlocked, total: catalog.length }), btn.mount());
   }
 
   /** Wiersz "Statystyki" - ten sam wzorzec co Osiągnięcia/Skiny wyżej,
    * otwiera osobny panel (StatsPanel, patrz onOpenStats w UIManager). */
   _buildStatsRow() {
     const btn = new UIButton({
-      label: 'Pokaż',
+      label: I18n.t('common.show'),
       variant: 'ghost',
       onClick: () => {
         this.close();
         if (typeof this.onOpenStats === 'function') this.onOpenStats();
       }
     });
-    return this._buildRow(CHART_ICON_SVG, 'Statystyki', 'Podsumowanie postępów w grze', btn.mount());
+    return this._buildRow(CHART_ICON_SVG, I18n.t('settings.stats.name'), I18n.t('settings.stats.desc'), btn.mount());
   }
 
   /** Wiersz "Tablica wyników" - ten sam wzorzec co Osiągnięcia/Skiny/
@@ -1357,14 +1364,14 @@ class SettingsPanel {
    * onOpenLeaderboard w UIManager). */
   _buildLeaderboardRow() {
     const btn = new UIButton({
-      label: 'Pokaż',
+      label: I18n.t('common.show'),
       variant: 'ghost',
       onClick: () => {
         this.close();
         if (typeof this.onOpenLeaderboard === 'function') this.onOpenLeaderboard();
       }
     });
-    return this._buildRow(MEDAL_ICON_SVG, 'Tablica wyników', 'Twoje najlepsze przebiegi', btn.mount());
+    return this._buildRow(MEDAL_ICON_SVG, I18n.t('settings.leaderboard.name'), I18n.t('settings.leaderboard.desc'), btn.mount());
   }
 
   /** Ten sam trzykolumnowy układ (ikona/opis/akcja) co ShopPanel._buildRow,
@@ -1404,7 +1411,7 @@ class SettingsPanel {
   _buildSoundRow() {
     const muted = !!(window.audioManager && window.audioManager.muted);
     const btn = new UIButton({
-      label: muted ? 'Włącz' : 'Wyłącz',
+      label: muted ? I18n.t('common.on') : I18n.t('common.off'),
       variant: 'ghost',
       sound: 'ui_switch',
       onClick: () => {
@@ -1414,7 +1421,7 @@ class SettingsPanel {
         if (typeof this.onChange === 'function') this.onChange();
       }
     });
-    return this._buildRow(SPEAKER_ICON_SVG, 'Dźwięk', 'Włącz lub wycisz efekty dźwiękowe gry', btn.mount());
+    return this._buildRow(SPEAKER_ICON_SVG, I18n.t('settings.sound.name'), I18n.t('settings.sound.desc'), btn.mount());
   }
 
   /**
@@ -1436,13 +1443,13 @@ class SettingsPanel {
     row.innerHTML = `
       <div class="ui-shop-item__icon" aria-hidden="true">${SPEAKER_ICON_SVG}</div>
       <div class="ui-shop-item__info">
-        <span class="ui-shop-item__name">Głośność muzyki</span>
-        <span class="ui-shop-item__desc">Podkład w tle, osobno od przełącznika Dźwięk</span>
+        <span class="ui-shop-item__name">${I18n.t('settings.musicVolume.name')}</span>
+        <span class="ui-shop-item__desc">${I18n.t('settings.musicVolume.desc')}</span>
       </div>
       <div class="ui-shop-item__action">
         <span class="ui-volume-row__value">${initial}%</span>
       </div>
-      <input type="range" class="ui-volume-slider" min="0" max="100" step="5" value="${initial}" aria-label="Głośność muzyki">
+      <input type="range" class="ui-volume-slider" min="0" max="100" step="5" value="${initial}" aria-label="${I18n.t('settings.musicVolume.label')}">
     `;
 
     const valueEl = row.querySelector('.ui-volume-row__value');
@@ -1459,13 +1466,35 @@ class SettingsPanel {
     return row;
   }
 
+  /**
+   * Przełącznik języka (Tomek: "zróbmy przełącznik, żeby dało się włączyć
+   * cały język angielski") - ten sam wzorzec co Dźwięk wyżej: jeden
+   * przycisk, którego etykieta to JĘZYK DOCELOWY (nie bieżący), kliknięcie
+   * przełącza na niego. I18n.setLang() sama robi location.reload() (patrz
+   * i18n.js) - reszta panelu i tak nie zdąży się odświeżyć.
+   */
+  _buildLanguageRow() {
+    const current = window.I18n ? window.I18n.lang : 'pl';
+    const other = current === 'pl' ? 'en' : 'pl';
+    const btn = new UIButton({
+      label: I18n.t('settings.language.' + other),
+      variant: 'ghost',
+      sound: 'ui_switch',
+      onClick: () => {
+        if (window.I18n) window.I18n.setLang(other);
+      }
+    });
+    const desc = `${I18n.t('settings.language.desc')} — ${I18n.t('settings.language.' + current)}`;
+    return this._buildRow(LANGUAGE_ICON_SVG, I18n.t('settings.language.name'), desc, btn.mount());
+  }
+
   /** Uruchamia samouczek od pierwszego kroku - jeśli poprzednia instancja
    * jeszcze żyje (mało prawdopodobne, skoro dismissed/ukończony samouczek
    * sam się usuwa z DOM, ale na wszelki wypadek), najpierw ją sprzątamy,
    * żeby nie zostały dwie subskrypcje Bus naraz. */
   _buildTutorialRow() {
     const btn = new UIButton({
-      label: 'Pokaż',
+      label: I18n.t('common.show'),
       variant: 'ghost',
       onClick: () => {
         const eco = window.economyManager;
@@ -1480,7 +1509,7 @@ class SettingsPanel {
         this.close();
       }
     });
-    return this._buildRow(BOOK_ICON_SVG, 'Samouczek', 'Pokaż od nowa krótkie wprowadzenie do gry', btn.mount());
+    return this._buildRow(BOOK_ICON_SVG, I18n.t('settings.tutorial.name'), I18n.t('settings.tutorial.desc'), btn.mount());
   }
 
   /**
@@ -1494,13 +1523,13 @@ class SettingsPanel {
    */
   _buildExportRow() {
     const btn = new UIButton({
-      label: 'Eksportuj',
+      label: I18n.t('settings.export.button'),
       variant: 'ghost',
       onClick: () => {
         if (!window.saveManager) return;
         const json = window.saveManager.exportSaveJSON();
         if (!json) {
-          window.alert('Nie udało się przygotować zapisu do eksportu.');
+          window.alert(I18n.t('settings.export.error'));
           return;
         }
         const blob = new Blob([json], { type: 'application/json' });
@@ -1515,7 +1544,7 @@ class SettingsPanel {
         URL.revokeObjectURL(url);
       }
     });
-    return this._buildRow(EXPORT_ICON_SVG, 'Eksportuj zapis', 'Pobierz kopię zapasową postępu jako plik', btn.mount());
+    return this._buildRow(EXPORT_ICON_SVG, I18n.t('settings.export.name'), I18n.t('settings.export.desc'), btn.mount());
   }
 
   /**
@@ -1542,12 +1571,12 @@ class SettingsPanel {
         reader.onload = () => {
           const ok = window.saveManager && window.saveManager.importSaveJSON(String(reader.result));
           if (!ok) {
-            window.alert('Ten plik nie wygląda na poprawny zapis Eco Mart.');
+            window.alert(I18n.t('settings.import.invalid'));
             return;
           }
           location.reload();
         };
-        reader.onerror = () => window.alert('Nie udało się odczytać pliku.');
+        reader.onerror = () => window.alert(I18n.t('settings.import.readError'));
         reader.readAsText(file);
       });
       document.body.appendChild(input);
@@ -1555,17 +1584,15 @@ class SettingsPanel {
     }
 
     const btn = new UIButton({
-      label: 'Importuj',
+      label: I18n.t('settings.import.button'),
       variant: 'ghost',
       onClick: () => {
-        const ok = window.confirm(
-          'Na pewno zaimportować zapis z pliku? NADPISZE bieżący postęp (pieniądze, ulepszenia, statek, Rdzenie) - ta operacja jest nieodwracalna.'
-        );
+        const ok = window.confirm(I18n.t('settings.import.confirm'));
         if (!ok) return;
         this._importFileInput.click();
       }
     });
-    return this._buildRow(IMPORT_ICON_SVG, 'Importuj zapis', 'Wczytaj wcześniej wyeksportowany plik zapisu', btn.mount());
+    return this._buildRow(IMPORT_ICON_SVG, I18n.t('settings.import.name'), I18n.t('settings.import.desc'), btn.mount());
   }
 
   /** Ten sam wzorzec potwierdzenia (window.confirm) co nieodwracalny "Leć
@@ -1574,12 +1601,10 @@ class SettingsPanel {
    * bez konsoli. */
   _buildResetRow() {
     const btn = new UIButton({
-      label: 'Resetuj',
+      label: I18n.t('settings.reset.button'),
       variant: 'ghost',
       onClick: () => {
-        const ok = window.confirm(
-          'Na pewno zresetować CAŁY postęp? Ta operacja jest nieodwracalna - stracisz pieniądze, ulepszenia, statek i Rdzenie.'
-        );
+        const ok = window.confirm(I18n.t('settings.reset.confirm'));
         if (!ok) return;
         try {
           localStorage.removeItem(SAVE_STORAGE_KEY);
@@ -1589,11 +1614,11 @@ class SettingsPanel {
         location.reload();
       }
     });
-    return this._buildRow(RECYCLE_RESET_ICON_SVG, 'Reset postępu', 'Kasuje cały zapis i zaczyna grę od nowa - nieodwracalne', btn.mount());
+    return this._buildRow(RECYCLE_RESET_ICON_SVG, I18n.t('settings.reset.name'), I18n.t('settings.reset.desc'), btn.mount());
   }
 
   _buildAboutRow() {
-    return this._buildRow(INFO_ICON_SVG, 'Eco Mart', `Wersja ${SETTINGS_APP_VERSION}`, null);
+    return this._buildRow(INFO_ICON_SVG, 'Eco Mart', I18n.t('settings.about.version', { version: SETTINGS_APP_VERSION }), null);
   }
 
   destroy() {
@@ -1642,12 +1667,12 @@ class AchievementsPanel {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Osiągnięcia');
+    sheet.setAttribute('aria-label', I18n.t('panel.achievements.title'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">${TROPHY_ICON_SVG}</span> Osiągnięcia</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij osiągnięcia">${CLOSE_ICON_SVG}</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${TROPHY_ICON_SVG}</span> ${I18n.t('panel.achievements.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('panel.achievements.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -1777,12 +1802,12 @@ class StatsPanel {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Statystyki');
+    sheet.setAttribute('aria-label', I18n.t('panel.stats.title'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">${CHART_ICON_SVG}</span> Statystyki</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij statystyki">${CLOSE_ICON_SVG}</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${CHART_ICON_SVG}</span> ${I18n.t('panel.stats.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('panel.stats.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -1895,12 +1920,12 @@ class LeaderboardPanel {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Tablica wyników');
+    sheet.setAttribute('aria-label', I18n.t('panel.leaderboard.title'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">${MEDAL_ICON_SVG}</span> Tablica wyników</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij tablicę wyników">${CLOSE_ICON_SVG}</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${MEDAL_ICON_SVG}</span> ${I18n.t('panel.leaderboard.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('panel.leaderboard.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -2055,12 +2080,12 @@ class SkinsPanel {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Skiny');
+    sheet.setAttribute('aria-label', I18n.t('panel.skins.title'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">${SHIRT_ICON_SVG}</span> Skiny</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij skiny">${CLOSE_ICON_SVG}</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${SHIRT_ICON_SVG}</span> ${I18n.t('panel.skins.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('panel.skins.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -2587,7 +2612,7 @@ class UIManager {
 
     this.shopToggleBtn = new UIButton({
       icon: CART_ICON_SVG,
-      label: 'Sklep',
+      label: I18n.t('nav.shop'),
       variant: 'fab',
       onClick: () => {
         // Tylko jeden bottom-sheet naraz - wszystkie (Sklep/Statek/Menu/
@@ -2609,7 +2634,7 @@ class UIManager {
     // przy starcie gry (spawn daleko od statku) i tak nie ma sensu.
     this.shipToggleBtn = new UIButton({
       icon: ROCKET_ICON_SVG,
-      label: 'Statek',
+      label: I18n.t('nav.ship'),
       variant: 'fab',
       onClick: () => {
         if (this.shopPanel) this.shopPanel.close();
@@ -2629,7 +2654,7 @@ class UIManager {
     // w przeciwieństwie do przycisku Statku.
     this.settingsToggleBtn = new UIButton({
       icon: GEAR_ICON_SVG,
-      label: 'Menu',
+      label: I18n.t('nav.menu'),
       variant: 'fab',
       onClick: () => {
         if (this.shopPanel) this.shopPanel.close();
