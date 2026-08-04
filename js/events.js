@@ -19,6 +19,10 @@
  *   - ekskluzywny skin "Meteorytowy" (economy.js: PLAYER_SKINS, eventOnly)
  *     kupowalny WYŁĄCZNIE gdy wydarzenie trwa - raz kupiony, zostaje na
  *     zawsze jak każdy inny skin (unlockedSkins nie jest zerowane).
+ *   - +15% do cen na targu (market.js: MARKET_SEASONAL_PRICE_MULT, czyta
+ *     isActive() stąd) - realna, ekonomiczna nagroda za granie akurat w te
+ *     dni, nie tylko kosmetyka/RNG (Tomek: "wyzwania sezonowe z realną
+ *     nagrodą").
  */
 
 const EVENT_STREAK_SPAWN_MIN_MS = 2800;

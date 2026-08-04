@@ -178,6 +178,10 @@ const I18N_STRINGS = {
     'challenge.10.label': 'Nakarm maszyny 30 razy',
     'challenge.11.label': 'Sprzedaj 20 przedmiotów',
     'challenge.12.label': 'Sprzedaj 40 przedmiotów',
+    'challenge.13.label': 'Zbierz 20x Metalu',
+    'challenge.14.label': 'Zarób 1500{icon}',
+    'challenge.15.label': 'Nakarm maszyny 50 razy',
+    'challenge.16.label': 'Sprzedaj 60 przedmiotów',
 
     // --- Osiągnięcia (economy.js: ACHIEVEMENTS) ------------------------------
     'achievement.first_pickup.name': 'Pierwszy krok',
@@ -232,6 +236,14 @@ const I18N_STRINGS = {
     'achievement.skins_4.desc': 'Odblokuj 4 różne skiny',
     'achievement.skins_7.name': 'Kolekcjoner stylu',
     'achievement.skins_7.desc': 'Odblokuj wszystkie 7 skinów',
+    'achievement.trader_200.name': 'Handlowiec',
+    'achievement.trader_200.desc': 'Sprzedaj łącznie 200 przedmiotów',
+    'achievement.trader_2000.name': 'Baron Handlu',
+    'achievement.trader_2000.desc': 'Sprzedaj łącznie 2000 przedmiotów',
+    'achievement.combo_5.name': 'Rozpędzony',
+    'achievement.combo_5.desc': 'Osiągnij combo x5 przy sprzedaży',
+    'achievement.combo_max.name': 'Mistrz Serii',
+    'achievement.combo_max.desc': 'Osiągnij maksymalne combo przy sprzedaży',
 
     // --- Progresywne odblokowania (economy.js: PROGRESSION_UNLOCKS) ---------
     'unlock.press_b.name': 'Prasa',
@@ -421,7 +433,7 @@ const I18N_STRINGS = {
 
     'notification.offlineReminder.withReward': 'Twój sklep już zarabia (+{amount}$) - wróć po odbiór!',
     'notification.offlineReminder.default': 'Twój sklep czeka na Ciebie w Eco Mart!',
-    'toast.seasonalEvent.meteorShower': '{icon} Deszcz Meteorytów! Złoty Bonus częściej, ekskluzywny skin w Skinach.'
+    'toast.seasonalEvent.meteorShower': '{icon} Deszcz Meteorytów! Złoty Bonus częściej, +15% cen na targu, ekskluzywny skin w Skinach.'
   },
   en: {
     'common.show': 'Show',
@@ -574,6 +586,10 @@ const I18N_STRINGS = {
     'challenge.10.label': 'Feed machines 30 times',
     'challenge.11.label': 'Sell 20 items',
     'challenge.12.label': 'Sell 40 items',
+    'challenge.13.label': 'Collect 20x Metal',
+    'challenge.14.label': 'Earn 1500{icon}',
+    'challenge.15.label': 'Feed machines 50 times',
+    'challenge.16.label': 'Sell 60 items',
 
     // --- Achievements (economy.js: ACHIEVEMENTS) -----------------------------
     'achievement.first_pickup.name': 'First Step',
@@ -628,6 +644,14 @@ const I18N_STRINGS = {
     'achievement.skins_4.desc': 'Unlock 4 different skins',
     'achievement.skins_7.name': 'Style Collector',
     'achievement.skins_7.desc': 'Unlock all 7 skins',
+    'achievement.trader_200.name': 'Trader',
+    'achievement.trader_200.desc': 'Sell 200 items total',
+    'achievement.trader_2000.name': 'Trade Baron',
+    'achievement.trader_2000.desc': 'Sell 2,000 items total',
+    'achievement.combo_5.name': 'Getting Rolling',
+    'achievement.combo_5.desc': 'Reach a x5 sell combo',
+    'achievement.combo_max.name': 'Streak Master',
+    'achievement.combo_max.desc': 'Reach the maximum sell combo',
 
     // --- Progression unlocks (economy.js: PROGRESSION_UNLOCKS) --------------
     'unlock.press_b.name': 'Press',
@@ -817,7 +841,7 @@ const I18N_STRINGS = {
 
     'notification.offlineReminder.withReward': 'Your shop is already earning (+{amount}$) - come back to collect!',
     'notification.offlineReminder.default': 'Your shop is waiting for you in Eco Mart!',
-    'toast.seasonalEvent.meteorShower': '{icon} Meteor Shower! More frequent Gold Bonuses, exclusive skin in Skins.'
+    'toast.seasonalEvent.meteorShower': '{icon} Meteor Shower! More frequent Gold Bonuses, +15% market prices, exclusive skin in Skins.'
   }
 };
 

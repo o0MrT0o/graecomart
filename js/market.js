@@ -38,6 +38,13 @@ const MARKET_MAX_MULTIPLIER = 1.6;
 // (poniżej - "flat", żeby strzałka nie migotała przy szumie o zero przecinek coś).
 const MARKET_TREND_THRESHOLD = 0.03;
 
+// Bonus cenowy podczas wydarzenia sezonowego "Deszcz Meteorytów" (events.js:
+// SeasonalEventManager.isActive()) - Tomek: "wyzwania sezonowe z realną
+// nagrodą, nie tylko kosmetyką". Dotąd wydarzenie dawało tylko częstszy
+// Złoty Bonus + kosmetyczny skin - ten mnożnik daje coś odczuwalnego w samej
+// ekonomii, dokładnie w tych dniach, kiedy gracz i tak częściej zagląda.
+const MARKET_SEASONAL_PRICE_MULT = 1.15;
+
 // Ceny bazowe (przy mnożniku = 1.0) dla każdego sprzedawalnego surowca.
 // 'alloy' (z Pieca Hutniczego) jest najdroższy - rzadszy surowiec (metal/szkło,
 // odblokowywane drogim sprzętem w Fazie 2) powinien się bardziej opłacać.
@@ -170,7 +177,10 @@ class MarketManager {
     const planetMult = (eco && typeof eco.getPlanetPriceMultiplier === 'function')
       ? eco.getPlanetPriceMultiplier()
       : 1;
-    return Math.max(1, Math.round(base * this.multipliers[typeId] * coreMult * planetMult));
+    const seasonalMult = (window.seasonalEventManager && window.seasonalEventManager.isActive())
+      ? MARKET_SEASONAL_PRICE_MULT
+      : 1;
+    return Math.max(1, Math.round(base * this.multipliers[typeId] * coreMult * planetMult * seasonalMult));
   }
 
   getTrend(typeId) {

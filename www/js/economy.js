@@ -523,7 +523,15 @@ const DAILY_CHALLENGE_TEMPLATES = [
   { type: 'process', target: 15, reward: 90, get label() { return I18n.t('challenge.9.label'); } },
   { type: 'process', target: 30, reward: 160, get label() { return I18n.t('challenge.10.label'); } },
   { type: 'sell', target: 20, reward: 110, get label() { return I18n.t('challenge.11.label'); } },
-  { type: 'sell', target: 40, reward: 190, get label() { return I18n.t('challenge.12.label'); } }
+  { type: 'sell', target: 40, reward: 190, get label() { return I18n.t('challenge.12.label'); } },
+  // --- Dołożone (Tomek: "więcej wyzwań sezonowych/dziennych") - więcej
+  // rozstawu w istniejących typach zamiast nowej mechaniki, ten sam wzorzec
+  // co reszta puli wyżej. Nagrody skalowane proporcjonalnie do progu, tak
+  // samo jak istniejące pary niżej/wyżej danego typu.
+  { type: 'collect', material: 'metal', target: 20, reward: 190, get label() { return I18n.t('challenge.13.label'); } },
+  { type: 'earn', target: 1500, reward: 450, get label() { return I18n.t('challenge.14.label', { icon: ECONOMY_CREDIT_ICON_SVG }); } },
+  { type: 'process', target: 50, reward: 250, get label() { return I18n.t('challenge.15.label'); } },
+  { type: 'sell', target: 60, reward: 260, get label() { return I18n.t('challenge.16.label'); } }
 ];
 
 // --- Osiągnięcia (meta-progresja) -------------------------------------------
@@ -620,7 +628,14 @@ const ACHIEVEMENTS = [
   // Wszystkie 7 (patrz PLAYER_SKINS niżej) - włącznie z sezonowym
   // Meteorytowym, więc realnie wymaga trafienia na Deszcz Meteorytów, nie
   // tylko zebrania Rdzeni - stąd tier3 (najwyższy próg w tej grupie).
-  { id: 'skins_7', icon: _kenneyIcon('brush', '#BA68C8'), get name() { return I18n.t('achievement.skins_7.name'); }, get desc() { return I18n.t('achievement.skins_7.desc'); }, stat: 'skinsCollected', target: 7 }
+  { id: 'skins_7', icon: _kenneyIcon('brush', '#BA68C8'), get name() { return I18n.t('achievement.skins_7.name'); }, get desc() { return I18n.t('achievement.skins_7.desc'); }, stat: 'skinsCollected', target: 7 },
+  // --- Dołożone (Tomek: "więcej osiągnięć z realną nagrodą") - dwa nowe
+  // wymiary (itemsSold/maxComboReached, patrz stats w konstruktorze i
+  // sellItem() wyżej), każdy w dwóch progach jak reszta kategorii powyżej.
+  { id: 'trader_200', icon: _kenneyIcon('cart', '#81C784'), get name() { return I18n.t('achievement.trader_200.name'); }, get desc() { return I18n.t('achievement.trader_200.desc'); }, stat: 'itemsSold', target: 200 },
+  { id: 'trader_2000', icon: _kenneyIcon('cart', '#4FC3F7'), get name() { return I18n.t('achievement.trader_2000.name'); }, get desc() { return I18n.t('achievement.trader_2000.desc'); }, stat: 'itemsSold', target: 2000 },
+  { id: 'combo_5', icon: _kenneyIcon('fire', '#FFB74D'), get name() { return I18n.t('achievement.combo_5.name'); }, get desc() { return I18n.t('achievement.combo_5.desc'); }, stat: 'maxComboReached', target: 4 },
+  { id: 'combo_max', icon: _kenneyIcon('fire', '#FF5722'), get name() { return I18n.t('achievement.combo_max.name'); }, get desc() { return I18n.t('achievement.combo_max.desc'); }, stat: 'maxComboReached', target: ECONOMY_COMBO_MAX_STACKS }
 ];
 
 // --- Progresywne odblokowania (walka z "martwo - wszystko dostępne od razu") --
@@ -1004,7 +1019,16 @@ class EconomyManager {
       // (patrz unlockedSkins niżej), więc licznik musi się z nim zgadzać od
       // pierwszej klatki, inaczej "odblokuj 4 skiny" wymagałoby w
       // rzeczywistości kupienia 5 (default + 4), nie 3 dodatkowych.
-      skinsCollected: 1
+      skinsCollected: 1,
+      // Dwa nowe liczniki (Tomek: "więcej osiągnięć z realną nagrodą") -
+      // LIFETIME jak reszta powyżej, rosną WYŁĄCZNIE w sellItem() (ten sam
+      // powód co lifetimeEarned - realna sprzedaż, nie DEBUG/nagrody).
+      itemsSold: 0,
+      // Najwyższy comboStacks (economy.js: sellItem) osiągnięty W
+      // KTÓRYMKOLWIEK przebiegu - NIE zerowany przez prestige() (jak
+      // maxLoginStreak wyżej), więc raz zdobyta wysoka passa sprzedaży
+      // zostaje na zawsze zaliczona, nawet po odlocie.
+      maxComboReached: 0
     };
     // Set id-ków już zdobytych osiągnięć (patrz ACHIEVEMENTS). Serializowany
     // jako tablica (Set nie idzie wprost do JSON), tak jak unlockedIds.
@@ -1186,6 +1210,8 @@ class EconomyManager {
     // (nie _addMoney ogólnie, żeby DEBUG.addMoney/nagrody dnia nie zawyżały
     // "zarobionego łącznie" - achievement "Magnat" ma nagradzać realną grę).
     this.stats.lifetimeEarned += paidOut;
+    this.stats.itemsSold += 1;
+    this.stats.maxComboReached = Math.max(this.stats.maxComboReached, this.comboStacks);
     this._checkAchievements();
 
     const c = this.dailyChallenge;
