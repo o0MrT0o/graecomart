@@ -139,8 +139,12 @@ const AUDIO_VOLUME = {
   // - impactMetal_000 ma ostrzejszy, wyższy peak (~0.9) niż stary, płaski szum,
   // więc trochę niżej tu, żeby seria szybkich karmień dalej brzmiała jak
   // "częste/drobne", nie głośniej niż pickup mimo krótszego czasu trwania.
-  machine_feed: 0.3,
-  machine_complete: 0.5,
+  // BUGFIX (Tomek: "dźwięk maszyn niech będzie cichszy, jest dosyć głośny") -
+  // dalsze obniżenie z 0.3/0.5, maszyny grają najczęściej ze wszystkich
+  // dźwięków w grze (kilka na sekundę przy pełnym magazynie), więc nawet
+  // małe zbicie głośności każdego odtworzenia mocno redukuje odczuwalny hałas.
+  machine_feed: 0.2,
+  machine_complete: 0.35,
   coin: 0.42,
   purchase: 0.48,
   ui_click: 0.35,

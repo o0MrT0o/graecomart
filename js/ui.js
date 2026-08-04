@@ -338,10 +338,12 @@ class MoneyDisplay extends UIComponent {
 
   _updateText() {
     if (this.valueEl) {
-      // Bez ikony waluty tutaj (w przeciwieństwie do reszty gry) - ta sama
-      // pigułka ma już .ui-money__icon (woreczek z monetami) po lewej,
-      // druga ikonka obok samej liczby byłaby zbędnym powtórzeniem.
-      this.valueEl.textContent = Math.floor(this.displayValue).toLocaleString('pl-PL');
+      // Tomek: "ikona kasy w lewym górnym rogu niech wyświetla ikonę tej
+      // śruby też" - CREDIT_ICON_SVG (ta sama, którą reszta gry wstawia jako
+      // sufiks po kwocie, patrz definicja wyżej) dołączona obok liczby, tak
+      // samo jak w Sklepie/Menu. innerHTML (nie textContent), bo
+      // CREDIT_ICON_SVG to znaczniki SVG do wyrenderowania, nie tekst.
+      this.valueEl.innerHTML = `${Math.floor(this.displayValue).toLocaleString('pl-PL')}${CREDIT_ICON_SVG}`;
     }
   }
 
