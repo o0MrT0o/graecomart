@@ -1527,6 +1527,12 @@ canvas {
 /* Samouczek (tutorial.js: TUTORIAL_STEPS "move") - dotykająca dłoń zamiast
    ręcznie rysowanego gestu, dokończenie tego samego ujednolicenia stylu. */
 .ui-icon--pointer { -webkit-mask-image: url('assets/ui/icons/pointer.png'); mask-image: url('assets/ui/icons/pointer.png'); }
+/* Eksport/import zapisu (SettingsPanel._buildExportRow/_buildImportRow,
+   ui.js, Tomek: "eksport/import zapisu jako plik") - ten sam Kenney Game
+   Icons pack co reszta ikonek Menu (kenney_game-icons.zip), miał gotowe
+   "export"/"import" (strzałka z/do tacki), zero domalowywania od zera. */
+.ui-icon--export { -webkit-mask-image: url('assets/ui/icons/export.png'); mask-image: url('assets/ui/icons/export.png'); }
+.ui-icon--import { -webkit-mask-image: url('assets/ui/icons/import.png'); mask-image: url('assets/ui/icons/import.png'); }
 
 /* ==========================================================================
    Tooltip

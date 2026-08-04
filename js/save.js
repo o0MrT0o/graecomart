@@ -83,6 +83,53 @@ class SaveManager {
     }
   }
 
+  /**
+   * Eksport zapisu jako string JSON do pobrania jako plik (Tomek: "eksport/
+   * import zapisu jako plik - backup poza localStorage, buduje zaufanie że
+   * postęp nie zniknie"). save() PRZED odczytem - flush świeżego stanu, nie
+   * poleganie na ostatnim zaplanowanym debounce (SAVE_DEBOUNCE_MS) - żeby
+   * eksportowany plik zawsze odzwierciedlał DOKŁADNIE to, co gracz widzi na
+   * ekranie w chwili kliknięcia "Eksportuj", nie stan sprzed 2s.
+   * @returns {string|null} JSON zapisu, albo null gdy localStorage niedostępny.
+   */
+  exportSaveJSON() {
+    this.save();
+    try {
+      return localStorage.getItem(SAVE_STORAGE_KEY);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  /**
+   * Importuje zapis z pliku (string JSON, patrz exportSaveJSON) - WYŁĄCZNIE
+   * waliduje kształt i zapisuje do localStorage. Wywołujący (SettingsPanel.
+   * _buildImportRow, ui.js) robi PO tym location.reload() - hot-patchowanie
+   * każdego już żywego obiektu gry (maszyny, statek, minimapa...) z osobna
+   * byłoby dużo bardziej kruche niż zwykłe przeładowanie strony, które i tak
+   * poprawnie odtwarza cały stan z load() od zera (main.js).
+   * @returns {boolean} czy plik wyglądał na poprawny zapis i został zapisany.
+   */
+  importSaveJSON(jsonString) {
+    let data;
+    try {
+      data = JSON.parse(jsonString);
+    } catch (err) {
+      return false;
+    }
+    // Minimalna walidacja kształtu - prawdziwy zapis ZAWSZE ma pole
+    // "economy" (patrz save() wyżej). Nie chronimy przed KAŻDYM złośliwym
+    // plikiem (to i tak tylko dane samego gracza dla samego siebie), tylko
+    // przed oczywistą pomyłką (np. wybranie zupełnie innego pliku).
+    if (!data || typeof data !== 'object' || !data.economy) return false;
+    try {
+      localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify(data));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
   destroy() {
     if (this._saveTimer) clearTimeout(this._saveTimer);
     Bus.unsubscribe(Events.MONEY_COLLECTED, this._onStateChange);

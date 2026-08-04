@@ -101,6 +101,8 @@ const SPEAKER_ICON_SVG = '<span class="ui-icon ui-icon--audio-on" aria-hidden="t
 const CHART_ICON_SVG = '<span class="ui-icon ui-icon--chart" aria-hidden="true" style="color:#90CAF9"></span>';
 const BOOK_ICON_SVG = '<span class="ui-icon ui-icon--book" aria-hidden="true" style="color:#CE93D8"></span>';
 const RECYCLE_RESET_ICON_SVG = '<span class="ui-icon ui-icon--reset" aria-hidden="true"></span>';
+const EXPORT_ICON_SVG = '<span class="ui-icon ui-icon--export" aria-hidden="true" style="color:#81D4FA"></span>';
+const IMPORT_ICON_SVG = '<span class="ui-icon ui-icon--import" aria-hidden="true" style="color:#81D4FA"></span>';
 const INFO_ICON_SVG = '<span class="ui-icon ui-icon--information" aria-hidden="true"></span>';
 const SPARKLE_ICON_SVG = '<span class="ui-icon ui-icon--star" aria-hidden="true" style="color:#CE93D8"></span>';
 const PARTY_ICON_SVG = '<span class="ui-icon ui-icon--award" aria-hidden="true" style="color:#FFD54F"></span>';
@@ -1294,7 +1296,7 @@ class SettingsPanel {
     this.bodyEl.innerHTML = '';
     this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
     this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildMusicVolumeRow(), this._buildTutorialRow()]));
-    this.bodyEl.appendChild(this._buildSection('Dane', [this._buildResetRow()]));
+    this.bodyEl.appendChild(this._buildSection('Dane', [this._buildExportRow(), this._buildImportRow(), this._buildResetRow()]));
     this.bodyEl.appendChild(this._buildSection('O grze', [this._buildAboutRow()]));
   }
 
@@ -1479,6 +1481,91 @@ class SettingsPanel {
     return this._buildRow(BOOK_ICON_SVG, 'Samouczek', 'Pokaż od nowa krótkie wprowadzenie do gry', btn.mount());
   }
 
+  /**
+   * Eksportuje bieżący zapis jako pobierany plik .json (Tomek: "eksport/
+   * import zapisu jako plik - backup poza localStorage, buduje zaufanie że
+   * postęp nie zniknie") - czyszczenie danych przeglądarki, zmiana telefonu
+   * czy odinstalowanie apki nie kasuje postępu, jeśli gracz wcześniej
+   * ściągnął ten plik. SaveManager.exportSaveJSON() (save.js) flushuje
+   * świeży stan PRZED odczytem, więc plik zawsze zgadza się z tym, co
+   * gracz widzi na ekranie w chwili kliknięcia.
+   */
+  _buildExportRow() {
+    const btn = new UIButton({
+      label: 'Eksportuj',
+      variant: 'ghost',
+      onClick: () => {
+        if (!window.saveManager) return;
+        const json = window.saveManager.exportSaveJSON();
+        if (!json) {
+          window.alert('Nie udało się przygotować zapisu do eksportu.');
+          return;
+        }
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `eco-mart-zapis-${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+    });
+    return this._buildRow(EXPORT_ICON_SVG, 'Eksportuj zapis', 'Pobierz kopię zapasową postępu jako plik', btn.mount());
+  }
+
+  /**
+   * Importuje zapis z pliku wybranego przez gracza - NADPISUJE bieżący
+   * postęp, to samo ryzyko co "Reset postępu" niżej, więc to samo
+   * potwierdzenie (window.confirm) PRZED w ogóle otwarciem okna wyboru
+   * pliku, nie dopiero po. Ukryty <input type="file"> tworzony RAZ i
+   * cache'owany (natywnych file inputów nie da się ostylować pod resztę
+   * UI, stąd zwykły UIButton jako widoczny wyzwalacz, który go "klika"
+   * programowo) - dopiero PO potwierdzeniu, żeby anulowanie w
+   * window.confirm nie otwierało systemowego pickera na darmo.
+   */
+  _buildImportRow() {
+    if (!this._importFileInput) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json,.json';
+      input.style.display = 'none';
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        input.value = ''; // pozwala wybrać TEN SAM plik drugi raz z rzędu
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const ok = window.saveManager && window.saveManager.importSaveJSON(String(reader.result));
+          if (!ok) {
+            window.alert('Ten plik nie wygląda na poprawny zapis Eco Mart.');
+            return;
+          }
+          location.reload();
+        };
+        reader.onerror = () => window.alert('Nie udało się odczytać pliku.');
+        reader.readAsText(file);
+      });
+      document.body.appendChild(input);
+      this._importFileInput = input;
+    }
+
+    const btn = new UIButton({
+      label: 'Importuj',
+      variant: 'ghost',
+      onClick: () => {
+        const ok = window.confirm(
+          'Na pewno zaimportować zapis z pliku? NADPISZE bieżący postęp (pieniądze, ulepszenia, statek, Rdzenie) - ta operacja jest nieodwracalna.'
+        );
+        if (!ok) return;
+        this._importFileInput.click();
+      }
+    });
+    return this._buildRow(IMPORT_ICON_SVG, 'Importuj zapis', 'Wczytaj wcześniej wyeksportowany plik zapisu', btn.mount());
+  }
+
   /** Ten sam wzorzec potwierdzenia (window.confirm) co nieodwracalny "Leć
    * dalej" w PrestigePanel - reset postępu jest tak samo nieodwracalny.
    * Sama operacja to dokładnie DEBUG.resetSave() z main.js, tylko dostępna
@@ -1510,6 +1597,9 @@ class SettingsPanel {
   destroy() {
     document.removeEventListener('keydown', this._onKeyDown);
     if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
+    if (this._importFileInput && this._importFileInput.parentNode) {
+      this._importFileInput.parentNode.removeChild(this._importFileInput);
+    }
   }
 }
 
