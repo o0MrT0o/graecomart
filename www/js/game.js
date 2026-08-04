@@ -2326,12 +2326,21 @@ class Game {
     canvas.height = bakeSize;
     const tctx = canvas.getContext('2d');
 
+    // Tomek: "cienie chmur weź wygładź" - płaty rysowane jako lite koła
+    // (twarde krawędzie) miały widoczne kanciaste styki tam, gdzie sąsiednie
+    // płaty się stykają/zachodzą tylko częściowo - gradientowa maska niżej
+    // zmiękcza WYŁĄCZNIE zewnętrzną krawędź całej chmury, nie styki
+    // WEWNĄTRZ niej. Blur na etapie rysowania płatów (ten sam trik co przy
+    // krawędziach mgły - patrz komentarz przy overlayScale/28px blur
+    // wyżej w pliku) zaokrągla te styki, zanim maska w ogóle wejdzie w grę.
+    tctx.filter = `blur(${bakeSize * 0.045}px)`;
     tctx.fillStyle = '#000000';
     cloud.lobes.forEach((lobe) => {
       tctx.beginPath();
       tctx.arc(half + lobe.dx * bakeScale, half + lobe.dy * bakeScale, lobe.r * bakeScale, 0, Math.PI * 2);
       tctx.fill();
     });
+    tctx.filter = 'none';
 
     tctx.globalCompositeOperation = 'destination-in';
     const maskGrad = tctx.createRadialGradient(half, half, 0, half, half, cloud.radius * 1.15 * bakeScale);

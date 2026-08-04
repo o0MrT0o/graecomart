@@ -1555,6 +1555,123 @@ canvas {
     transform: translateY(0);
 }
 
+/* ==========================================================================
+   Ceremonia prestiżu (Tomek: "coś w rodzaju animacji/efektu na cały ekran
+   przy odlocie/resecie, zamiast cichej zmiany liczb") - pełnoekranowy
+   overlay wyzwalany z UIManager._playPrestigeCeremony (ui.js) po
+   economyManager.prestige(). z-index 10000 - wyżej niż JOYSTICK_Z_INDEX
+   (9999, player.js) i #loading-screen (9999), żeby nic nie prześwitywało.
+   ========================================================================== */
+
+.ui-prestige-ceremony {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 55%, rgba(12, 20, 26, 0.78) 0%, rgba(5, 9, 12, 0.95) 72%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.ui-prestige-ceremony--visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.ui-prestige-ceremony__flash {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+}
+
+.ui-prestige-ceremony--visible .ui-prestige-ceremony__flash {
+    animation: ui-prestige-flash 0.6s ease-out;
+}
+
+@keyframes ui-prestige-flash {
+    0% { opacity: 0; }
+    12% { opacity: 0.9; }
+    100% { opacity: 0; }
+}
+
+.ui-prestige-ceremony__rocket {
+    position: absolute;
+    bottom: 20%;
+    color: var(--ui-gold);
+    opacity: 0;
+}
+
+.ui-prestige-ceremony__rocket svg {
+    width: 64px;
+    height: 64px;
+    filter: drop-shadow(0 0 18px var(--ui-gold-glow));
+}
+
+.ui-prestige-ceremony--visible .ui-prestige-ceremony__rocket {
+    animation: ui-prestige-launch 2.4s cubic-bezier(0.3, 0, 0.2, 1) 0.25s both;
+}
+
+@keyframes ui-prestige-launch {
+    0% { transform: translateY(0) scale(0.7) rotate(0deg); opacity: 0; }
+    12% { opacity: 1; transform: translateY(-4px) scale(1) rotate(-4deg); }
+    28% { transform: translateY(-30px) scale(1) rotate(4deg); }
+    100% { transform: translateY(-70vh) scale(0.4) rotate(-2deg); opacity: 0; }
+}
+
+.ui-prestige-ceremony__content {
+    position: relative;
+    text-align: center;
+    padding: 0 24px;
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+}
+
+.ui-prestige-ceremony--visible .ui-prestige-ceremony__content {
+    animation: ui-prestige-content-in 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.5s both;
+}
+
+@keyframes ui-prestige-content-in {
+    0% { opacity: 0; transform: translateY(14px) scale(0.92); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.ui-prestige-ceremony__title {
+    font-size: 2.1rem;
+    font-weight: 800;
+    color: var(--ui-text);
+    text-shadow: 0 0 24px var(--ui-gold-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.ui-prestige-ceremony__title svg {
+    width: 30px;
+    height: 30px;
+}
+
+.ui-prestige-ceremony__planet {
+    margin-top: 8px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--ui-text-muted);
+}
+
+.ui-prestige-ceremony__cores {
+    margin-top: 18px;
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: var(--ui-gold);
+    font-variant-numeric: tabular-nums;
+}
+
 /* Legacy HUD selectors (kept for compatibility) */
 #hud, #money-display, #stack-display, #notification {
     display: none !important;

@@ -1196,6 +1196,11 @@ class PrestigePanel {
 // wszystkie inne duplikowane wartości w projekcie.
 const SETTINGS_APP_VERSION = '1.0.0';
 
+// Ile ms "ceremonia" prestiżu zostaje na ekranie zanim sama zniknie (patrz
+// UIManager._playPrestigeCeremony) - gracz może ją też ściąć wcześniej
+// dotknięciem gdziekolwiek na overlayu.
+const PRESTIGE_CEREMONY_DURATION_MS = 3200;
+
 class SettingsPanel {
   /** onChange - wołane po KAŻDEJ akcji w panelu (na razie tylko dźwięk) -
    * zostaje jako ogólny hak na przyszłość, choć obecnie żaden wywołujący go
@@ -1278,7 +1283,7 @@ class SettingsPanel {
     if (!this.bodyEl) return;
     this.bodyEl.innerHTML = '';
     this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
-    this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildMusicVolumeRow(), this._buildTutorialRow(), this._buildFpsRow()]));
+    this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildMusicVolumeRow(), this._buildTutorialRow()]));
     this.bodyEl.appendChild(this._buildSection('Dane', [this._buildResetRow()]));
     this.bodyEl.appendChild(this._buildSection('O grze', [this._buildAboutRow()]));
   }
@@ -1438,23 +1443,6 @@ class SettingsPanel {
     });
 
     return row;
-  }
-
-  /** Nakładka FPS/jakości (DEBUG.fps() w main.js) - dotąd dostępna tylko z
-   * konsoli JS, więc bezużyteczna na telefonie bez podłączenia do komputera.
-   * Ten przycisk daje ten sam efekt jednym dotknięciem: liczba FPS, czas
-   * klatki i aktualny krok adaptacyjnej jakości wprost na ekranie - dokładnie
-   * to, czego trzeba, żeby zdiagnozować zacinanie na urządzeniu gracza. */
-  _buildFpsRow() {
-    const btn = new UIButton({
-      label: 'Pokaż',
-      variant: 'ghost',
-      onClick: () => {
-        if (window.DEBUG && typeof window.DEBUG.fps === 'function') window.DEBUG.fps();
-        this.close();
-      }
-    });
-    return this._buildRow(CHART_ICON_SVG, 'Licznik FPS', 'Nakładka z liczbą klatek/s i jakością renderowania', btn.mount());
   }
 
   /** Uruchamia samouczek od pierwszego kroku - jeśli poprzednia instancja
@@ -2366,12 +2354,11 @@ class UIManager {
       const planet = (d && d.planetNumber) || '?';
       const cores = (d && d.coresEarned) || 0;
       const mod = d && d.modifier;
-      const modSuffix = mod ? ` — ${mod.icon} ${mod.name}` : '';
-      this.notifications.show(`${PLANET_ICON_SVG} Nowa planeta #${planet}${modSuffix}! +${CORE_ICON_SVG}${cores} Rdzeni`, {
-        type: 'success',
-        icon: SPARKLE_ICON_SVG,
-        duration: 4200
-      });
+      // Tomek: "'ceremonii' prestiżu - coś w rodzaju animacji/efektu na
+      // cały ekran przy odlocie/resecie, zamiast cichej zmiany liczb" -
+      // ZASTĘPUJE dawny sam toast (poniższy tier2-unlock toast zostaje bez
+      // zmian - to osobna, ważna informacja, nie feedback SAMEGO odlotu).
+      this._playPrestigeCeremony(planet, cores, mod);
       // Drugi poziom trwałych ulepszeń (economy.js) jest CELOWO ukryty z
       // katalogu do tego momentu (patrz CORE_TIER2_UNLOCK_PLANET) - bez tego
       // toastu gracz mógłby nigdy nie zauważyć, że w Statku pojawiły się
@@ -2654,6 +2641,76 @@ class UIManager {
    * osobnych paneli, tylko wołał "odśwież to, co dotyczy tego zdarzenia". */
   _refreshPrestige() {
     if (this.prestigePanel) this.prestigePanel.refresh();
+  }
+
+  /**
+   * "Ceremonia" prestiżu (Tomek: "coś w rodzaju animacji/efektu na cały
+   * ekran przy odlocie/resecie, zamiast cichej zmiany liczb") - pełnoekranowy
+   * moment PO prestige() (economy.js): błysk zapłonu, rakieta odlatująca w
+   * górę, tekst z numerem nowej planety i licznik zdobytych Rdzeni
+   * odliczający się w górę od zera (patrz _animatePrestigeCoresCount).
+   * Element tworzony RAZ i cache'owany (this._prestigeCeremonyEl) jak inne
+   * panele w tym pliku - kolejne odloty tylko podmieniają treść i odpalają
+   * animację od nowa (patrz trik z offsetWidth niżej, ten sam co przy
+   * .ui-money--pulse w _syncMoney/MoneyDisplay).
+   */
+  _playPrestigeCeremony(planetNumber, coresEarned, modifier) {
+    if (!this._prestigeCeremonyEl) {
+      const el = document.createElement('div');
+      el.className = 'ui-prestige-ceremony';
+      el.innerHTML = `
+        <div class="ui-prestige-ceremony__flash"></div>
+        <div class="ui-prestige-ceremony__rocket" aria-hidden="true">${ROCKET_ICON_SVG}</div>
+        <div class="ui-prestige-ceremony__content">
+          <div class="ui-prestige-ceremony__title">${PLANET_ICON_SVG} Odlot!</div>
+          <div class="ui-prestige-ceremony__planet"></div>
+          <div class="ui-prestige-ceremony__cores">+<span class="ui-prestige-ceremony__cores-num">0</span> ${CORE_ICON_SVG} Rdzeni</div>
+        </div>
+      `;
+      // Dotknięcie GDZIEKOLWIEK na overlayu ścina ceremonię wcześniej -
+      // gracz, który już to widział, nie musi czekać pełnych 3.2s za
+      // każdym kolejnym odlotem.
+      el.addEventListener('click', () => this._dismissPrestigeCeremony());
+      document.body.appendChild(el);
+      this._prestigeCeremonyEl = el;
+    }
+
+    const el = this._prestigeCeremonyEl;
+    const modSuffix = modifier ? ` — ${modifier.icon} ${modifier.name}` : '';
+    el.querySelector('.ui-prestige-ceremony__planet').innerHTML = `Planeta #${planetNumber}${modSuffix}`;
+
+    el.classList.remove('ui-prestige-ceremony--visible');
+    void el.offsetWidth; // wymuszony reflow - restart CSS animacji od zera
+    el.classList.add('ui-prestige-ceremony--visible');
+
+    this._animatePrestigeCoresCount(el, coresEarned);
+
+    clearTimeout(this._prestigeCeremonyTimer);
+    this._prestigeCeremonyTimer = setTimeout(() => this._dismissPrestigeCeremony(), PRESTIGE_CEREMONY_DURATION_MS);
+  }
+
+  _dismissPrestigeCeremony() {
+    if (!this._prestigeCeremonyEl) return;
+    this._prestigeCeremonyEl.classList.remove('ui-prestige-ceremony--visible');
+    clearTimeout(this._prestigeCeremonyTimer);
+  }
+
+  /** Licznik Rdzeni w ceremonii odliczający się w górę (0 -> coresEarned),
+   * ease-out (szybko na starcie, zwalnia pod koniec) - ten sam "policzone
+   * na twoich oczach" efekt, co count-up liczniki w wielu idle-grach,
+   * zamiast liczby pojawiającej się od razu w pełnej wysokości. */
+  _animatePrestigeCoresCount(el, target) {
+    const numEl = el.querySelector('.ui-prestige-ceremony__cores-num');
+    if (!numEl) return;
+    const start = performance.now();
+    const DURATION_MS = 900;
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / DURATION_MS);
+      const eased = 1 - Math.pow(1 - t, 3);
+      numEl.textContent = Math.round(target * eased);
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   syncFromGameState() {
