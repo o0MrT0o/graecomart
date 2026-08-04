@@ -106,23 +106,13 @@ const _protectionIcon = (kind, color) => {
 // (unlockPlanet), a przerabianie ich to osobny temat.
 const SHOP_UPGRADES = [
   {
-    id: 'capacity',
-    branch: 'collection',
-    requires: null,
-    icon: _kenneyIcon('backpack', '#E8EAF6'),
-    get name() { return I18n.t('shop.item.capacity.name'); },
-    get description() { return I18n.t('shop.item.capacity.desc'); },
-    baseCost: 40,
-    costScale: 1.65,
-    maxLevel: 5,
-    getValue(level) {
-      return 10 + level * 2;
-    }
-  },
-  {
+    // Korzeń gałęzi Zbieranie - CELOWO magnes, nie plecak (patrz komentarz
+    // przy 'capacity' niżej dla uzasadnienia kolejności). Szerszy zasięg
+    // podnoszenia to naturalny pierwszy krok: zanim zapłacisz za więcej
+    // miejsca na stosie, najpierw w ogóle zgarniasz więcej na raz.
     id: 'pickup',
     branch: 'collection',
-    requires: 'capacity',
+    requires: null,
     icon: _magnetIcon('#EF5350'),
     get name() { return I18n.t('shop.item.pickup.name'); },
     get description() { return I18n.t('shop.item.pickup.desc'); },
@@ -131,6 +121,27 @@ const SHOP_UPGRADES = [
     maxLevel: 3,
     getValue(level) {
       return 55 + level * 10;
+    }
+  },
+  {
+    // BALANS/FABUŁA drzewka: `requires: pickup`, NIE odwrotnie. Szerszy
+    // magnes (pickup) sam z siebie nie potrzebuje większego plecaka - ale
+    // większy plecak MA sens dopiero, gdy magnes faktycznie zgarnia więcej
+    // na raz i stos zaczyna się szybciej zapełniać. "Najpierw zbieraj
+    // więcej, potem miej gdzie to trzymać" czyta się jako logiczna
+    // eskalacja buildu; odwrotna kolejność (plecak odblokowujący magnes)
+    // nie miała żadnego uzasadnienia poza samym istnieniem zależności.
+    id: 'capacity',
+    branch: 'collection',
+    requires: 'pickup',
+    icon: _kenneyIcon('backpack', '#E8EAF6'),
+    get name() { return I18n.t('shop.item.capacity.name'); },
+    get description() { return I18n.t('shop.item.capacity.desc'); },
+    baseCost: 40,
+    costScale: 1.65,
+    maxLevel: 5,
+    getValue(level) {
+      return 10 + level * 2;
     }
   },
   {
@@ -143,7 +154,7 @@ const SHOP_UPGRADES = [
     // żadnego dodatkowego kodu w _applyUpgrade/prestige().
     id: 'drone',
     branch: 'collection',
-    requires: 'pickup',
+    requires: 'capacity',
     icon: _kenneyIcon('gear', '#64B5F6'),
     get name() { return I18n.t('shop.item.drone.name'); },
     get description() { return I18n.t('shop.item.drone.desc'); },
