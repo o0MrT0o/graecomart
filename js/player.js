@@ -1240,9 +1240,33 @@ class PlayerController {
    * funkcji - najpierw lampka na czole kopuły, potem tuba z boku kopuły).
    * Teraz zostaje WYŁĄCZNIE sama latarka (uchwyt + tuba + soczewka),
    * przypięta wprost do sylwetki głowy - bez kopuły w ogóle.
+   *
+   * Tomek: "żeby była jakoś przypięta do hełmu [głowy]" - sam uchwyt
+   * (mały prostokąt pod tubą) był za mało czytelny jako "coś zapiętego
+   * NA głowie", więc doszedł jeszcze cienki PASEK opasujący górę głowy
+   * (jak prawdziwa opaska latarki czołowej) + nit/klamra w miejscu
+   * mocowania - dwa niezależne sygnały "to jest przypięte", nie
+   * doklejone. Kąt nachylenia tuby (-0.25, czyli lekko w górę-przód)
+   * ZOSTAJE, a nie "prosto w kamerę" - w tym rzucie z góry/boku płaska
+   * soczewka patrząca wprost w ekran czytałaby się jako plaska kropka
+   * bez kształtu, podczas gdy nachylona tuba jednoznacznie czyta się
+   * jako źródło światła świecące w kierunku, w którym postać patrzy.
    */
   _drawHelmet(ctx2, sideY) {
     const r = this.radius * 0.62;
+
+    // Pasek opasujący głowę - łuk od miejsca mocowania (bok głowy) w górę
+    // i w stronę czubka, sugerujący "to owija głowę", bez rysowania
+    // pełnej opaski dookoła (i tak w większości zasłoniłaby ją sylwetka).
+    ctx2.save();
+    ctx2.strokeStyle = 'rgba(40, 40, 40, 0.75)';
+    ctx2.lineWidth = r * 0.12;
+    ctx2.lineCap = 'round';
+    ctx2.beginPath();
+    ctx2.moveTo(r * 0.75, sideY);
+    ctx2.quadraticCurveTo(r * 0.55, sideY - r * 0.75, r * 0.05, sideY - r * 0.55);
+    ctx2.stroke();
+    ctx2.restore();
 
     // Latarka z boku głowy - własny lokalny układ (przesunięcie + obrót),
     // żeby tuba i jej soczewka nie musiały ręcznie przeliczać sinusów/
@@ -1251,9 +1275,14 @@ class PlayerController {
     ctx2.translate(r * 0.92, sideY);
     ctx2.rotate(-0.25);
 
-    // Uchwyt łączący tubę z głową.
+    // Uchwyt łączący tubę z głową (z małym nitem/klamrą - miejsce, gdzie
+    // faktycznie "zapina się" na pasku powyżej).
     ctx2.fillStyle = 'rgba(0, 0, 0, 0.4)';
     ctx2.fillRect(-r * 0.22, -r * 0.08, r * 0.3, r * 0.16);
+    ctx2.fillStyle = '#BDBDBD';
+    ctx2.beginPath();
+    ctx2.arc(-r * 0.07, 0, r * 0.06, 0, Math.PI * 2);
+    ctx2.fill();
 
     // Tuba - gradient poprzeczny (jasna góra, ciemny dół), jak realny
     // metalowy walec, ten sam zabieg "obiekt ma objętość" co reszta gearu.
