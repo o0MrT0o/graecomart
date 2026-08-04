@@ -173,6 +173,9 @@ class UIButton extends UIComponent {
       e.stopPropagation();
       if (this.denied) {
         if (window.audioManager) window.audioManager.play('error');
+        // Krótki, ostry impuls jako fizyczne "nie" - patrz haptics.js
+        // (Tomek: "haptics"), obok już istniejącego dźwięku odmowy.
+        if (window.hapticsManager) window.hapticsManager.denied();
         return;
       }
       if (!this.disabled && typeof this.onClick === 'function') {

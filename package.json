@@ -6,13 +6,15 @@
   "scripts": {
     "build-ads": "esbuild native-ads-src.js --bundle --outfile=js/native-ads.bundle.js --format=iife",
     "build-notifications": "esbuild native-notifications-src.js --bundle --outfile=js/native-notifications.bundle.js --format=iife",
+    "build-haptics": "esbuild native-haptics-src.js --bundle --outfile=js/native-haptics.bundle.js --format=iife",
     "prepare-www": "node scripts/copy-www.js",
-    "sync": "npm run build-ads && npm run build-notifications && npm run prepare-www && npx cap sync",
+    "sync": "npm run build-ads && npm run build-notifications && npm run build-haptics && npm run prepare-www && npx cap sync",
     "android": "npx cap open android"
   },
   "dependencies": {
     "@capacitor-community/admob": "^7.0.0",
     "@capacitor/core": "^7.0.0",
+    "@capacitor/haptics": "^7.0.5",
     "@capacitor/local-notifications": "^7.0.7"
   },
   "devDependencies": {

@@ -23,6 +23,10 @@ function startGame() {
     // (dalej) czyta window.audioManager.muted przy budowaniu przycisku wyciszenia.
     window.audioManager = new AudioManager();
 
+    // Wibracje (Tomek: "haptics") - jak audio, zero zależności od reszty gry,
+    // działa wyłącznie na zdarzeniach z Bus (patrz haptics.js).
+    window.hapticsManager = new HapticsManager();
+
     // Muzyka w tle rusza dopiero przy PIERWSZEJ interakcji gracza (dotknięcie
     // ekranu / klik / klawisz) - przeglądarki blokują odtwarzanie dźwięku
     // zanim użytkownik czegokolwiek nie dotknie (autoplay policy), więc
