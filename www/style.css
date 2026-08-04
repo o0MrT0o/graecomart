@@ -76,9 +76,13 @@ canvas {
        kolor tego ekranu i JEDNOCZEŚNIE awaryjny kolor tła świata dopóki
        grass.png się nie wczyta - patrz GAME_ZONE fallback w game.js) -
        zanikanie do gry pod spodem nigdy nie "skacze" kolorem, tylko
-       dokłada głębi zamiast płaskiej plamy. */
+       dokłada głębi zamiast płaskiej plamy. Paleta NIETKNIĘTA celowo (patrz
+       Tomek: "ładniejszy od ceremonii prestiżu") - dodajemy blichtr WOKÓŁ
+       tych samych barw, nie zmieniamy tożsamości koloru, bo to zepsułoby
+       bezszwowe przejście do świata pod spodem. */
     background:
         radial-gradient(ellipse at 50% 38%, #86c46e 0%, #6fae5b 46%, #4a7a3d 100%);
+    overflow: hidden;
     transition: opacity 0.5s ease;
 }
 
@@ -87,7 +91,37 @@ canvas {
     pointer-events: none;
 }
 
+/* Dryfujące drobinki (pyłek/zarodniki) - odpowiednik migoczących gwiazdek z
+   ceremonii prestiżu (.ui-prestige-ceremony__stars), tylko w duchu łąki:
+   kilkanaście kropek radial-gradientem w JEDNYM kaflu tła (zero osobnych
+   elementów DOM na drobinkę, ten sam trik co gwiazdki), które CAŁY kafel
+   przesuwa w górę w pętli (background-position, nie transform - kafel się
+   powtarza w pionie, więc drobinki "wchodzą" od dołu w nieskończoność). */
+.loading-screen__particles {
+    position: absolute;
+    inset: -20% -10%;
+    background-image:
+        radial-gradient(2.2px 2.2px at 10% 20%, rgba(255, 255, 255, 0.8), transparent),
+        radial-gradient(1.6px 1.6px at 28% 65%, rgba(255, 240, 180, 0.75), transparent),
+        radial-gradient(2px 2px at 46% 30%, rgba(255, 255, 255, 0.65), transparent),
+        radial-gradient(1.4px 1.4px at 62% 80%, rgba(255, 255, 255, 0.55), transparent),
+        radial-gradient(2.4px 2.4px at 78% 15%, rgba(255, 240, 180, 0.7), transparent),
+        radial-gradient(1.6px 1.6px at 88% 55%, rgba(255, 255, 255, 0.6), transparent),
+        radial-gradient(1.8px 1.8px at 18% 90%, rgba(255, 255, 255, 0.6), transparent),
+        radial-gradient(1.4px 1.4px at 55% 5%, rgba(255, 255, 255, 0.5), transparent);
+    background-repeat: repeat-y;
+    background-size: 100% 300px;
+    animation: loading-screen-drift 14s linear infinite;
+    opacity: 0.8;
+}
+
+@keyframes loading-screen-drift {
+    from { background-position: 0 0; }
+    to { background-position: 0 -300px; }
+}
+
 .loading-screen__content {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -98,10 +132,44 @@ canvas {
     border: 1px solid rgba(255, 255, 255, 0.16);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
     backdrop-filter: blur(2px);
+    /* Delikatne wejście całej karty (bez JS - ekran jest widoczny ZANIM
+       jakikolwiek skrypt się wykona, więc wejście musi żyć w czystym CSS,
+       uruchamiane od razu przy pierwszym renderze). */
+    animation: loading-screen-content-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes loading-screen-content-in {
+    0% { opacity: 0; transform: translateY(14px) scale(0.97); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.loading-screen__badge-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+
+/* Pulsująca poświata za maskotką - ten sam duch co planet-glow w ceremonii
+   prestiżu, w kolorze samej maskotki (jasny błękit), nie złocie - dwa różne
+   ekrany zachowują własną tożsamość barwną. */
+.loading-screen__badge-glow {
+    position: absolute;
+    inset: -18px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(158, 202, 255, 0.55) 0%, transparent 70%);
+    filter: blur(4px);
+    animation: loading-screen-glow-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes loading-screen-glow-pulse {
+    0%, 100% { opacity: 0.55; transform: scale(0.92); }
+    50% { opacity: 1; transform: scale(1.08); }
 }
 
 .loading-screen__badge {
-    margin-bottom: 4px;
+    position: relative;
     animation: loading-screen-bob 2.2s ease-in-out infinite;
     filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
 }
@@ -123,7 +191,9 @@ canvas {
     font-weight: 800;
     font-size: 1.6rem;
     letter-spacing: 0.03em;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 26px rgba(255, 213, 79, 0.3);
+    opacity: 0;
+    animation: loading-screen-rise-in 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.15s both;
 }
 
 .loading-screen__subtitle {
@@ -134,9 +204,17 @@ canvas {
     letter-spacing: 0.18em;
     text-transform: uppercase;
     margin-bottom: 14px;
+    opacity: 0;
+    animation: loading-screen-rise-in 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.28s both;
+}
+
+@keyframes loading-screen-rise-in {
+    0% { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 
 .loading-screen__bar {
+    position: relative;
     width: 200px;
     max-width: 60vw;
     height: 8px;
@@ -144,9 +222,12 @@ canvas {
     background: rgba(0, 0, 0, 0.28);
     border: 1px solid rgba(255, 255, 255, 0.15);
     overflow: hidden;
+    opacity: 0;
+    animation: loading-screen-rise-in 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.4s both;
 }
 
 .loading-screen__bar-fill {
+    position: relative;
     width: 0%;
     height: 100%;
     border-radius: inherit;
@@ -156,6 +237,25 @@ canvas {
        stają się płynnym ślizganiem zamiast widocznego "skoku" co klatkę
        ustawiania width. */
     transition: width 0.25s ease-out;
+    overflow: hidden;
+}
+
+/* Przesuwający się błysk na wypełnieniu paska - ten sam "premium loading
+   bar" trik co pasek doświadczenia w wielu grach mobilnych. ::after (nie
+   osobny element) - pasek już ma swój box, więc pseudo-element wystarczy i
+   automatycznie jest przycinany przez overflow:hidden rodzica powyżej. */
+.loading-screen__bar-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.65) 48%, transparent 66%);
+    background-size: 220% 100%;
+    animation: loading-screen-bar-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes loading-screen-bar-shimmer {
+    0% { background-position: 120% 0; }
+    100% { background-position: -120% 0; }
 }
 
 .loading-screen__tip {
@@ -167,6 +267,13 @@ canvas {
     font-size: 0.85rem;
     letter-spacing: 0.02em;
     text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    animation: loading-screen-rise-in 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.52s both;
+    /* Osobna transition (poza wejściową animacją wyżej) na wypadek zmiany
+       opacity przez inline style JS (przenikanie rotujących podpowiedzi,
+       patrz index.html) - animation kończy się na opacity:1 (fill:both), a
+       KOLEJNE zmiany inline style.opacity łapie już ta transition. */
+    transition: opacity 0.22s ease;
 }
 
 /* Nakładka "Aktualizuję świat…" (Game._showWorldRebakeOverlay, game.js) -
