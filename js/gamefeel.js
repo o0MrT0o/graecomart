@@ -11,6 +11,17 @@ const FEEL_PARTICLE_DRAG = 0.96;
 const FEEL_POPUP_RISE_SPEED = 42;
 const FEEL_POPUP_FADE_MS = 900;
 
+// Twarde sufity na liczbę jednoczesnych efektów - żywotność każdej cząstki/
+// popupu i tak jest krótka (patrz update()), więc w normalnej rozgrywce nigdy
+// się do tego nie zbliżamy. To czysto zabezpieczenie na wypadek patologicznego
+// nagromadzenia zdarzeń (np. wiele maszyn kończących produkcję w tej samej
+// sekundzie na słabym telefonie, gdzie klatki są rzadsze niż tempo spawnów) -
+// bez sufitu tablice rosłyby bez ograniczeń, każda dodatkowa cząstka to kolejny
+// drawImage() w draw() poniżej, więc runaway wzrost wprost przekłada się na
+// coraz gorsze FPS w najgorszym możliwym momencie.
+const FEEL_MAX_PARTICLES = 160;
+const FEEL_MAX_POPUPS = 40;
+
 class GameFeel {
   constructor() {
     this.drawLayer = 'gameplay';
@@ -46,6 +57,10 @@ class GameFeel {
         size: 3 + Math.random() * 4,
         color
       });
+    }
+
+    if (this.particles.length > FEEL_MAX_PARTICLES) {
+      this.particles.splice(0, this.particles.length - FEEL_MAX_PARTICLES);
     }
   }
 
@@ -83,6 +98,10 @@ class GameFeel {
       age: 0,
       scale: 0.6
     });
+
+    if (this.popups.length > FEEL_MAX_POPUPS) {
+      this.popups.splice(0, this.popups.length - FEEL_MAX_POPUPS);
+    }
   }
 
   update(delta) {
