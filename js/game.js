@@ -402,6 +402,34 @@ const GAME_ZONE_CORE_WIDTH = 1400;
 // nastrojowym stref - patrz _getZoneBlend.
 const GAME_ZONE_TINT_FADE = 260;
 
+// --- Cykl dnia i nocy (Tomek: "cyklu dnia/nocy zrób") -----------------------
+// Własny, przyspieszony zegar odmierzany CZASEM AKTYWNEJ GRY (ten sam `delta`
+// co reszta update()), NIE zegarem systemowym - gracz grający wyłącznie
+// wieczorem realnie nigdy nie zobaczyłby dnia w grze, gdyby cykl podążał za
+// prawdziwą porą doby. 10 minut na pełny obrót - wystarczająco długo, żeby
+// przejścia nie były nerwowe, wystarczająco krótko, żeby jedna dłuższa sesja
+// zdążyła zobaczyć cały cykl (dzień, zmierzch, noc, świt) chociaż raz.
+const GAME_DAY_NIGHT_CYCLE_MS = 10 * 60 * 1000;
+// Tabela klatek kluczowych (ten sam duch co AUDIO_MUSIC_TRACKS w audio.js -
+// dane zamiast wzoru, łatwiej dostroić niż grzebać w trygonometrii) -
+// phase 0..1 pozycja w cyklu, r/g/b/alpha nakładka na CAŁY ekran (jak
+// _drawZoneTint, tylko dla pory doby zamiast strefy), starLight 0..1
+// widoczność gwiazd (patrz _drawStars). Interpolowane LINIOWO między
+// sąsiednimi klatkami (patrz _getDayNightBlend) - stąd gęściej rozstawione
+// klatki w okolicach świtu/zmierzchu (szybsza zmiana) niż w środku nocy/dnia
+// (długie, stabilne plateau).
+const GAME_DAY_NIGHT_KEYFRAMES = [
+  { phase: 0.00, r: 12, g: 16, b: 42, alpha: 0.55, starLight: 1 }, // północ
+  { phase: 0.20, r: 12, g: 16, b: 42, alpha: 0.55, starLight: 1 }, // wciąż głęboka noc
+  { phase: 0.27, r: 255, g: 140, b: 70, alpha: 0.30, starLight: 0.15 }, // świt - złota godzina
+  { phase: 0.35, r: 255, g: 210, b: 140, alpha: 0.06, starLight: 0 }, // wschód, nakładka prawie znika
+  { phase: 0.50, r: 255, g: 255, b: 255, alpha: 0.00, starLight: 0 }, // południe, brak nakładki
+  { phase: 0.65, r: 255, g: 210, b: 140, alpha: 0.06, starLight: 0 }, // popołudnie
+  { phase: 0.73, r: 255, g: 100, b: 55, alpha: 0.32, starLight: 0.15 }, // zmierzch - złota godzina
+  { phase: 0.80, r: 12, g: 16, b: 42, alpha: 0.55, starLight: 1 }, // zapada noc
+  { phase: 1.00, r: 12, g: 16, b: 42, alpha: 0.55, starLight: 1 } // = phase 0, domyka pętlę
+];
+
 // Wizualna odmiana planety (Tomek: "wizualna różnorodność między planetami -
 // te same 4 strefy na każdej kolejnej planecie, tylko liczby się zmieniają").
 // Zamiast nowych tekstur/assetów - jeden globalny filtr CSS Canvas 2D
@@ -673,6 +701,14 @@ class Game {
     this.shakeIntensity = 0;
     this.shakeDuration = 0;
 
+    // --- Cykl dnia i nocy (patrz GAME_DAY_NIGHT_CYCLE_MS/_KEYFRAMES wyżej) -------
+    // Start losowy w obrębie cyklu (nie zawsze "południe") - każde uruchomienie
+    // gry zaczyna w innej porze doby, zamiast identycznie za każdym razem.
+    // Pole gwiazd (_starField) tworzone leniwie przy pierwszym _drawStars -
+    // patrz komentarz tam.
+    this._dayNightTime = Math.random() * GAME_DAY_NIGHT_CYCLE_MS;
+    this._starField = null;
+
     // --- Jakość renderowania (patrz komentarz przy GAME_QUALITY_DPR_STEPS) -----
     // Zawsze najwyższy (jedyny) dostępny poziom - _trackPerformance() już nic
     // nie obniża, patrz komentarz tam.
@@ -851,6 +887,11 @@ class Game {
       this.shakeDuration = Math.max(0, this.shakeDuration - delta);
     }
 
+    // Cykl dnia i nocy - modulo, żeby _dayNightTime nigdy nie rosło bez
+    // ograniczeń (sesja idle trwająca godzinami nie ma po co gromadzić
+    // milionów ms w jednej liczbie).
+    this._dayNightTime = (this._dayNightTime + delta) % GAME_DAY_NIGHT_CYCLE_MS;
+
     for (const module of this.modules) {
       if (typeof module.update === 'function') {
         module.update(delta);
@@ -954,6 +995,11 @@ class Game {
     // winietą (winieta ma być ostatnia/najwyżej, patrz niżej).
     this._drawZoneTint();
 
+    // Cykl dnia i nocy - PO tincie strefy (kolory się sumują - ciemna noc w
+    // Strefie C np. wypadnie jeszcze ciemniej niż sama Strefa C w dzień,
+    // logicznie), PRZED winietą (patrz GAME_DAY_NIGHT_KEYFRAMES wyżej).
+    this._drawDayNightOverlay();
+
     // Winieta - delikatne przyciemnienie rogów ekranu, ostatnia rzecz na
     // warstwie UI (nad wszystkim). Nie przesuwa się z kamerą (to efekt
     // "obiektywu", przyklejony do ekranu), stąd tutaj, poza translacjami.
@@ -1026,6 +1072,77 @@ class Game {
       C: Math.max(0, depthC - depthD),
       D: depthD
     };
+  }
+
+  /**
+   * Nakładka pory doby na CAŁY ekran (jak _drawZoneTint, tylko dla czasu
+   * zamiast pozycji) + gwiazdy w nocy (patrz _drawStars). Liniowa
+   * interpolacja między dwiema sąsiadującymi klatkami z
+   * GAME_DAY_NIGHT_KEYFRAMES wg aktualnej fazy cyklu (_dayNightTime).
+   */
+  _drawDayNightOverlay() {
+    const phase = this._dayNightTime / GAME_DAY_NIGHT_CYCLE_MS;
+    const frames = GAME_DAY_NIGHT_KEYFRAMES;
+
+    let i = 0;
+    while (i < frames.length - 2 && frames[i + 1].phase <= phase) i++;
+    const a = frames[i];
+    const b = frames[i + 1];
+    const span = b.phase - a.phase;
+    const t = span > 0 ? (phase - a.phase) / span : 0;
+
+    const r = Math.round(a.r + (b.r - a.r) * t);
+    const g = Math.round(a.g + (b.g - a.g) * t);
+    const bl = Math.round(a.b + (b.b - a.b) * t);
+    const alpha = a.alpha + (b.alpha - a.alpha) * t;
+    const starLight = a.starLight + (b.starLight - a.starLight) * t;
+
+    if (starLight > 0.01) this._drawStars(starLight);
+
+    if (alpha < 0.01) return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.ctxUI.save();
+    this.ctxUI.fillStyle = `rgba(${r}, ${g}, ${bl}, ${alpha})`;
+    this.ctxUI.fillRect(0, 0, w, h);
+    this.ctxUI.restore();
+  }
+
+  /**
+   * Pole "gwiazd" (drobne, migoczące punkty) widoczne nocą - rozrzucone po
+   * CAŁYM ekranie (nie tylko górnej połowie - to widok z góry, nie ma tu
+   * dosłownego "nieba"), więc czyta się jako nocna, magiczna poświata
+   * otoczenia, nie fizyczne odwzorowanie gwiazdozbioru. Pozycje LOSOWANE
+   * RAZ i cache'owane (this._starField) - tylko jasność każdej migocze co
+   * klatkę (własny sinus + losowe przesunięcie fazy na gwiazdę, ten sam
+   * trik co _maybePlayShimmer w audio.js - bez tego wszystkie migotałyby
+   * identycznie i mechanicznie).
+   */
+  _drawStars(intensity) {
+    if (!this._starField) {
+      this._starField = Array.from({ length: 55 }, () => ({
+        xFrac: Math.random(),
+        yFrac: Math.random(),
+        size: 1 + Math.random() * 1.6,
+        phaseOffset: Math.random() * Math.PI * 2,
+        speed: 0.0012 + Math.random() * 0.0022
+      }));
+    }
+
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const now = performance.now();
+
+    this.ctxUI.save();
+    this.ctxUI.fillStyle = '#FFFFFF';
+    this._starField.forEach((star) => {
+      const twinkle = 0.5 + 0.5 * Math.sin(now * star.speed + star.phaseOffset);
+      this.ctxUI.globalAlpha = intensity * (0.35 + twinkle * 0.65);
+      this.ctxUI.beginPath();
+      this.ctxUI.arc(star.xFrac * w, star.yFrac * h, star.size, 0, Math.PI * 2);
+      this.ctxUI.fill();
+    });
+    this.ctxUI.restore();
   }
 
   _drawVignette() {
