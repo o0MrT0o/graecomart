@@ -258,7 +258,7 @@ class UIPanel extends UIComponent {
     header.className = 'ui-panel__header';
     header.innerHTML = `
       <span class="ui-panel__title">${this.icon ? `<span class="ui-panel__icon">${this.icon}</span>` : ''}${this.title || ''}</span>
-      ${this.collapsible ? '<button type="button" class="ui-panel__toggle" aria-label="Zwiń/rozwiń">▾</button>' : ''}
+      ${this.collapsible ? `<button type="button" class="ui-panel__toggle" aria-label="${I18n.t('ui.collapse.toggle')}">▾</button>` : ''}
     `;
 
     this.bodyEl = document.createElement('div');
@@ -454,9 +454,9 @@ class ChallengeDisplay extends UIComponent {
     // wymaga renderowania jako znaczniki, nie surowy tekst. Pozostałe dwie
     // gałęzie to i tak zwykły, bezpieczny (deweloperski) tekst.
     this.textEl.innerHTML = challenge.claimed
-      ? `Wyzwanie odebrane ${CHECK_ICON_SVG}`
+      ? I18n.t('ui.challenge.claimed', { icon: CHECK_ICON_SVG })
       : claimable
-        ? `Odbierz +${challenge.reward}${CREDIT_ICON_SVG}!`
+        ? I18n.t('ui.challenge.claim', { amount: challenge.reward, icon: CREDIT_ICON_SVG })
         : `${challenge.label} (${challenge.progress}/${challenge.target})`;
 
     if (this.fillEl) {
@@ -663,7 +663,7 @@ class ShopPanel {
     // suchy "MAX" (gracz nigdy tego nie kupił, więc "MAX" byłby mylący) i
     // zamiast po cichu sprzedawać duplikat, jak działo się wcześniej.
     const descText = item.fromShip
-      ? 'Masz to już dzięki modułowi statku'
+      ? I18n.t('ui.gearAlreadyOwned')
       : item.description;
 
     row.innerHTML = `
@@ -682,7 +682,7 @@ class ShopPanel {
       badge.className = 'ui-shop-item__maxed';
       // innerHTML (nie textContent) - jedyny sposób, żeby ROCKET_ICON_SVG
       // wyrenderował się jako ikona, a nie jako surowy tekst znaczników.
-      badge.innerHTML = item.fromShip ? `${ROCKET_ICON_SVG} ZE STATKU` : 'MAX';
+      badge.innerHTML = item.fromShip ? `${ROCKET_ICON_SVG} ${I18n.t('ui.badge.fromShip')}` : I18n.t('ui.badge.max');
       actionEl.appendChild(badge);
     } else {
       // Kłódka PRZED ceną, TYLKO gdy nie stać (denied) - dźwięk odmowy
@@ -693,7 +693,7 @@ class ShopPanel {
         label: costLabel,
         variant: canBuy ? 'accent' : 'ghost',
         denied: !canBuy,
-        title: canBuy ? 'Kup ulepszenie' : 'Za mało pieniędzy',
+        title: canBuy ? I18n.t('ui.buyUpgrade.title') : I18n.t('ui.notEnoughMoney.title'),
         onClick: () => {
           // Ulepszenia maszyn mają WŁASNĄ metodę zakupu (kupuje się je per
           // maszyna, patrz buyMachineUpgrade w economy.js) - rozpoznajemy je
@@ -789,12 +789,12 @@ class OfflineRewardModal {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Witaj z powrotem');
+    sheet.setAttribute('aria-label', I18n.t('ui.offline.title'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">${OFFLINE_MOON_ICON_SVG}</span> Witaj z powrotem</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij">${CLOSE_ICON_SVG}</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${OFFLINE_MOON_ICON_SVG}</span> ${I18n.t('ui.offline.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('ui.offline.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -843,28 +843,28 @@ class OfflineRewardModal {
     if (this._claimed) {
       card.innerHTML = `
         <div class="ui-shop-item__info">
-          <span class="ui-shop-item__name">Odebrano ${CHECK_ICON_SVG}</span>
-          <span class="ui-shop-item__desc">Miłej gry!</span>
+          <span class="ui-shop-item__name">${I18n.t('ui.offline.claimedName', { icon: CHECK_ICON_SVG })}</span>
+          <span class="ui-shop-item__desc">${I18n.t('ui.offline.claimedDesc')}</span>
         </div>
       `;
     } else {
       card.innerHTML = `
         <div class="ui-shop-item__info">
-          <span class="ui-shop-item__name">Byłeś offline ${this._formatDuration(this.data.elapsedSeconds)}</span>
-          <span class="ui-shop-item__desc">Twoja ekonomia pracowała w tle. Zarobek: <strong style="color:#FFD700">+${this.data.reward}${CREDIT_ICON_SVG}</strong></span>
+          <span class="ui-shop-item__name">${I18n.t('ui.offline.awayFor', { duration: this._formatDuration(this.data.elapsedSeconds) })}</span>
+          <span class="ui-shop-item__desc">${I18n.t('ui.offlineReward.desc', { amount: `<strong style="color:#FFD700">+${this.data.reward}${CREDIT_ICON_SVG}</strong>` })}</span>
         </div>
       `;
       const actions = document.createElement('div');
       actions.style.cssText = 'display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;';
 
       const claimBtn = new UIButton({
-        label: `Odbierz +${this.data.reward}${CREDIT_ICON_SVG}`,
+        label: I18n.t('ui.offlineReward.claim', { amount: this.data.reward, icon: CREDIT_ICON_SVG }),
         variant: 'accent',
         onClick: () => this._claim(false)
       });
       this._adBtn = new UIButton({
         icon: OFFLINE_PLAY_ICON_SVG,
-        label: `x2 (+${this.data.reward * 2}${CREDIT_ICON_SVG})`,
+        label: I18n.t('ui.offline.doubleLabel', { amount: this.data.reward * 2, icon: CREDIT_ICON_SVG }),
         variant: 'ghost',
         onClick: () => this._watchAdAndClaim()
       });
@@ -910,7 +910,7 @@ class OfflineRewardModal {
     const btn = this._adBtn;
     if (btn) {
       btn.setDisabled(true);
-      btn.setLabel('Ładowanie…');
+      btn.setLabel(I18n.t('ui.loading'));
     }
     window.adManager.showRewarded((gotReward) => {
       if (gotReward) {
@@ -921,7 +921,7 @@ class OfflineRewardModal {
       // - przywracamy przycisk do normalnego stanu, zeby gracz mogl sprobowac ponownie.
       if (btn) {
         btn.setDisabled(false);
-        btn.setLabel(`x2 (+${this.data.reward * 2}${CREDIT_ICON_SVG})`);
+        btn.setLabel(I18n.t('ui.offline.doubleLabel', { amount: this.data.reward * 2, icon: CREDIT_ICON_SVG }));
       }
     });
   }
@@ -963,12 +963,12 @@ class PrestigePanel {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Statek');
+    sheet.setAttribute('aria-label', I18n.t('nav.ship'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">${ROCKET_ICON_SVG}</span> Statek</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij">${CLOSE_ICON_SVG}</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${ROCKET_ICON_SVG}</span> ${I18n.t('nav.ship')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('ui.offline.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -1012,7 +1012,7 @@ class PrestigePanel {
 
     const catalog = this.economyManager.getCoreShopCatalog();
     if (catalog.length > 0) {
-      const title = `${CORE_ICON_SVG} Trwałe ulepszenia — masz ${this.economyManager.cores}`;
+      const title = I18n.t('ui.prestige.title', { icon: CORE_ICON_SVG, cores: this.economyManager.cores });
       this.bodyEl.appendChild(this._buildSection(title, catalog));
     }
   }
@@ -1040,26 +1040,21 @@ class PrestigePanel {
       const preview = eco.previewPrestigeCores();
       card.innerHTML = `
         <div class="ui-shop-item__info">
-          <span class="ui-shop-item__name">${PLANET_ICON_SVG} Gotowy do odlotu!</span>
-          <span class="ui-shop-item__desc">Odlot resetuje bieżący przebieg (pieniądze, ulepszenia, plecak, postęp statku) w zamian za ${CORE_ICON_SVG} ${preview} Rdzeni na zawsze.</span>
+          <span class="ui-shop-item__name">${I18n.t('ui.prestige.ready.name', { icon: PLANET_ICON_SVG })}</span>
+          <span class="ui-shop-item__desc">${I18n.t('ui.prestige.ready.desc', { icon: CORE_ICON_SVG, cores: preview })}</span>
         </div>
       `;
       const actionWrap = document.createElement('div');
       actionWrap.style.marginTop = '10px';
       const btn = new UIButton({
         icon: ROCKET_ICON_SVG,
-        label: `Leć dalej (+${preview} Rdzeni)`,
+        label: I18n.t('ui.prestige.launch', { cores: preview }),
         variant: 'accent',
         onClick: () => {
           // Nieodwracalne i niszczy bieżący postęp - potwierdzenie zamiast
           // pozwalać jednemu przypadkowemu tapnięciu skasować cały przebieg
           // (to samo ryzyko, o które Tom pytał przy pozycji statku).
-          // window.confirm() to NATYWNY dialog przeglądarki - renderuje
-          // WYŁĄCZNIE zwykły tekst (nie HTML/SVG), stąd zwykłe słowo "Rdzeni"
-          // bez ikony, w przeciwieństwie do reszty tego panelu.
-          const ok = window.confirm(
-            `Na pewno lecisz dalej? Stracisz bieżący przebieg (pieniądze, ulepszenia, plecak) w zamian za ${eco.previewPrestigeCores()} Rdzeni.`
-          );
+          const ok = window.confirm(I18n.t('ui.prestige.confirm', { cores: eco.previewPrestigeCores() }));
           if (!ok) return;
           const result = eco.prestige();
           if (result && typeof this.onAction === 'function') this.onAction('prestige', result);
@@ -1070,8 +1065,8 @@ class PrestigePanel {
     } else {
       card.innerHTML = `
         <div class="ui-shop-item__info">
-          <span class="ui-shop-item__name">${WRENCH_ICON_SVG} Statek w naprawie</span>
-          <span class="ui-shop-item__desc">Ukończ wszystkie moduły, żeby odlecieć na nową planetę. Postęp: ${completed}/${total}.</span>
+          <span class="ui-shop-item__name">${WRENCH_ICON_SVG} ${I18n.t('ui.prestige.shipRepair')}</span>
+          <span class="ui-shop-item__desc">${I18n.t('ui.prestige.notReady.desc', { done: completed, total })}</span>
         </div>
       `;
     }
@@ -1162,7 +1157,7 @@ class PrestigePanel {
     if (item.maxed) {
       const badge = document.createElement('span');
       badge.className = 'ui-shop-item__maxed';
-      badge.textContent = 'MAX';
+      badge.textContent = I18n.t('ui.badge.max');
       actionEl.appendChild(badge);
     } else {
       // Kłódka gdy nie stać - patrz identyczny komentarz w ShopPanel._buildRow.
@@ -1171,7 +1166,7 @@ class PrestigePanel {
         label: costLabel,
         variant: canBuy ? 'accent' : 'ghost',
         denied: !canBuy,
-        title: canBuy ? 'Kup trwałe ulepszenie' : 'Za mało Rdzeni',
+        title: canBuy ? I18n.t('ui.buyCoreUpgrade.title') : I18n.t('ui.notEnoughCores.title'),
         onClick: () => {
           if (this.economyManager.buyCoreUpgrade(item.id)) {
             this.refresh();
@@ -1967,8 +1962,8 @@ class LeaderboardPanel {
     const wrap = document.createElement('div');
     wrap.className = 'ui-leaderboard-tabs';
     const tabs = [
-      { mode: 'earned', label: 'Zarobek' },
-      { mode: 'time', label: 'Czas' }
+      { mode: 'earned', label: I18n.t('ui.leaderboard.tab.earned') },
+      { mode: 'time', label: I18n.t('ui.leaderboard.tab.time') }
     ];
     tabs.forEach(({ mode, label }) => {
       const btn = new UIButton({
@@ -1998,7 +1993,7 @@ class LeaderboardPanel {
     if (rows.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'ui-leaderboard-empty';
-      empty.textContent = 'Zrób pierwszy odlot na nową planetę, żeby zapisać tu swój przebieg.';
+      empty.textContent = I18n.t('ui.leaderboard.empty');
       section.appendChild(empty);
     } else {
       const list = document.createElement('div');
@@ -2026,12 +2021,12 @@ class LeaderboardPanel {
     // Poboczna metryka pod nazwą - odwrotność trybu (w widoku "Zarobek"
     // pokazujemy czas tego przebiegu i na odwrót), żeby oba wymiary były
     // widoczne naraz mimo że lista jest posortowana tylko po jednym z nich.
-    const secondaryLabel = this.mode === 'earned' ? `Czas: ${r.timeLabel}` : `Zarobek: ${r.earnedLabel}`;
+    const secondaryLabel = this.mode === 'earned' ? I18n.t('ui.leaderboard.row.time', { value: r.timeLabel }) : I18n.t('ui.leaderboard.row.earned', { value: r.earnedLabel });
     const primaryLabel = this.mode === 'earned' ? r.earnedLabel : r.timeLabel;
     row.innerHTML = `
       <div class="ui-shop-item__icon" aria-hidden="true" style="background:${color}26;color:${color};font-weight:800;font-size:0.95rem">#${r.rank}</div>
       <div class="ui-shop-item__info">
-        <span class="ui-shop-item__name">Planeta #${r.planetNumber}</span>
+        <span class="ui-shop-item__name">${I18n.t('ui.leaderboard.row.planet', { n: r.planetNumber })}</span>
         <span class="ui-shop-item__desc">${secondaryLabel}</span>
       </div>
       <div class="ui-shop-item__action"><span class="ui-shop-item__stat-value">${primaryLabel}</span></div>
@@ -2196,12 +2191,12 @@ class SkinsPanel {
     if (s.selected) {
       const badge = document.createElement('span');
       badge.className = 'ui-shop-item__done';
-      badge.setAttribute('aria-label', 'Wybrany');
+      badge.setAttribute('aria-label', I18n.t('ui.skin.selected'));
       badge.innerHTML = CHECK_ICON_SVG;
       actionEl.appendChild(badge);
     } else if (s.unlocked) {
       const btn = new UIButton({
-        label: 'Wybierz',
+        label: I18n.t('ui.skin.select'),
         variant: 'ghost',
         onClick: () => {
           if (this.economyManager.selectSkin(s.id)) this.refresh();
@@ -2215,10 +2210,10 @@ class SkinsPanel {
       // wyjaśnieniem KIEDY wrócić, zamiast po prostu chować pozycję (gracz
       // ma wiedzieć, że taki skin w ogóle istnieje).
       const btn = new UIButton({
-        label: `${LOCK_ICON_SVG} Tylko w weekend`,
+        label: I18n.t('ui.skin.weekendOnly', { icon: LOCK_ICON_SVG }),
         variant: 'ghost',
         disabled: true,
-        title: 'Dostępny wyłącznie podczas Weekendowego Deszczu Meteorytów'
+        title: I18n.t('ui.skin.meteorOnly.title')
       });
       actionEl.appendChild(btn.mount());
     } else {
@@ -2229,7 +2224,7 @@ class SkinsPanel {
         label: costLabel,
         variant: canBuy ? 'accent' : 'ghost',
         denied: !canBuy,
-        title: canBuy ? 'Kup skin' : 'Za mało Rdzeni',
+        title: canBuy ? I18n.t('ui.buySkin.title') : I18n.t('ui.notEnoughCores.title'),
         onClick: () => {
           if (this.economyManager.buySkin(s.id)) this.refresh();
         }
@@ -2383,12 +2378,12 @@ class UIManager {
       // pokazywał tylko ogólne "Kupiono ulepszenie" zamiast kontekstowej
       // wiadomości o odblokowanej strefie.
       const unlockMessages = {
-        stage_paper: 'Papier odblokowany! Szukaj go w świecie i wrzuć do Recyklera.',
-        minimap: 'Minimapa kupiona! Radar w rogu ekranu pokazuje, co jest w pobliżu.',
-        headlamp: 'Kask z Latarką kupiony! Mniejsza kara prędkości w strefach skażenia.',
-        boots: 'Robocze Buty kupione! Więcej czasu, zanim stracisz przedmiot w hazardzie.',
-        toxic_filter: 'Filtr Toksyn kupiony! Bagno jest już dla Ciebie bezpieczne.',
-        radiation_suit: 'Kombinezon Radiacyjny kupiony! Strefa Atomowa jest już dla Ciebie bezpieczna.'
+        stage_paper: I18n.t('ui.gearUnlocked.stage_paper'),
+        minimap: I18n.t('ui.gearUnlocked.minimap'),
+        headlamp: I18n.t('ui.gearUnlocked.headlamp'),
+        boots: I18n.t('ui.gearUnlocked.boots'),
+        toxic_filter: I18n.t('ui.gearUnlocked.toxic_filter'),
+        radiation_suit: I18n.t('ui.gearUnlocked.radiation_suit')
       };
       const message = unlockMessages[d.upgradeId];
       if (message) {
@@ -2397,7 +2392,7 @@ class UIManager {
         const shopDef = window.SHOP_UPGRADES && window.SHOP_UPGRADES.find((u) => u.id === d.upgradeId);
         this.notifications.show(message, { type: 'success', icon: (shopDef && shopDef.icon) || PARTY_ICON_SVG, duration: 3600 });
       } else {
-        this.notifications.show(`Kupiono ulepszenie`, { type: 'success', icon: CHECK_ICON_SVG });
+        this.notifications.show(I18n.t('ui.upgradeBoughtToast'), { type: 'success', icon: CHECK_ICON_SVG });
       }
     };
 
@@ -2410,8 +2405,8 @@ class UIManager {
     // bezpośredni lek na "martwo/ciągle to samo". Dłuższy i mocniejszy niż
     // zwykły toast, bo to rzadki, ważny moment odkrycia.
     this._onUnlockGranted = (d) => {
-      const kindLabel = d.kind === 'zone' ? 'Nowa strefa' : 'Nowa maszyna';
-      this.notifications.show(`${UNLOCK_ICON_SVG} ${kindLabel}: ${d.name}! ${d.desc || ''}`, {
+      const kindLabel = d.kind === 'zone' ? I18n.t('ui.unlock.zoneKind') : I18n.t('ui.unlock.machineKind');
+      this.notifications.show(I18n.t('ui.unlockToast', { icon: UNLOCK_ICON_SVG, kind: kindLabel, name: d.name, desc: d.desc || '' }), {
         type: 'success',
         icon: SPARKLE_ICON_SVG,
         duration: 5000
@@ -2422,7 +2417,7 @@ class UIManager {
     // osiągnięć (gdyby akurat był otwarty) i licznik "X/Y" w Menu przy
     // następnym otwarciu (Menu i tak odświeża się przy każdym open()).
     this._onAchievementUnlocked = (d) => {
-      this.notifications.show(`Osiągnięcie: ${d.name}! (+1% do zarobku na stałe)`, {
+      this.notifications.show(I18n.t('ui.achievementToast', { name: d.name }), {
         type: 'success',
         icon: d.icon || TROPHY_ICON_SVG,
         duration: 4200
@@ -2441,7 +2436,7 @@ class UIManager {
         ? eco.getShipPerkLabel(d.moduleId)
         : '';
       const suffix = perkLabel ? ` ${perkLabel}` : '';
-      this.notifications.show(`Moduł ukończony (${doneCount}/${total})!${suffix}`, {
+      this.notifications.show(I18n.t('ui.moduleCompleteToast', { done: doneCount, total, suffix }), {
         type: 'success',
         icon: WRENCH_ICON_SVG,
         duration: 4600
@@ -2454,7 +2449,7 @@ class UIManager {
     // wcześniej (patrz ship.js _initialSyncDone) - stąd shipToggleBtn w
     // update() jako TRWAŁA droga powrotu do tego samego panelu.
     this._onGameWon = () => {
-      this.notifications.show(`${ROCKET_ICON_SVG} Wszystkie moduły gotowe! Możesz lecieć dalej.`, {
+      this.notifications.show(I18n.t('ui.allModulesReadyToast', { icon: ROCKET_ICON_SVG }), {
         type: 'success',
         icon: PARTY_ICON_SVG,
         duration: 4000
@@ -2491,7 +2486,7 @@ class UIManager {
       // toastu gracz mógłby nigdy nie zauważyć, że w Statku pojawiły się
       // nowe pozycje, skoro sam katalog wcześniej wyglądał "ukończony".
       if (window.CORE_TIER2_UNLOCK_PLANET && planet === window.CORE_TIER2_UNLOCK_PLANET) {
-        this.notifications.show(`${UNLOCK_ICON_SVG} Nowe trwałe ulepszenia dostępne w Statku!`, {
+        this.notifications.show(I18n.t('ui.newCoreUpgradesToast', { icon: UNLOCK_ICON_SVG }), {
           type: 'success',
           icon: CORE_ICON_SVG,
           duration: 4600
@@ -2503,8 +2498,8 @@ class UIManager {
       // moment ma dawać "powód do rywalizacji z samym sobą".
       const nr = d && d.newRecords;
       if (nr && (nr.earned || nr.time)) {
-        const what = nr.earned && nr.time ? 'zarobku i czasu' : (nr.earned ? 'zarobku' : 'najszybszego przelotu');
-        this.notifications.show(`${MEDAL_ICON_SVG} Nowy rekord ${what}!`, {
+        const what = nr.earned && nr.time ? I18n.t('ui.record.both') : (nr.earned ? I18n.t('ui.record.earned') : I18n.t('ui.record.time'));
+        this.notifications.show(I18n.t('ui.newRecordToast', { icon: MEDAL_ICON_SVG, what }), {
           type: 'success',
           icon: MEDAL_ICON_SVG,
           duration: 4200
@@ -2520,8 +2515,8 @@ class UIManager {
     // i zdążył się zasubskrybować - więc te dwa eventy na pewno zostaną złapane,
     // nawet jeśli strzelą w tej samej klatce co konstrukcja.
     this._onDailyLogin = (d) => {
-      const coreText = d.coreBonus > 0 ? ` + ${CORE_ICON_SVG}${d.coreBonus} Rdzeni!` : '';
-      this.notifications.show(`Dzień ${d.streak} z rzędu! +${d.moneyReward}${CREDIT_ICON_SVG}${coreText}`, {
+      const coreText = d.coreBonus > 0 ? I18n.t('ui.dailyStreak.coreBonus', { icon: CORE_ICON_SVG, amount: d.coreBonus }) : '';
+      this.notifications.show(I18n.t('ui.dailyStreakToast', { streak: d.streak, amount: d.moneyReward, icon: CREDIT_ICON_SVG, coreText }), {
         type: 'success',
         icon: FLAME_ICON_SVG,
         duration: 4200
@@ -2532,7 +2527,7 @@ class UIManager {
     };
     this._onDailyChallengeClaimed = (d) => {
       this._syncMoney(true);
-      this.notifications.show(`Wyzwanie odebrane! +${d.reward}${CREDIT_ICON_SVG}`, { type: 'success', icon: CHECK_ICON_SVG, duration: 2600 });
+      this.notifications.show(I18n.t('ui.challenge.claimedToast', { amount: d.reward, icon: CREDIT_ICON_SVG }), { type: 'success', icon: CHECK_ICON_SVG, duration: 2600 });
     };
 
     this._buildDOM();
@@ -2677,9 +2672,9 @@ class UIManager {
     // przycisk pojawiał się tam, gdzie faktycznie dzieje się akcja.
     this.shipContributeBtn = new UIButton({
       icon: PAY_ICON_SVG,
-      label: 'Wpłać',
+      label: I18n.t('ui.deposit.label'),
       variant: 'accent',
-      title: 'Przekaż pieniądze i surowce na bieżący moduł statku',
+      title: I18n.t('ui.deposit.title'),
       onClick: () => {
         if (window.ship && typeof window.ship.confirmContribution === 'function') {
           window.ship.confirmContribution();
@@ -2798,9 +2793,9 @@ class UIManager {
           <img class="ui-prestige-ceremony__planet" alt="" width="220" height="220">
         </div>
         <div class="ui-prestige-ceremony__content">
-          <div class="ui-prestige-ceremony__title">Odlot!</div>
+          <div class="ui-prestige-ceremony__title">${I18n.t('ui.ceremony.title')}</div>
           <div class="ui-prestige-ceremony__planet-name"></div>
-          <div class="ui-prestige-ceremony__cores">+<span class="ui-prestige-ceremony__cores-num">0</span> ${CORE_ICON_SVG} Rdzeni</div>
+          <div class="ui-prestige-ceremony__cores">+<span class="ui-prestige-ceremony__cores-num">0</span> ${CORE_ICON_SVG} ${I18n.t('ui.ceremony.cores')}</div>
         </div>
       `;
       // Dotknięcie GDZIEKOLWIEK na overlayu ścina ceremonię wcześniej -
@@ -2813,7 +2808,7 @@ class UIManager {
 
     const el = this._prestigeCeremonyEl;
     const modSuffix = modifier ? ` — ${modifier.icon} ${modifier.name}` : '';
-    el.querySelector('.ui-prestige-ceremony__planet-name').innerHTML = `Planeta #${planetNumber}${modSuffix}`;
+    el.querySelector('.ui-prestige-ceremony__planet-name').innerHTML = I18n.t('ui.ceremony.planet', { n: planetNumber, modSuffix });
 
     const planetIndex = ((planetNumber - 1) % PRESTIGE_CEREMONY_PLANET_COUNT + PRESTIGE_CEREMONY_PLANET_COUNT) % PRESTIGE_CEREMONY_PLANET_COUNT;
     const planetImg = el.querySelector('.ui-prestige-ceremony__planet');
