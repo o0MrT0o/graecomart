@@ -151,23 +151,17 @@ const SPRITE_PATH_CANDIDATES = {
   // kolor) od zielonego, ambientowego UFO (critter_ufo wyżej).
   drone: ['assets/critters/drone.png'],
   // Dekoracje Terminalu Handlowego (market.js, EconomyManager.STALL_DECORATIONS
-  // w economy.js) - Tomek: "katalog dekoracji... tylko żeby wszystko pasowało
-  // do siebie". Kenney "Platformer Pack Remastered" - TA SAMA paczka, z
-  // której wcześniej wzięliśmy crate.png/sign.png (patrz DECOR_TYPES w
-  // game.js), więc gwarantowana spójność stylu z resztą rekwizytów w grze.
-  // crate/sign wskazują na TE SAME pliki co ambientowe dekoracje świata
-  // (game.js) - nie trzeba duplikować assetu, tylko dwa różne systemy
-  // (spriteLoader tu vs. własny loader game.js) czytają ten sam plik.
-  stall_crate: ['assets/decor/crate.png'],
-  stall_sign: ['assets/decor/sign.png'],
-  // Dwie klatki migoczącego płomienia (_drawStallDecorations w market.js
-  // przełącza je w pętli, ten sam "dwie statyczne klatki" duch co maskotka
-  // ekranu ładowania - patrz loading-screen-frame-a-vis w style.css).
-  stall_torch1: ['assets/decor/torch1.png'],
-  stall_torch2: ['assets/decor/torch2.png'],
-  stall_flag: ['assets/decor/stall_flag.png'],
-  stall_fence: ['assets/decor/stall_fence.png'],
-  stall_mushroom: ['assets/decor/stall_mushroom.png']
+  // w economy.js) - v2: Kenney "Space Shooter Extension", TA SAMA paczka, z
+  // której pochodzi korpus/antena Terminala i bryły wszystkich pięciu maszyn
+  // (machine_sci_* wyżej) - gwarantowana spójność FIKCJI, nie tylko stylu.
+  // Pierwsza wersja (crate/sign/torch/flag/fence/mushroom, Platformer Pack
+  // Remastered) zrewertowana na prośbę Toma - pasowała stylem, ale nie
+  // światem gry ("Terminal = fragment technologii ze statku").
+  stall_console: ['assets/decor/stall_console.png'],
+  stall_beacon: ['assets/decor/stall_beacon.png'],
+  stall_tank: ['assets/decor/stall_tank.png'],
+  stall_solar: ['assets/decor/stall_solar.png'],
+  stall_satellite: ['assets/decor/stall_satellite.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd

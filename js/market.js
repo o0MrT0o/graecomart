@@ -237,27 +237,31 @@ const TRADING_POST_ACCEPTS = ['plastic', 'product', 'alloy', 'crystal', 'crystal
 // rozmieszczenie skalowało się razem z TRADING_POST_SIZE. Rozstawione poza
 // hw/hh (|dx|>1 lub dy poza hh), żeby żadna dekoracja nie nachodziła na
 // korpus/ekran terminala - to satelickie rekwizyty, nie część jego bryły.
-// `spriteKey` to funkcja (nie string) WYŁĄCZNIE dla pochodni - migocze
-// między dwiema klatkami (patrz komentarz przy torch1/torch2 niżej), reszta
-// zwraca stały klucz.
-// BUGFIX (weryfikacja Playwrightem - zrzut ekranu przy Terminalu): pierwsza
-// wersja tego układu miała sign (dx:1.30) i flag (dx:1.65) niemal w tym samym
-// miejscu (35px różnicy przy 62px szerokiej fladze) - flag (rysowany PO
-// sign w tej tablicy) całkowicie go zasłaniał. Przeprojektowane na DWA
-// sloty boczne (daleko od siebie, |dx|=1.55) + CZTERY w rzędzie z przodu
-// (dy>1, czyli POD stopką terminala, rozstawione co ~0.5-0.55 dx - przy
-// rozmiarach 32-62px żadne dwa się już nie stykają).
+// v2 (pierwsza wersja - crate/sign/mushroom/flag/torch/fence w stylu
+// fantasy-platformer - zrewertowana na prośbę Toma: "wziąłeś jakieś kurwa
+// randomowe obiekty", bo mimo pasującego STYLU Kenney kompletnie nie
+// pasowały do fikcji "Terminal = fragment technologii ze statku"). Assety
+// tej wersji pochodzą z TEJ SAMEJ paczki Kenney Space Shooter Extension co
+// korpus/antena Terminala i bryły wszystkich pięciu maszyn, więc spójność
+// jest gwarantowana przez wspólne pochodzenie, nie tylko podobny styl.
+// `spriteKey` to funkcja (nie string) dla spójności z ewentualnymi
+// przyszłymi animowanymi wariantami (jak dawne migające pochodnie) - obecnie
+// każdy slot po prostu zwraca stały klucz.
+// BUGFIX (weryfikacja Playwrightem - zrzut ekranu przy Terminalu): pierwszy
+// układ dekoracji (v1) miał dwa sloty prawie w tym samym miejscu, przez co
+// jeden całkowicie zasłaniał drugi. Rozwiązanie utrzymane w v2: DWA sloty
+// boczne (daleko od siebie, |dx|=1.5) + TRZY w rzędzie z przodu (dy>1, czyli
+// POD stopką terminala, rozstawione co ~0.55-0.65 dx - przy rozmiarach
+// 30-60px żadne dwa się nie stykają).
 const STALL_DECOR_SLOTS = [
-  { id: 'crate', dx: -1.55, dy: 0.3, size: 46, spriteKey: () => 'stall_crate' },
-  { id: 'fence', dx: 1.55, dy: 0.3, size: 42, spriteKey: () => 'stall_fence' },
-  { id: 'sign', dx: -0.85, dy: 1.25, size: 56, spriteKey: () => 'stall_sign' },
-  // Migotanie - dwie klatki przełączane co ~350ms na podstawie zegara, ten
-  // sam "twarde przełączenie, zero interpolacji" duch co maskotka ekranu
-  // ładowania (loading-screen-frame-a-vis w style.css), tylko liczony w JS
-  // (performance.now()) zamiast CSS keyframes - to canvas, nie DOM.
-  { id: 'torch', dx: -0.3, dy: 1.3, size: 48, spriteKey: () => (Math.floor(performance.now() / 350) % 2 === 0 ? 'stall_torch1' : 'stall_torch2') },
-  { id: 'mushroom', dx: 0.3, dy: 1.2, size: 32, spriteKey: () => 'stall_mushroom' },
-  { id: 'flag', dx: 0.85, dy: 1.15, size: 62, spriteKey: () => 'stall_flag' }
+  { id: 'console', dx: -1.5, dy: 0.3, size: 50, spriteKey: () => 'stall_console' },
+  { id: 'satellite', dx: 1.5, dy: 0.3, size: 56, spriteKey: () => 'stall_satellite' },
+  { id: 'tank', dx: -0.65, dy: 1.2, size: 42, spriteKey: () => 'stall_tank' },
+  // Pulsujący sygnał - ten sam duch co dioda na maszcie anteny terminala
+  // (_drawAntenna niżej), osobna, niezależnie fazowana poświata (glow:true),
+  // żeby czytał się jako AKTYWNY sygnalizator, nie martwa naklejka.
+  { id: 'beacon', dx: 0, dy: 1.25, size: 30, spriteKey: () => 'stall_beacon', glow: '#FF7043' },
+  { id: 'solar', dx: 0.65, dy: 1.15, size: 60, spriteKey: () => 'stall_solar' }
 ];
 
 class TradingPost {
@@ -637,6 +641,24 @@ class TradingPost {
       ctx.beginPath();
       ctx.ellipse(cx, cy + h * 0.42, w * 0.36, w * 0.12, 0, 0, Math.PI * 2);
       ctx.fill();
+
+      if (slot.glow) {
+        // Pulsująca poświata pod sygnalizatorem - inna faza/okres niż dioda
+        // anteny (_drawAntenna: /420, bez przesunięcia), żeby oba "światła"
+        // nie migały w idealnym unisono.
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 500 + 1.7);
+        ctx.save();
+        ctx.globalAlpha = 0.35 + 0.35 * pulse;
+        const glowR = w * 0.7;
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+        grad.addColorStop(0, slot.glow);
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
 
       ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
     });

@@ -96,19 +96,30 @@ const _protectionIcon = (kind, color) => {
 
 // Wariant plakietki dla PRAWDZIWYCH, wielokolorowych sprite'ów Kenney (patrz
 // STALL_DECORATIONS niżej) - w przeciwieństwie do _kenneyIcon (jednokolorowa
-// maska CSS) tu chcemy NATYWNE barwy assetu (drewno skrzyni, zielona flaga,
-// pomarańczowy płomień), więc zwykły <img>, nie .ui-icon mask-image.
+// maska CSS) tu chcemy NATYWNE barwy assetu (pomarańczowy sygnalizator,
+// żółty panel słoneczny), więc zwykły <img>, nie .ui-icon mask-image.
 const _stallIcon = (assetPath, bgColor) =>
   `<span class="ui-shop-item__icon-badge" style="background:${bgColor}26"><img src="${assetPath}" alt="" width="22" height="22" style="display:block;object-fit:contain"></span>`;
 
 // --- Dekoracje Terminalu Handlowego (kosmetyka za gotówkę) -------------------
 // Tomek: "zacznijmy od kosmetyki straganu... Katalog dekoracji (5-8 pozycji)
-// — kupowane za gotówkę, ten sam wzorzec co Sklep (ikona/nazwa/opis/koszt)...
-// tylko żeby wszystko pasowało do siebie i było fajne ładne". Assety z Kenney
-// "Platformer Pack Remastered" - TA SAMA paczka, z której już pochodzą
-// crate.png/sign.png (ambientowe dekoracje Strefy C, patrz DECOR_TYPES w
-// game.js), więc gwarantowana spójność stylu z resztą rekwizytów w grze,
-// zamiast zgadywania z innej paczki.
+// — kupowane za gotówkę, ten sam wzorzec co Sklep... tylko żeby wszystko
+// pasowało do siebie i było fajne ładne".
+//
+// PIERWSZA wersja (skrzynia/tabliczka/grzybek/flaga/pochodnia/płot, Kenney
+// "Platformer Pack Remastered") - Tomek: "usuń to bo wziąłeś jakieś kurwa
+// randomowe obiekty". Słusznie: te rekwizyty pasowały STYLEM (ten sam płaski
+// Kenney), ale NIE FIKCJĄ - Terminal to "fragment technologii ze statku"
+// (patrz sci_terminal w sprites.js), a grzybek/pochodnia/płot to
+// średniowieczno-platformowe klimaty, zero związku ze stacją kosmiczną.
+//
+// TA wersja: PRAWDZIWE elementy stacji kosmicznej z Kenney "Space Shooter
+// Extension" (folder Building) - TA SAMA paczka, z której pochodzi sam
+// korpus/antena Terminalu ORAZ ciała wszystkich 5 maszyn (patrz komentarze
+// przy machine_sci_* w sprites.js) - więc to nie tylko podobny styl, tylko
+// DOSŁOWNIE ta sama rodzina assetów co reszta "ship tech" w tej grze.
+// Przejrzane pod kątem czegoś, co realnie stałoby obok terminala handlowego
+// stacji: sygnalizator/panel sterowania/antena/panel słoneczny/mini-satelita.
 //
 // Kupowane RAZ (jak PLAYER_SKINS/PROGRESSION_UNLOCKS), TRWAŁE - NIE zerowane
 // przez prestige() (this.decorationsOwned, patrz konstruktor EconomyManager),
@@ -116,53 +127,47 @@ const _stallIcon = (assetPath, bgColor) =>
 // market.js). Realna nagroda, nie tylko kosmetyka (ten sam duch co
 // MARKET_SEASONAL_PRICE_MULT w market.js): każda POSIADANA dekoracja dokłada
 // +2% do ceny sprzedaży na Terminalu (getDecorationPriceBonusMult niżej) -
-// stackuje się, komplet 6 sztuk = +12% na stałe.
+// stackuje się, komplet 5 sztuk = +10% na stałe.
 const STALL_DECORATION_PRICE_BONUS_PER_ITEM = 0.02;
 const STALL_DECORATIONS = [
   {
-    id: 'crate',
-    icon: _stallIcon('assets/decor/crate.png', '#B98554'),
-    get name() { return I18n.t('decor.crate.name'); },
-    get desc() { return I18n.t('decor.crate.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
-    cost: 120
+    id: 'console',
+    icon: _stallIcon('assets/decor/stall_console.png', '#90A4AE'),
+    get name() { return I18n.t('decor.console.name'); },
+    get desc() { return I18n.t('decor.console.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 150
   },
   {
-    id: 'sign',
-    icon: _stallIcon('assets/decor/sign.png', '#B98554'),
-    get name() { return I18n.t('decor.sign.name'); },
-    get desc() { return I18n.t('decor.sign.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
-    cost: 120
+    // Ten sam pulsujący sygnał co dioda na maszcie anteny terminala
+    // (_drawAntenna w market.js) - _drawStallDecorations dokłada mu
+    // niezależnie fazowaną poświatę, żeby czytał się jako AKTYWNY
+    // sygnalizator, nie martwa naklejka.
+    id: 'beacon',
+    icon: _stallIcon('assets/decor/stall_beacon.png', '#FF7043'),
+    get name() { return I18n.t('decor.beacon.name'); },
+    get desc() { return I18n.t('decor.beacon.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 200
   },
   {
-    id: 'mushroom',
-    icon: _stallIcon('assets/decor/stall_mushroom.png', '#E53935'),
-    get name() { return I18n.t('decor.mushroom.name'); },
-    get desc() { return I18n.t('decor.mushroom.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
-    cost: 180
+    id: 'tank',
+    icon: _stallIcon('assets/decor/stall_tank.png', '#78909C'),
+    get name() { return I18n.t('decor.tank.name'); },
+    get desc() { return I18n.t('decor.tank.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 260
   },
   {
-    id: 'flag',
-    icon: _stallIcon('assets/decor/stall_flag.png', '#66BB6A'),
-    get name() { return I18n.t('decor.flag.name'); },
-    get desc() { return I18n.t('decor.flag.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
-    cost: 280
-  },
-  {
-    // Dwie klatki (torch1/torch2) migoczącego płomienia - _drawStallDecorations
-    // w market.js przełącza je w pętli, ikona katalogu pokazuje tylko
-    // pierwszą (statyczna, wystarczy do rozpoznania w liście).
-    id: 'torch',
-    icon: _stallIcon('assets/decor/torch1.png', '#FFA726'),
-    get name() { return I18n.t('decor.torch.name'); },
-    get desc() { return I18n.t('decor.torch.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    id: 'solar',
+    icon: _stallIcon('assets/decor/stall_solar.png', '#FFD54F'),
+    get name() { return I18n.t('decor.solar.name'); },
+    get desc() { return I18n.t('decor.solar.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
     cost: 320
   },
   {
-    id: 'fence',
-    icon: _stallIcon('assets/decor/stall_fence.png', '#B98554'),
-    get name() { return I18n.t('decor.fence.name'); },
-    get desc() { return I18n.t('decor.fence.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
-    cost: 400
+    id: 'satellite',
+    icon: _stallIcon('assets/decor/stall_satellite.png', '#42A5F5'),
+    get name() { return I18n.t('decor.satellite.name'); },
+    get desc() { return I18n.t('decor.satellite.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 380
   }
 ];
 
