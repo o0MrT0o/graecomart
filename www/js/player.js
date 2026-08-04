@@ -1228,11 +1228,21 @@ class PlayerController {
   }
 
   /**
-   * "Kask z Latarką" (sklep) - kopuła nad głową + pulsująca lampka na czole.
+   * "Kask z Latarką" (sklep) - kopuła nad głową + latarka przypięta z boku.
    * Zakotwiczony DOKŁADNIE na czubku głowy (fraction=0, patrz
    * _getBodyPointY) - kopuła i tak rysuje się w górę od tego punktu
    * (arc od PI do 0 = górna połówka), więc wizualnie "siedzi" na czubku,
    * wyraźnie nad maską na twarzy (fraction=0.28) - zero kolizji.
+   *
+   * BUGFIX (Tomek: "zrób jakąś latarkę z boku hełmu, ten kask źle
+   * wygląda"): lampka wcześniej była tylko świecącą kropką na czole
+   * kopuły - z daleka nieczytelna jako latarka, bardziej jak plama
+   * koloru na hełmie. Zastąpiona osobnym, rozpoznawalnym PRZEDMIOTEM -
+   * metalową tubą na uchwycie z BOKU kopuły, z soczewką (ten sam
+   * pulsujący blask co wcześniej) na końcu. r jest kolizyjnym promieniem
+   * (this.radius), ale kopuła rysuje się symetrycznie wokół x=0, więc -
+   * inaczej niż przy butach/pasku (patrz _isAlienBodyActive) - różnice
+   * szerokości sylwetki między ciałami nie psują tu wycentrowania.
    */
   _drawHelmet(ctx2, topY) {
     const r = this.radius * 0.62;
@@ -1270,23 +1280,51 @@ class PlayerController {
     ctx2.fillStyle = 'rgba(93, 64, 55, 0.5)';
     ctx2.fillRect(-r, r * 0.05, r * 2, r * 0.17);
 
-    // Lampka - pierścień poświaty pod spodem (radialny gradient) + jasny
-    // rdzeń, zamiast pojedynczego płaskiego kółka - czyta się jako źródło
-    // światła, nie naklejka, nawet zanim pulsowanie zacznie działać.
+    // Latarka z boku kopuły - własny lokalny układ (przesunięcie + obrót),
+    // żeby tuba i jej soczewka nie musiały ręcznie przeliczać sinusów/
+    // cosinusów kąta nachylenia.
+    ctx2.save();
+    ctx2.translate(r * 0.78, r * 0.02);
+    ctx2.rotate(-0.25);
+
+    // Uchwyt łączący tubę z kopułą.
+    ctx2.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx2.fillRect(-r * 0.22, -r * 0.08, r * 0.3, r * 0.16);
+
+    // Tuba - gradient poprzeczny (jasna góra, ciemny dół), jak realny
+    // metalowy walec, ten sam zabieg "obiekt ma objętość" co reszta gearu.
+    const tubeLen = r * 0.85;
+    const tubeW = r * 0.32;
+    const tubeGrad = ctx2.createLinearGradient(0, -tubeW / 2, 0, tubeW / 2);
+    tubeGrad.addColorStop(0, '#9E9E9E');
+    tubeGrad.addColorStop(0.5, '#616161');
+    tubeGrad.addColorStop(1, '#333333');
+    ctx2.fillStyle = tubeGrad;
+    ctx2.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx2.lineWidth = 1;
+    this._roundRect(ctx2, 0, -tubeW / 2, tubeLen, tubeW, tubeW * 0.35);
+    ctx2.fill();
+    ctx2.stroke();
+
+    // Soczewka na czubku tuby - ten sam efekt "źródła światła" (poświata +
+    // jasny rdzeń, pulsujące) co poprzednia wersja, teraz osadzony na
+    // czubku rozpoznawalnej latarki zamiast samotnie na czole kopuły.
     const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 260);
     ctx2.save();
     ctx2.globalAlpha = pulse;
-    const glowGrad = ctx2.createRadialGradient(0, -r * 0.15, 0, 0, -r * 0.15, r * 0.4);
+    const glowGrad = ctx2.createRadialGradient(tubeLen, 0, 0, tubeLen, 0, tubeW * 0.9);
     glowGrad.addColorStop(0, 'rgba(255, 249, 196, 0.9)');
     glowGrad.addColorStop(1, 'rgba(255, 249, 196, 0)');
     ctx2.fillStyle = glowGrad;
     ctx2.beginPath();
-    ctx2.arc(0, -r * 0.15, r * 0.4, 0, Math.PI * 2);
+    ctx2.arc(tubeLen, 0, tubeW * 0.9, 0, Math.PI * 2);
     ctx2.fill();
     ctx2.fillStyle = '#FFF9C4';
     ctx2.beginPath();
-    ctx2.arc(0, -r * 0.15, r * 0.2, 0, Math.PI * 2);
+    ctx2.arc(tubeLen, 0, tubeW * 0.42, 0, Math.PI * 2);
     ctx2.fill();
+    ctx2.restore();
+
     ctx2.restore();
 
     ctx2.restore();
