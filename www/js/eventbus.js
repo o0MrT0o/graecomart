@@ -60,6 +60,10 @@ const Events = {
     // dźwiękiem, economy.js sam publikuje FX_POPUP/FX_PARTICLES w miejscu
     // zdarzenia (ten sam wzorzec co sellItem).
     GOLD_BONUS_COLLECTED: 'goldbonus:collected', // { reward, x, y }
+    // Zapis w chmurze (cloudsave.js) - stan logowania/synchronizacji się
+    // zmienił (zalogowano, zsynchronizowano, błąd) - ui.js nasłuchuje, żeby
+    // odświeżyć wiersz "Chmura" w Menu bez ręcznego odpytywania w pętli.
+    CLOUD_SAVE_STATE_CHANGED: 'cloudsave:stateChanged', // { signedIn, playerName, lastSyncAt, status }
 };
 
 if (typeof globalThis !== 'undefined') {

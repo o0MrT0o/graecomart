@@ -87,6 +87,10 @@ const CREDIT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24
 // dwie linie "równoleżników" - klasyczny, rozpoznawalny kształt globusa bez
 // potrzeby nowego assetu.
 const LANGUAGE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px" fill="none" stroke="#4DD0E1" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5"/><path d="M4 9.5h16M4 14.5h16"/></svg>';
+// Ikona wiersza "Chmura" (SettingsPanel._buildCloudSaveRow) - ten sam powód
+// custom SVG co LANGUAGE_ICON_SVG wyżej (żadna wypakowana paczka Kenney nie
+// ma glifu chmury/synchronizacji). Klasyczny kontur chmury.
+const CLOUD_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px" fill="#81D4FA" stroke="none"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A5.5 5.5 0 0 1 17.2 8.1 4 4 0 0 1 17 16H7Z"/></svg>';
 // LOCK PODMIENIONY (był ten sam cienki, ręcznie rysowany kłódkowy kontur co
 // reszta tej fali - patrz komentarz przy CART/GEAR/PAY wyżej) - dodany
 // niedawno (kłódka "za mało kasy"), ale od razu na docelowej ikonie
@@ -1236,6 +1240,15 @@ class SettingsPanel {
     this._onKeyDown = (e) => {
       if (e.key === 'Escape' && this.isOpen) this.close();
     };
+
+    // Logowanie/synchronizacja w chmurze (cloudsave.js) jest ASYNCHRONICZNA
+    // (round-trip do Google) - w przeciwieństwie do reszty wierszy w tym
+    // panelu (Dźwięk itp., rozstrzygane od razu) panel musi się odświeżyć
+    // SAM, gdy wynik dotrze, jeśli akurat jest otwarty w tym momencie.
+    this._onCloudSaveStateChanged = () => {
+      if (this.isOpen) this.refresh();
+    };
+    Bus.subscribe(Events.CLOUD_SAVE_STATE_CHANGED, this._onCloudSaveStateChanged);
   }
 
   mount(parent) {
@@ -1300,7 +1313,7 @@ class SettingsPanel {
     this.bodyEl.innerHTML = '';
     this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.progress'), [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
     this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.preferences'), [this._buildSoundRow(), this._buildMusicVolumeRow(), this._buildLanguageRow(), this._buildTutorialRow()]));
-    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.data'), [this._buildExportRow(), this._buildImportRow(), this._buildResetRow()]));
+    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.data'), [this._buildCloudSaveRow(), this._buildExportRow(), this._buildImportRow(), this._buildResetRow()]));
     this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.about'), [this._buildAboutRow()]));
   }
 
@@ -1483,6 +1496,71 @@ class SettingsPanel {
     return this._buildRow(LANGUAGE_ICON_SVG, I18n.t('settings.language.name'), desc, btn.mount());
   }
 
+  /**
+   * Wiersz "Chmura" (Tomek: "cloud save... bez tego zgubiony telefon =
+   * zgubiony postęp mimo eksportu") - trzy stany: niedostępne (zwykła
+   * przeglądarka/build bez pluginu), dostępne-niezalogowane, zalogowane.
+   * Całą logikę (porównanie timestampów, upload/download, rozdzielczość
+   * konfliktu) robi cloudsave.js - ten wiersz tylko odpytuje jego stan i
+   * woła signIn()/syncNow(), a odświeża się sam przez Bus (patrz
+   * _onCloudSaveStateChanged w konstruktorze) gdy async wynik dotrze.
+   */
+  _buildCloudSaveRow() {
+    const csm = window.cloudSaveManager;
+    const available = csm && csm.available();
+
+    if (!available) {
+      const btn = new UIButton({ label: I18n.t('ui.cloudSave.unavailable.button'), variant: 'ghost', disabled: true });
+      return this._buildRow(CLOUD_ICON_SVG, I18n.t('ui.cloudSave.name'), I18n.t('ui.cloudSave.unavailable.desc'), btn.mount());
+    }
+
+    const syncing = csm.status === 'syncing';
+
+    if (!csm.signedIn) {
+      const btn = new UIButton({
+        label: syncing ? I18n.t('ui.cloudSave.syncing.button') : I18n.t('ui.cloudSave.signIn.button'),
+        variant: 'ghost',
+        disabled: syncing,
+        onClick: () => {
+          csm.signIn();
+          this.refresh();
+        }
+      });
+      const desc = csm.status === 'error' ? I18n.t('ui.cloudSave.error.desc') : I18n.t('ui.cloudSave.signedOut.desc');
+      return this._buildRow(CLOUD_ICON_SVG, I18n.t('ui.cloudSave.name'), desc, btn.mount());
+    }
+
+    const syncStatus = syncing
+      ? I18n.t('ui.cloudSave.syncing.button')
+      : csm.lastSyncAt
+        ? this._formatCloudSyncTime(csm.lastSyncAt)
+        : I18n.t('ui.cloudSave.lastSync.never');
+    const desc = I18n.t('ui.cloudSave.signedIn.desc', { player: csm.playerName || '?', syncStatus });
+    const btn = new UIButton({
+      label: syncing ? I18n.t('ui.cloudSave.syncing.button') : I18n.t('ui.cloudSave.sync.button'),
+      variant: 'ghost',
+      disabled: syncing,
+      onClick: () => {
+        csm.syncNow();
+        this.refresh();
+      }
+    });
+    return this._buildRow(CLOUD_ICON_SVG, I18n.t('ui.cloudSave.name'), desc, btn.mount());
+  }
+
+  /** "zsynchronizowano przed chwilą/12min/2h 5min" - ten sam styl co
+   * OfflineRewardModal._formatDuration, tylko zwraca CAŁY przetłumaczony
+   * string (nie samą liczbę), bo wywołujący wyżej wstawia go już gotowy do
+   * ui.cloudSave.signedIn.desc. */
+  _formatCloudSyncTime(ts) {
+    const diffMin = Math.floor((Date.now() - ts) / 60000);
+    if (diffMin < 1) return I18n.t('ui.cloudSave.lastSync.justNow');
+    const h = Math.floor(diffMin / 60);
+    const m = diffMin % 60;
+    const timeStr = h > 0 ? `${h}h ${m}min` : `${m}min`;
+    return I18n.t('ui.cloudSave.lastSync.time', { time: timeStr });
+  }
+
   /** Uruchamia samouczek od pierwszego kroku - jeśli poprzednia instancja
    * jeszcze żyje (mało prawdopodobne, skoro dismissed/ukończony samouczek
    * sam się usuwa z DOM, ale na wszelki wypadek), najpierw ją sprzątamy,
@@ -1618,6 +1696,7 @@ class SettingsPanel {
 
   destroy() {
     document.removeEventListener('keydown', this._onKeyDown);
+    Bus.unsubscribe(Events.CLOUD_SAVE_STATE_CHANGED, this._onCloudSaveStateChanged);
     if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
     if (this._importFileInput && this._importFileInput.parentNode) {
       this._importFileInput.parentNode.removeChild(this._importFileInput);

@@ -128,6 +128,15 @@ function startGame() {
         // Faza 5: load() teraz zwraca ile ms minęło od ostatniego zapisu
         // (albo null przy pierwszym uruchomieniu) - patrz save.js.
         const offlineElapsedMs = window.saveManager.load();
+
+        // Zapis w chmurze (Tomek: "zgubiony telefon = zgubiony postęp mimo
+        // eksportu") - PO load() (potrzebuje lokalnego zapisu do porównania
+        // timestampów, patrz cloudsave.js). Cichy no-op bez zbudowanego
+        // pluginu/bez wcześniejszego logowania - checkAutoSignIn() tylko
+        // SPRAWDZA, czy automatyczne logowanie pluginu się powiodło, nie
+        // żąda go jawnie (to dopiero przycisk w Menu, patrz ui.js).
+        window.cloudSaveManager = new CloudSaveManager(window.saveManager);
+        window.cloudSaveManager.checkAutoSignIn();
         // PO load() (żeby lastLoginDateStr/dailyChallenge z zapisu były już
         // wczytane), ale PRZED syncFromGameState() (żeby HUD od razu
         // odzwierciedlił ewentualną nagrodę za dzisiejszy dzień/nowe

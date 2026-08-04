@@ -10,3 +10,6 @@ project(':capacitor-haptics').projectDir = new File('../node_modules/@capacitor/
 
 include ':capacitor-local-notifications'
 project(':capacitor-local-notifications').projectDir = new File('../node_modules/@capacitor/local-notifications/android')
+
+include ':capacitor-google-game-services'
+project(':capacitor-google-game-services').projectDir = new File('../node_modules/capacitor-google-game-services/android')
