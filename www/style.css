@@ -1370,6 +1370,21 @@ canvas {
     border-image-source: url('assets/ui/btn_yellow_pressed.png');
 }
 
+/* Tomek: "jak się coś ulepsza to się podświetla na żółto a przez to nie
+   widać waluty" - CREDIT_ICON_SVG (ui.js) ma na stałe złoty fill (#FFD54F,
+   ten sam odcień co --ui-gold), więc na żółtym tle przycisku "accent"
+   (ceny, na które gracza stać) praktycznie znikał. fill="..." na samym
+   <svg> to atrybut PREZENTACYJNY (najniższa możliwa specyficzność w CSS),
+   więc ta reguła klasowa nadpisuje go bez !important - wymuszony na TEN
+   SAM ciemny kolor, którym już czyta się cena obok niego (.ui-btn--accent
+   { color } wyżej), zamiast dorzucać nowy, niezwiązany odcień. TYLKO tutaj
+   (nie globalnie na CREDIT_ICON_SVG) - w pozostałych miejscach (toasty,
+   pasek "co dalej") złoty na ciemnym tle ma dobry kontrast i trzyma
+   skojarzenie "waluta = złoto", psuje się WYŁĄCZNIE na żółtym tle. */
+.ui-btn--accent svg {
+    fill: #1a1400;
+}
+
 .ui-btn--ghost {
     border-image-source: url('assets/ui/btn_grey_raised.png');
     color: var(--ui-text-muted);
