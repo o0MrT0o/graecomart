@@ -474,14 +474,23 @@ const PRESTIGE_UPGRADES = [
   // Sześć ulepszeń wyżej wyczerpuje się po kilku odlotach (maxLevel 6-10,
   // koszty rosną, ale w końcu każde da się dobić do maksa) - gracz, który
   // zebrał sporo Rdzeni, zostawał bez żadnego powodu, żeby dalej odlatywać.
-  // Te cztery odblokowują się dopiero na planetNumber >= CORE_TIER2_UNLOCK_PLANET
+  // Te sześć odblokowuje się dopiero na planetNumber >= CORE_TIER2_UNLOCK_PLANET
   // (patrz getCoreShopCatalog/buyCoreUpgrade niżej) - CELOWO ukryte, nie
   // pokazane jako "zablokowane" (w przeciwieństwie do SHOP_UPGRADES, ten
   // katalog nie ma wzorca zaszarzonych pozycji), żeby dotarcie do 5. planety
-  // dawało realną, nieoczekiwaną nagrodę: nowy rząd katalogu. Każde z nich
-  // CELOWO dotyka innej, już istniejącej formuły (combo/offline/streak/
-  // prestiż), więc zero nowych systemów - tylko głębsze skalowanie tego, co
-  // już jest.
+  // dawało realną, nieoczekiwaną nagrodę: nowy rząd katalogu. Pierwsze cztery
+  // CELOWO dotykają innej, już istniejącej formuły (combo/offline/streak/
+  // prestiż) - zero nowych systemów, tylko głębsze skalowanie tego, co już
+  // jest.
+  //
+  // Ostatnie dwa (core_auto_feed/core_auto_sell) są WYJĄTKIEM od tej zasady -
+  // Tomek: "mimo nazwy Idle gra wciąż wymaga sporo aktywnego chodzenia i
+  // ręcznego zbierania - magnes/dron pomagają, ale nie zastępują gracza".
+  // To pierwsza para ulepszeń, która faktycznie automatyzuje samą PĘTLĘ
+  // (karmienie maszyn + sprzedaż), nie tylko przyspiesza/podbija to, co
+  // gracz i tak robi ręcznie. Celowo NIE 100% skuteczności na maksie (patrz
+  // getValue niżej) - ręczna gra ma zostać zauważalnie lepsza, inaczej
+  // automatyzacja po prostu zastąpiłaby rdzeń gry zamiast go dopełniać.
   {
     id: 'core_combo_master',
     icon: _kenneyIcon('fire', '#FF7043'),
@@ -532,6 +541,45 @@ const PRESTIGE_UPGRADES = [
     unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
     getValue(level) {
       return 1 + level * 0.1;
+    }
+  },
+  // Czytane na bieżąco w machines.js (_getAutoFeedEfficiency) - maszyny same
+  // ciągną surowiec z plecaka niezależnie od pozycji gracza, tempem
+  // MACHINE_UNLOAD_INTERVAL_MS/skuteczność (więc WOLNIEJ niż ręczne stanie
+  // przy maszynie, nigdy szybciej). 0.72 na maksie (poziom 6) - ręczne
+  // karmienie zostaje wyraźnie lepszą opcją, gdy gracz akurat jest przy
+  // maszynie.
+  {
+    id: 'core_auto_feed',
+    icon: _kenneyIcon('wrench', '#4FC3F7'),
+    get name() { return I18n.t('core.item.core_auto_feed.name'); },
+    get description() { return I18n.t('core.item.core_auto_feed.desc'); },
+    baseCost: 9,
+    costScale: 1.9,
+    maxLevel: 6,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return level * 0.12;
+    }
+  },
+  // Czytane na bieżąco w machines.js (_getAutoSellEfficiency) - gotowy
+  // produkt (bez dalszego odbiorcy-maszyny) sprzedaje się WPROST przez
+  // economyManager.autoSellItem() zamiast spawnować się w świecie, za
+  // cenę*skuteczność - bez combo (combo nagradza aktywne, szybkie chodzenie
+  // do Terminalu, nie pasuje do biernego strumyka w tle). 0.72 na maksie -
+  // ten sam sufit co core_auto_feed, ręczne noszenie do Terminalu dalej daje
+  // 100% ceny.
+  {
+    id: 'core_auto_sell',
+    icon: _kenneyIcon('export', '#4DB6AC'),
+    get name() { return I18n.t('core.item.core_auto_sell.name'); },
+    get description() { return I18n.t('core.item.core_auto_sell.desc'); },
+    baseCost: 9,
+    costScale: 1.9,
+    maxLevel: 6,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return level * 0.12;
     }
   }
 ];
@@ -1394,6 +1442,57 @@ class EconomyManager {
       y,
       duration: 900,
       color: this.comboStacks >= comboMax ? '#FF7043' : '#FFD700'
+    });
+
+    return paidOut;
+  }
+
+  /**
+   * Sprzedaje jedną sztukę produkcji AUTOMATYCZNIE (core_auto_sell, patrz
+   * PRESTIGE_UPGRADES) - wołane WPROST z machines.js w momencie ukończenia
+   * cyklu, zamiast fizycznego spawnu w świecie. Te same skutki uboczne co
+   * sellItem() (licznik itemsSold/lifetimeEarned, wyzwanie dnia, achievementy
+   * - to wciąż realna sprzedaż, tylko bez gracza przy kasie), ale BEZ combo:
+   * combo nagradza aktywne, szybkie chodzenie do Terminalu, a bierny strumyk
+   * w tle mógłby go bezkarnie nakręcać w nieskończoność.
+   *
+   * unitPrice to JUŻ pomniejszona (przez _getAutoSellEfficiency w
+   * machines.js) cena - ta metoda nie zna ceny bazowej, tylko wypłaca to,
+   * co dostanie.
+   * @returns {number} faktycznie wypłacona kwota (po core_income itd.).
+   */
+  autoSellItem(typeId, unitPrice, x, y) {
+    const paidOut = this._addMoney(unitPrice, x, y);
+    if (paidOut <= 0) return 0;
+
+    this.sellEarnings += paidOut;
+    this.stats.lifetimeEarned += paidOut;
+    this.stats.itemsSold += 1;
+    this._checkAchievements();
+
+    const c = this.dailyChallenge;
+    if (c && !c.claimed) {
+      if (c.type === 'earn') {
+        c.progress = Math.min(c.target, c.progress + paidOut);
+        Bus.publish(Events.DAILY_CHALLENGE_UPDATED, { ...c });
+      } else if (c.type === 'sell') {
+        c.progress = Math.min(c.target, c.progress + 1);
+        Bus.publish(Events.DAILY_CHALLENGE_UPDATED, { ...c });
+      }
+    }
+
+    // Odrębny, przygaszony kolor (nie złoty jak sellItem/collectGoldBonus) -
+    // czytelny sygnał "to automat, nie Ty" dla gracza, który akurat patrzy
+    // na maszyny. Bez ikony (żaden z gamefeel.js _drawPopupIcon nie pasuje
+    // tematycznie), krótszy czas życia - te popupy mogą lecieć z kilku
+    // maszyn naraz, nie powinny zaśmiecać ekranu tak długo jak pojedyncza
+    // sprzedaż gracza.
+    Bus.publish(Events.FX_POPUP, {
+      text: `+${paidOut}`,
+      x,
+      y,
+      duration: 650,
+      color: '#4DB6AC'
     });
 
     return paidOut;

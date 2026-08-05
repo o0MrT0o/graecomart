@@ -211,7 +211,12 @@ class MachineManager {
       // Odmierza subtelne "kłębki pary" podczas przetwarzania (patrz update())
       // - bez tego wielosekundowy pasek postępu był jedynym sygnałem, że coś
       // się dzieje, a reszta maszyny stała wizualnie martwa aż do końca.
-      steamTimer: 0
+      steamTimer: 0,
+      // Timer auto-załadunku (core_auto_feed) - WŁASNY per maszyna, w
+      // przeciwieństwie do this._unloadTimer wyżej (jeden, dzielony,
+      // wyłącznie dla maszyny w zasięgu gracza) - auto-feed działa
+      // niezależnie na WSZYSTKICH maszynach naraz, więc każda liczy sama.
+      autoUnloadTimer: 0
     }));
 
     this._onPlayerMoved = (d) => {
@@ -349,6 +354,52 @@ class MachineManager {
       this._unloadTimer = 0;
     }
 
+    // Auto-załadunek (core_auto_feed, Rdzenie) - Tomek: gra ma automatyzować
+    // pętlę, nie tylko przyspieszać ręczną grę. Działa na WSZYSTKICH
+    // odblokowanych maszynach RÓWNOLEGLE (nie tylko this.inRange), ale
+    // pomija tę, którą gracz akurat ręcznie karmi w tej klatce - stanie przy
+    // maszynie ma zostać wyraźnie najszybszą opcją, automat dostaje
+    // "resztę". Tempo: MACHINE_UNLOAD_INTERVAL_MS / skuteczność, czyli
+    // WOLNIEJ niż ręczne karmienie przy skuteczności <1 (zawsze, patrz
+    // getValue w PRESTIGE_UPGRADES - sufit to 0.72, nigdy 1+).
+    const autoFeedEff = this._getAutoFeedEfficiency();
+    if (autoFeedEff > 0) {
+      const stack = window.stackController;
+      if (stack && !stack.isEmpty()) {
+        this.machines.forEach((m) => {
+          if (this.inRange && m.id === this.inRange.id) return;
+          if (!this._isMachineUnlocked(m) || !this._canFeedMachine(m)) {
+            m.autoUnloadTimer = 0;
+            return;
+          }
+          const idx = stack.findIndex((item) => this._machineAccepts(m, item.typeId));
+          if (idx === -1) {
+            m.autoUnloadTimer = 0;
+            return;
+          }
+
+          m.autoUnloadTimer += delta;
+          const interval = MACHINE_UNLOAD_INTERVAL_MS / autoFeedEff;
+          if (m.autoUnloadTimer < interval) return;
+          m.autoUnloadTimer = 0;
+
+          window.stackController.removeAt(idx);
+          m.inventory++;
+          Bus.publish(Events.MACHINE_RECEIVED, { machineId: m.id });
+          // Mniej cząsteczek niż ręczne karmienie (4) - subtelniejszy,
+          // "ambientowy" sygnał w tle, nie ma przyciągać uwagi tak jak akcja
+          // gracza.
+          Bus.publish(Events.FX_PARTICLES, { x: m.x, y: m.y, color: m.color, count: 2 });
+
+          if (m.inventory >= m.maxInventory && !m.processing) {
+            m.processing = true;
+            m.processingProgress = 0;
+            m.steamTimer = 0;
+          }
+        });
+      }
+    }
+
     // Przetwarzanie maszyn.
     this.machines.forEach((m) => {
       if (!m.processing) return;
@@ -396,12 +447,39 @@ class MachineManager {
         duration: MACHINE_OUTPUT_SHAKE_DURATION_MS
       });
 
-      // Przedmiot w świecie spawnujemy TYLKO, jeśli ktokolwiek go faktycznie
-      // przyjmuje - inna maszyna (np. plastik -> prasa) ALBO TradingPost
-      // (np. gotowy produkt -> sprzedaż). Jeśli nikt go nie przyjmuje,
-      // dorzucanie go do świata tylko zapychałoby plecak przedmiotem bez
-      // żadnego dalszego zastosowania.
-      if (window.itemManager && this._hasAnyConsumer(m.outputType)) {
+      // Auto-eksport (core_auto_sell, Rdzenie) - TYLKO dla gotowego produktu
+      // BEZ dalszego odbiorcy-maszyny (_findMachineForType null), czyli
+      // ostatniego ogniwa łańcucha, które i tak trafiłoby prosto do
+      // TradingPost. Półprodukty (np. plastik->prasa) NIGDY się tak nie
+      // sprzedają - musiałyby zniknąć z łańcucha, zamiast popłynąć dalej.
+      // Sprzedaje WPROST przez economyManager.autoSellItem() (cena razy
+      // skuteczność, patrz PRESTIGE_UPGRADES) - żadnego fizycznego itemu w
+      // świecie, więc żadnego noszenia do Terminalu.
+      const autoSellEff = this._getAutoSellEfficiency();
+      const sellsAtTerminal = window.tradingPost
+        && Array.isArray(window.tradingPost.acceptsType)
+        && window.tradingPost.acceptsType.includes(m.outputType);
+      const hasMachineConsumer = !!this._findMachineForType(m.outputType);
+
+      if (autoSellEff > 0 && sellsAtTerminal && !hasMachineConsumer && window.marketManager && window.economyManager) {
+        const count = this._getYield(m.id);
+        const basePrice = window.marketManager.getPrice(m.outputType);
+        for (let i = 0; i < count; i++) {
+          window.economyManager.autoSellItem(
+            m.outputType,
+            Math.round(basePrice * autoSellEff),
+            m.x,
+            m.y - MACHINE_OUTPUT_SPAWN_OFFSET_Y
+          );
+        }
+        Bus.publish(Events.FX_PARTICLES, { x: m.x, y: m.y - MACHINE_OUTPUT_SPAWN_OFFSET_Y, color: '#4DB6AC', count: 4 });
+      } else if (window.itemManager && this._hasAnyConsumer(m.outputType)) {
+        // Przedmiot w świecie spawnujemy TYLKO, jeśli ktokolwiek go faktycznie
+        // przyjmuje - inna maszyna (np. plastik -> prasa) ALBO TradingPost
+        // (np. gotowy produkt -> sprzedaż). Jeśli nikt go nie przyjmuje,
+        // dorzucanie go do świata tylko zapychałoby plecak przedmiotem bez
+        // żadnego dalszego zastosowania.
+        //
         // Ulepszenie 'yield' (MACHINE_UPGRADE_KINDS w economy.js) - z jednego
         // cyklu wypada więcej niż jedna sztuka. Rozrzucamy je lekko na boki,
         // żeby nie wylądowały dokładnie jedna na drugiej i dało się je
@@ -1384,6 +1462,26 @@ class MachineManager {
     const eco = window.economyManager;
     if (!eco || typeof eco.getMachineUpgradeValue !== 'function') return 1;
     return Math.max(1, Math.round(eco.getMachineUpgradeValue(machineId, 'yield')));
+  }
+
+  /** Skuteczność auto-załadunku (core_auto_feed, Rdzenie) - 0 = brak
+   * ulepszenia (mechanizm całkiem wyłączony), do 0.72 na maksie. Ten sam
+   * odczyt "na bieżąco" co _getSpeedMultiplier - działa natychmiast po
+   * zakupie, przetrwa prestiż (Rdzenie nie są zerowane). */
+  _getAutoFeedEfficiency() {
+    const eco = window.economyManager;
+    if (!eco || typeof eco.getCoreValue !== 'function') return 0;
+    const v = eco.getCoreValue('core_auto_feed');
+    return typeof v === 'number' ? v : 0;
+  }
+
+  /** Skuteczność auto-eksportu (core_auto_sell, Rdzenie) - mnożnik ceny przy
+   * automatycznej sprzedaży, patrz gałąź autoSellEff w update(). */
+  _getAutoSellEfficiency() {
+    const eco = window.economyManager;
+    if (!eco || typeof eco.getCoreValue !== 'function') return 0;
+    const v = eco.getCoreValue('core_auto_sell');
+    return typeof v === 'number' ? v : 0;
   }
 
   _lighten(hex, amount) {

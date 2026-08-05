@@ -171,6 +171,10 @@ const I18N_STRINGS = {
     'core.item.core_daily_master.desc': '+8% do nagrody za passę codziennego logowania za poziom',
     'core.item.core_prestige_boost.name': 'Głębsza Analiza',
     'core.item.core_prestige_boost.desc': '+10% Rdzeni z każdego odlotu za poziom',
+    'core.item.core_auto_feed.name': 'Autonomiczny Załadunek',
+    'core.item.core_auto_feed.desc': 'Maszyny same pobierają pasujący surowiec z plecaka, nawet gdy nie stoisz obok - +12% skuteczności za poziom (do 72% ręcznego tempa)',
+    'core.item.core_auto_sell.name': 'Autonomiczny Eksport',
+    'core.item.core_auto_sell.desc': 'Gotowy produkt sprzedaje się sam na Terminalu, bez noszenia - +12% skuteczności za poziom (do 72% ceny ręcznej sprzedaży)',
 
     // --- Ulepszenia maszyn (economy.js: MACHINE_UPGRADE_KINDS/LABELS) -------
     'machineUpgrade.speed.name': 'Przyspieszenie',
@@ -614,6 +618,10 @@ const I18N_STRINGS = {
     'core.item.core_daily_master.desc': '+8% to the daily login streak reward, per level',
     'core.item.core_prestige_boost.name': 'Deeper Analysis',
     'core.item.core_prestige_boost.desc': '+10% Cores from every prestige, per level',
+    'core.item.core_auto_feed.name': 'Autonomous Loading',
+    'core.item.core_auto_feed.desc': 'Machines pull matching resources from your backpack even when you are not nearby - +12% efficiency per level (up to 72% of manual speed)',
+    'core.item.core_auto_sell.name': 'Autonomous Export',
+    'core.item.core_auto_sell.desc': 'Finished product sells itself at the Terminal, no carrying needed - +12% efficiency per level (up to 72% of manual sell price)',
 
     // --- Machine upgrades (economy.js: MACHINE_UPGRADE_KINDS/LABELS) --------
     'machineUpgrade.speed.name': 'Speed Boost',
