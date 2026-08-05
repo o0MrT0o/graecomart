@@ -182,7 +182,7 @@ const MACHINE_OUTPUT_SPREAD_X = 34;
 // krążący Dron Recyklingowy).
 const AUTO_FEED_POD_DURATION_MS = 420;
 const AUTO_FEED_POD_ARC_HEIGHT = 46;
-const AUTO_FEED_POD_SIZE = 9;
+const AUTO_FEED_POD_SIZE = 10;
 // Jednostka bazowa dla maszyn rysowanych PROCEDURALNIE (bez pliku PNG) -
 // dobrana tak, żeby ich sylwetka zajmowała na ekranie tyle samo co gotowe
 // sprite'y. Zmierzone wprost z assets/machines/*.png: nieprzezroczysty
@@ -765,31 +765,47 @@ class MachineManager {
 
       ctx.save();
 
-      // Krótki, przygasający ślad ZA kapsułą (w stronę p0).
+      // Krótki, przygasający ślad ZA kapsułą (w stronę p0) - cienka ciemna
+      // obwódka na każdej kropce z tego samego powodu co niżej: kolor
+      // Reaktora Recyklingowego (#66BB6A) na trawie inaczej ginie kompletnie.
       for (let i = 1; i <= 3; i++) {
         const tt = Math.max(0, t - i * 0.045);
         const gx = p.x0 + (p.x1 - p.x0) * tt;
         const gy = p.y0 + (p.y1 - p.y0) * tt - Math.sin(tt * Math.PI) * AUTO_FEED_POD_ARC_HEIGHT;
-        ctx.globalAlpha = alpha * (0.35 - i * 0.09);
+        const r = AUTO_FEED_POD_SIZE * (0.5 - i * 0.1);
+        ctx.globalAlpha = alpha * (0.4 - i * 0.09);
         ctx.fillStyle = p.color;
         ctx.beginPath();
-        ctx.arc(gx, gy, AUTO_FEED_POD_SIZE * (0.5 - i * 0.1), 0, Math.PI * 2);
+        ctx.arc(gx, gy, r, 0, Math.PI * 2);
         ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.stroke();
       }
 
-      // Miękka poświata pod kapsułą.
-      ctx.globalAlpha = alpha;
-      const grad = ctx.createRadialGradient(x, y, 0, x, y, AUTO_FEED_POD_SIZE * 2.2);
-      grad.addColorStop(0, p.color);
-      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      // Poświata NEUTRALNA (biała), nie w kolorze maszyny - BUGFIX: Reaktor
+      // Recyklingowy jest zielony (#66BB6A), więc kolorowa łuna na trawie
+      // była praktycznie niewidoczna (zielone na zielonym). Biała poświata
+      // czyta się na KAŻDYM biomie, a "czyją to maszynę" i tak mówi mały
+      // kolorowy romb w środku, patrz niżej.
+      ctx.globalAlpha = alpha * 0.8;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, AUTO_FEED_POD_SIZE * 2.4);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(x, y, AUTO_FEED_POD_SIZE * 2.2, 0, Math.PI * 2);
+      ctx.arc(x, y, AUTO_FEED_POD_SIZE * 2.4, 0, Math.PI * 2);
       ctx.fill();
 
-      // Korpus - biały romb z węższym rombem koloru maszyny w środku (ten
-      // sam "obwódka + wypełnienie" duch co _drawOutlinedText, tylko
-      // kształtem zamiast tekstem).
+      // Korpus - biały romb z ciemną obwódką (ten sam "obwódka pod
+      // wypełnieniem" trik co _drawOutlinedText - czytelne na KAŻDYM tle,
+      // nie tylko tam gdzie akurat kontrastuje), a w środku węższy romb w
+      // kolorze maszyny (też obrysowany), żeby dało się rozpoznać, do
+      // której maszyny akurat leci dostawa.
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
+
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
       ctx.moveTo(x, y - AUTO_FEED_POD_SIZE);
@@ -798,6 +814,7 @@ class MachineManager {
       ctx.lineTo(x - AUTO_FEED_POD_SIZE * 0.7, y);
       ctx.closePath();
       ctx.fill();
+      ctx.stroke();
 
       ctx.fillStyle = p.color;
       ctx.beginPath();
@@ -807,6 +824,9 @@ class MachineManager {
       ctx.lineTo(x - AUTO_FEED_POD_SIZE * 0.4, y);
       ctx.closePath();
       ctx.fill();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.stroke();
 
       ctx.restore();
     });
