@@ -1164,13 +1164,29 @@ class MachineManager {
 
   /**
    * Kompresor Grawitonowy (dawniej Prasa, assets/machines/press.png) - druga
-   * z trzech maszyn "Fazy kosmicznego reskinu, wersja 2". Bryła to teraz
-   * prawdziwa "klepsydra" z Kenney "Space Shooter Extension"
-   * (spaceStation_012, assets/machines/sci_press.png, CC0) - dwie płyty
-   * zbiegające się ku wspólnemu punktowi w środku, więc kształt SAM w sobie
-   * czyta się jako "kompresja", bez potrzeby animowania ręcznie rysowanych
-   * płyt jak w poprzedniej wersji. Rdzeń (sci_core.png) siedzi w punkcie
-   * zbiegu i "oddycha" skalą Y w rytm ściskania.
+   * z trzech maszyn "Fazy kosmicznego reskinu, wersja 2". Bryła to prawdziwa
+   * "klepsydra" z Kenney "Space Shooter Extension" (spaceStation_012,
+   * assets/machines/sci_press.png, CC0) - dwie płyty zbiegające się ku
+   * wspólnemu punktowi w środku, więc kształt SAM w sobie czyta się jako
+   * "kompresja".
+   *
+   * PRZEBUDOWANE (Tomek: "usprawnij o wiele jego wygląd bo słabo wygląda") -
+   * porównanie z resztą maszyn pokazało DWIE realne przyczyny: (1) to
+   * najmniejsza bryła z całej piątki (pressW był U*1.05, podczas gdy
+   * refinery/furnace/recycler mają 1.15-1.25) oraz (2) sci_press.png to
+   * NAJPŁASZSZY sprite w paczce - dwa jednotonowe szare trapezoidy bez
+   * naturalnego cieniowania, jakie mają dome/capsule/grinder reszty maszyn
+   * (sprawdzone wprost - powiększony podgląd pliku), więc satMult=1.7
+   * (najwyższy ze wszystkich pięciu) tylko podkręcał tę płaskość w stronę
+   * "neonowego plastiku" zamiast metalu. Naprawione: (1) większa bryła +
+   * postument (ten sam wzorzec co _drawFurnaceMachine, wcześniej Kompresor
+   * jako JEDYNY z pięciu "unosił się" bez podstawy), (2) niższy satMult
+   * (1.25, zgodnie z resztą) + WŁASNE rysowane rim-lighty na krawędziach
+   * klepsydry (fejkowe cieniowanie tam, gdzie sprite go nie ma), (3) rdzeń
+   * dostał wirujące, WCIĄGANE DO ŚRODKA iskry (spirala malejącego promienia,
+   * ten sam trik co spiralne okruchy Reaktora, tylko odwrócony kierunek -
+   * "grawiton" powinien WCIĄGAĆ, nie tylko świecić) zamiast martwego
+   * okresowego błysku między emiterami widocznego tylko ~35% czasu.
    */
   _drawPressMachine(ctx, m, isActive) {
     const U = MACHINE_PROC_UNIT;
@@ -1183,16 +1199,18 @@ class MachineManager {
     const accent = '#AB47BC';
     const accentGlow = '#E1BEE7';
 
-    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.28);
-    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.66, U * 0.2, 'rgba(225, 190, 231, 0.55)', -0.0005, 5);
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 1.05, accent, 0.3);
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.72, U * 0.22, 'rgba(225, 190, 231, 0.55)', -0.0005, 6);
 
-    // --- Klepsydra: PRAWDZIWA bryła Kenney (sci_press.png) przefarbowana na
-    // fioletowo - dwie płyty zbiegające się w środku, gdzie siedzi rdzeń. ---
-    const pressW = U * 1.05;
+    // --- Klepsydra: PRAWDZIWA bryła Kenney (sci_press.png), teraz w tej
+    // samej skali co reszta maszyn (było wyraźnie najmniejsze z pięciu) i z
+    // łagodniejszym satMult (1.25 zamiast 1.7 - mniej "neonowego plastiku",
+    // bliżej metalicznego tonu refinery/furnace). ---
+    const pressW = U * 1.2;
     const pressH = pressW * (88 / 96);
-    const pressTop = cy - pressH / 2;
+    const pressTop = cy - pressH / 2 - U * 0.05;
     const pressLeft = cx - pressW / 2;
-    const pressSprite = this._getRecoloredSprite('machine_sci_press', 100, 1.7, 0.08, [accent, 0.55]);
+    const pressSprite = this._getRecoloredSprite('machine_sci_press', 100, 1.25, 0.08, [accent, 0.5]);
     if (pressSprite) {
       ctx.drawImage(pressSprite, pressLeft, pressTop, pressW, pressH);
     } else {
@@ -1201,14 +1219,47 @@ class MachineManager {
       ctx.fill();
     }
 
+    // Rim-lighty na skośnych krawędziach klepsydry - sci_press.png jest
+    // płaskim jednotonowym szarym kształtem BEZ własnego cieniowania (w
+    // przeciwieństwie do dome/capsule/grinder reszty maszyn), więc bez tego
+    // czytał się jako naklejka, nie bryła. Cztery krótkie, jasne kreski
+    // wzdłuż zbiegających się do środka krawędzi obu płyt, w kolorze akcentu.
+    ctx.save();
+    ctx.globalAlpha = isActive ? 0.55 : 0.4;
+    ctx.strokeStyle = accentGlow;
+    ctx.lineWidth = Math.max(1, U * 0.012);
+    ctx.lineCap = 'round';
+    const rimInset = pressW * 0.06;
+    const rimMidY = pressTop + pressH * 0.5;
+    [-1, 1].forEach((side) => {
+      const outerX = cx + side * (pressW / 2 - rimInset);
+      const innerX = cx + side * (pressW * 0.14);
+      ctx.beginPath();
+      ctx.moveTo(outerX, pressTop + pressH * 0.1);
+      ctx.lineTo(innerX, rimMidY);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(innerX, rimMidY);
+      ctx.lineTo(outerX, pressTop + pressH * 0.9);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    // Postument pod klepsydrą - JEDYNA z pięciu maszyn, która dotąd
+    // "unosiła się" bez podstawy (furnace/recycler/refinery/crystal_polisher
+    // wszystkie stoją na czymś). Ten sam wzorzec co _drawFurnaceMachine.
+    const pedW = pressW * 0.5, pedH = U * 0.15;
+    ctx.fillStyle = hullDark;
+    this._traceRoundedRect(ctx, cx - pedW / 2, pressTop + pressH - U * 0.03, pedW, pedH, U * 0.03);
+    ctx.fill();
+
     // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana na fioletowo,
     // ściskana rytmicznie w pionie (skala Y) w punkcie zbiegu płyt - motyw
     // "kompresji polem grawitacyjnym" przeniesiony na animację skali
-    // prawdziwej grafiki, zamiast animowanej zawartości ręcznie rysowanego
-    // okienka. ---
+    // prawdziwej grafiki. ---
     const winCx = cx, winCy = pressTop + pressH * 0.5;
     const squeeze = 0.8 + 0.2 * Math.abs(Math.sin(now * 0.0025));
-    const winR = pressW * 0.22;
+    const winR = pressW * 0.24;
     const coreSprite = this._getRecoloredSprite('machine_sci_core', 275, 1.25, 0.4);
     if (coreSprite) {
       ctx.save();
@@ -1222,39 +1273,59 @@ class MachineManager {
       ctx.arc(winCx, winCy, winR * 0.5, 0, Math.PI * 2);
       ctx.fill();
     }
-    this._drawGlassHighlight(ctx, winCx, winCy, winR);
 
-    // --- Dwa emitery nad klepsydrą z iskrzącym łukiem między nimi -
-    // wizualne źródło "pola grawitonowego" napędzającego kompresję (jedyny
-    // pozostały ręcznie animowany akcent poza rdzeniem). ---
-    const emY = pressTop - U * 0.06;
-    const emL = cx - pressW * 0.3, emR = cx + pressW * 0.3;
-    ctx.fillStyle = hullDark;
-    ctx.beginPath();
-    ctx.arc(emL, emY, U * 0.045, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(emR, emY, U * 0.045, 0, Math.PI * 2);
-    ctx.fill();
-    if (Math.sin(now * 0.02) > 0.3) {
-      // Prawdziwa teksturka iskry/pioruna (fx_spark, Kenney Particle Pack)
-      // tonowana na akcent - rozciągnięta między emiterami, zamiast rysowanej
-      // ręcznie krzywej. Fallback na dawną krzywą, gdyby plik się nie wczytał.
-      const spark = this._getTintedFx('fx_spark', accentGlow);
-      ctx.globalAlpha = 0.85;
-      if (spark) {
-        const sparkW = emR - emL, sparkH = sparkW * 0.7;
-        ctx.drawImage(spark, emL, emY - sparkH / 2, sparkW, sparkH);
-      } else {
-        ctx.strokeStyle = accentGlow;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(emL, emY);
-        ctx.quadraticCurveTo(cx, emY - U * 0.06 * Math.sin(now * 0.05), emR, emY);
-        ctx.stroke();
+    // Iskry WCIĄGANE grawitacyjnie do rdzenia (promień malejący z czasem w
+    // pętli, nie stały orbit jak u Reaktora/Pieca) - "grawiton" ma coś
+    // POCHŁANIAĆ, nie tylko świecić. Ciągłe (nie warunkowe jak dawny błysk
+    // widoczny ~35% czasu), więc maszyna zawsze czyta się jako aktywna.
+    const inflowSpark = this._getTintedFx('fx_flare', accentGlow);
+    if (inflowSpark) {
+      for (let i = 0; i < 4; i++) {
+        const t = ((now * 0.0009 + i * 0.25) % 1);
+        const a = i * (Math.PI / 2) + now * 0.0015;
+        const r = winR * 1.9 * (1 - t);
+        const bitSize = winR * 0.32 * t;
+        ctx.globalAlpha = 0.85 * t;
+        ctx.drawImage(inflowSpark, winCx + Math.cos(a) * r - bitSize / 2, winCy + Math.sin(a) * r * 0.7 - bitSize / 2, bitSize, bitSize);
       }
       ctx.globalAlpha = 1;
     }
+    this._drawGlassHighlight(ctx, winCx, winCy, winR);
+
+    // --- Dwa emitery nad klepsydrą, teraz z własną poświatą (nie płaskie
+    // kropki) + STAŁE, delikatne pole energii między nimi (zamiast dawnego
+    // warunkowego błysku) - czyta się jako źródło pola napędzającego
+    // kompresję, nie migający defekt. ---
+    const emY = pressTop - U * 0.02;
+    const emL = cx - pressW * 0.3, emR = cx + pressW * 0.3;
+    [emL, emR].forEach((ex) => {
+      const eGrad = ctx.createRadialGradient(ex, emY, 0, ex, emY, U * 0.09);
+      eGrad.addColorStop(0, accentGlow);
+      eGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = eGrad;
+      ctx.beginPath();
+      ctx.arc(ex, emY, U * 0.09, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = hullDark;
+      ctx.beginPath();
+      ctx.arc(ex, emY, U * 0.045, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    const spark = this._getTintedFx('fx_spark', accentGlow);
+    const fieldPulse = 0.35 + 0.25 * Math.abs(Math.sin(now * 0.004));
+    ctx.globalAlpha = fieldPulse;
+    if (spark) {
+      const sparkW = emR - emL, sparkH = sparkW * 0.7;
+      ctx.drawImage(spark, emL, emY - sparkH / 2, sparkW, sparkH);
+    } else {
+      ctx.strokeStyle = accentGlow;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(emL, emY);
+      ctx.quadraticCurveTo(cx, emY - U * 0.06 * Math.sin(now * 0.05), emR, emY);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
 
   /**
