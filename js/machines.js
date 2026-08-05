@@ -1330,12 +1330,23 @@ class MachineManager {
 
   /**
    * Piec Plazmowy (dawniej Piec hutniczy, assets/machines/piechutniczy.png) -
-   * trzecia z maszyn "Fazy kosmicznego reskinu, wersja 2". Bryła to teraz
+   * trzecia z maszyn "Fazy kosmicznego reskinu, wersja 2". Bryła to
    * prawdziwa kopuła/pod z Kenney "Space Shooter Extension"
-   * (spaceStation_029, assets/machines/sci_dome.png, CC0) - osadzona na
-   * niewielkim, rysowanym ręcznie postumencie, z rdzeniem (sci_core.png,
-   * natywny pomarańcz bliski akcentowi pieca) widocznym w jej "ustach" jak
-   * mini-słońce w komorze plazmy.
+   * (spaceStation_029, assets/machines/sci_dome.png, CC0) - jedyna z pięciu
+   * z NATURALNYM cieniowaniem już w samym sprite (szklana półkula z
+   * highlightem), więc w przeciwieństwie do Kompresora nie potrzebowała
+   * własnych rim-lightów.
+   *
+   * WZBOGACONE (Tomek: "teraz piec plazmowy", ta sama runda co Kompresor) -
+   * rdzeń był płaskim czerwonym kółkiem BEZ własnej poświaty (w
+   * przeciwieństwie do Kompresora po przeróbce), a dwie orbitujące iskierki
+   * to za mało jak na "piec" - żadnego wrażenia gorąca. Dodane: (1) miękka
+   * poświata pod rdzeniem (ten sam trik co świecące emitery Kompresora),
+   * (2) żarzące się iskry WZNOSZĄCE SIĘ z komory (nie orbitujące w kółko -
+   * "unoszący się żar", dużo bardziej "piecowy" motyw niż orbit), (3)
+   * postument dostał dwie świecące szczeliny wentylacyjne (spójne z
+   * poświatą emiterów Kompresora - ten sam język wizualny w całej rodzinie
+   * maszyn), (4) większy rdzeń (było domeW*0.19, teraz *0.23).
    */
   _drawFurnaceMachine(ctx, m, isActive) {
     const U = MACHINE_PROC_UNIT;
@@ -1348,8 +1359,8 @@ class MachineManager {
     const accent = '#EF5350';
     const accentGlow = '#FFAB91';
 
-    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.3);
-    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.68, U * 0.22, 'rgba(255, 171, 145, 0.55)', 0.0006, 7);
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 1.05, accent, 0.32);
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.72, U * 0.24, 'rgba(255, 171, 145, 0.55)', 0.0006, 7);
 
     // --- Kopuła: PRAWDZIWA bryła Kenney (sci_dome.png) - jej naturalny
     // srebrny odcień zostaje (dome nie potrzebuje przefarbowania, kontrastuje
@@ -1366,19 +1377,42 @@ class MachineManager {
       this._traceRoundedRect(ctx, domeLeft, domeTop, domeW, domeH, U * 0.1);
       ctx.fill();
     }
-    // Postument pod kopułą.
+
+    // Postument pod kopułą, teraz z dwiema świecącymi szczelinami
+    // wentylacyjnymi (ten sam "poświata pod ciemnym korpusem" trik co
+    // emitery Kompresora - spójny język całej rodziny maszyn).
     const pedW = domeW * 0.55, pedH = U * 0.16;
+    const pedY = domeTop + domeH - U * 0.04;
     ctx.fillStyle = hullDark;
-    this._traceRoundedRect(ctx, cx - pedW / 2, domeTop + domeH - U * 0.04, pedW, pedH, U * 0.03);
+    this._traceRoundedRect(ctx, cx - pedW / 2, pedY, pedW, pedH, U * 0.03);
     ctx.fill();
+    const ventPulse = 0.55 + 0.35 * Math.abs(Math.sin(now * 0.004 + 1.2));
+    ctx.save();
+    ctx.globalAlpha = ventPulse;
+    ctx.fillStyle = accentGlow;
+    [-1, 1].forEach((side) => {
+      const vx = cx + side * pedW * 0.28;
+      this._traceRoundedRect(ctx, vx - U * 0.04, pedY + pedH * 0.3, U * 0.08, pedH * 0.4, U * 0.015);
+      ctx.fill();
+    });
+    ctx.restore();
 
     // --- Rdzeń: PRAWDZIWY sprite Kenney (sci_core.png) - jego natywny
     // pomarańcz leży już blisko akcentu pieca, więc obrót odcienia jest
-    // subtelny - pulsujący promień (mini-słońce) widoczny w "ustach" kopuły
-    // + dwie orbitujące iskry (prawdziwa teksturka fx_flare). ---
+    // subtelny - pulsujący promień (mini-słońce) widoczny w "ustach" kopuły,
+    // z własną poświatą (dotąd brakowało - rdzeń był płaskim kółkiem). ---
     const winCx = cx, winCy = domeTop + domeH * 0.82;
     const pulse2 = 1 + 0.08 * Math.sin(now * 0.005);
-    const winR = domeW * 0.19 * pulse2;
+    const winR = domeW * 0.23 * pulse2;
+
+    const coreGlow = ctx.createRadialGradient(winCx, winCy, 0, winCx, winCy, winR * 2.1);
+    coreGlow.addColorStop(0, accentGlow);
+    coreGlow.addColorStop(1, 'rgba(255, 171, 145, 0)');
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath();
+    ctx.arc(winCx, winCy, winR * 2.1, 0, Math.PI * 2);
+    ctx.fill();
+
     const coreSprite = this._getRecoloredSprite('machine_sci_core', -16, 1.1, 0.4);
     if (coreSprite) {
       ctx.drawImage(coreSprite, winCx - winR, winCy - winR, winR * 2, winR * 2);
@@ -1388,15 +1422,22 @@ class MachineManager {
       ctx.arc(winCx, winCy, winR * 0.5, 0, Math.PI * 2);
       ctx.fill();
     }
-    const orbitSpark = this._getTintedFx('fx_flare', '#FFE0B2');
-    if (orbitSpark) {
-      const sparkSize = winR * 0.42;
-      for (let i = 0; i < 2; i++) {
-        const a = now * 0.003 * (i === 0 ? 1 : -1.3) + i * Math.PI;
-        const r = winR * 0.9;
-        const sx = winCx + Math.cos(a) * r, sy = winCy + Math.sin(a) * r * 0.5;
-        ctx.drawImage(orbitSpark, sx - sparkSize / 2, sy - sparkSize / 2, sparkSize, sparkSize);
+
+    // Żar UNOSZĄCY SIĘ z komory (nie orbitujący w kółko jak dawniej) - drift
+    // do góry z lekkim bocznym chybotem, kurczy się i gaśnie pod sam szczyt
+    // kopuły, potem wraca na dół pętlą. Dużo bardziej "piecowy" motyw niż
+    // orbit - to ma czytać się jak żar wydostający się z komory plazmy.
+    const ember = this._getTintedFx('fx_flare', '#FFE0B2');
+    if (ember) {
+      for (let i = 0; i < 3; i++) {
+        const t = ((now * 0.0004 + i * 0.33) % 1);
+        const ex = winCx + Math.sin(now * 0.0022 + i * 2) * winR * 0.5;
+        const ey = winCy - t * domeH * 1.1;
+        const emberSize = winR * 0.4 * (1 - t * 0.6);
+        ctx.globalAlpha = 0.85 * (1 - t);
+        ctx.drawImage(ember, ex - emberSize / 2, ey - emberSize / 2, emberSize, emberSize);
       }
+      ctx.globalAlpha = 1;
     }
     this._drawGlassHighlight(ctx, winCx, winCy, winR);
   }
