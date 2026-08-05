@@ -175,6 +175,14 @@ const MACHINE_OUTPUT_SPAWN_OFFSET_Y = 60;
 // Rozstaw px między sztukami, gdy maszyna z ulepszeniem 'yield' wypuszcza
 // więcej niż jedną naraz - bez tego leżałyby idealnie jedna na drugiej.
 const MACHINE_OUTPUT_SPREAD_X = 34;
+// Kapsuła dostawcza auto-załadunku (core_auto_feed) - patrz
+// _drawAutoFeedPods niżej. Efemeryczna (żyje AUTO_FEED_POD_DURATION_MS),
+// CELOWO nie sprite - Tomek: "z wizualizuj ale żeby dron się nie powtarzał
+// z grafikami które wcześniej dodaliśmy" (drone.js ma już swój, stały,
+// krążący Dron Recyklingowy).
+const AUTO_FEED_POD_DURATION_MS = 420;
+const AUTO_FEED_POD_ARC_HEIGHT = 46;
+const AUTO_FEED_POD_SIZE = 9;
 // Jednostka bazowa dla maszyn rysowanych PROCEDURALNIE (bez pliku PNG) -
 // dobrana tak, żeby ich sylwetka zajmowała na ekranie tyle samo co gotowe
 // sprite'y. Zmierzone wprost z assets/machines/*.png: nieprzezroczysty
@@ -235,6 +243,10 @@ class MachineManager {
     // draw() używa tego, żeby każda pobliska maszyna mogła niezależnie
     // pokazać, czego potrzebuje.
     this.nearby = [];
+
+    // Kapsuły dostawcze auto-załadunku - efemeryczne, patrz stała
+    // AUTO_FEED_POD_DURATION_MS i _drawAutoFeedPods niżej.
+    this._autoFeedPods = [];
 
     // Piec hutniczy szedł wcześniej OSOBNYM, ręcznym torem ładowania (this.
     // furnaceImg, jedna sztywna ścieżka) - usunięte na rzecz wspólnego
@@ -390,6 +402,10 @@ class MachineManager {
           // "ambientowy" sygnał w tle, nie ma przyciągać uwagi tak jak akcja
           // gracza.
           Bus.publish(Events.FX_PARTICLES, { x: m.x, y: m.y, color: m.color, count: 2 });
+          // Kapsuła dostawcza gracz -> maszyna (patrz _drawAutoFeedPods) -
+          // startuje z OSTATNIEJ znanej pozycji gracza (this.playerX/Y,
+          // aktualizowane przez PLAYER_MOVED), nie z pozycji maszyny.
+          this._autoFeedPods.push({ x0: this.playerX, y0: this.playerY, x1: m.x, y1: m.y, t: 0, color: m.color });
 
           if (m.inventory >= m.maxInventory && !m.processing) {
             m.processing = true;
@@ -398,6 +414,15 @@ class MachineManager {
           }
         });
       }
+    }
+
+    // Odmierzanie/sprzątanie kapsuł dostawczych - czysto wizualne, więc
+    // osobny, prosty krok zamiast wplatania w pętlę auto-załadunku wyżej
+    // (kapsuła leci NIEZALEŻNIE od tego, czy maszyna w międzyczasie coś
+    // jeszcze zrobi).
+    if (this._autoFeedPods.length > 0) {
+      this._autoFeedPods.forEach((p) => { p.t += delta; });
+      this._autoFeedPods = this._autoFeedPods.filter((p) => p.t < AUTO_FEED_POD_DURATION_MS);
     }
 
     // Przetwarzanie maszyn.
@@ -700,6 +725,90 @@ class MachineManager {
           this._drawOutlinedText(ctx, statusText, m.x, m.y - hh - 20, statusColor);
         }
       }
+    });
+
+    // Kapsuły dostawcze auto-załadunku - NA KOŃCU, po wszystkich maszynach,
+    // żeby zawsze leciały NAD nimi, niezależnie które akurat rysowały się
+    // ostatnie w pętli wyżej.
+    this._drawAutoFeedPods(ctx, camX, camY, viewW, viewH, margin);
+  }
+
+  /**
+   * Kapsuły dostawcze auto-załadunku (core_auto_feed) - Tomek: "zwizualizuj
+   * ale żeby dron się nie powtarzał z grafikami które wcześniej dodaliśmy".
+   * CELOWO bez sprite'a i bez wzorca Drona Recyklingowego (drone.js - stały,
+   * krążący po mapie sprite, zbierający surowce ŚWIAT -> plecak) - to
+   * przeciwny kierunek (gracz -> maszyna) i inny charakter: efemeryczna,
+   * procedurala rysowana kapsuła żyjąca tylko AUTO_FEED_POD_DURATION_MS, nie
+   * stały towarzysz. Barwiona kolorem DOCELOWEJ maszyny (m.color), więc
+   * czyta się od razu "do której maszyny" bez potrzeby osobnego sprite'a.
+   * Kształt (romb, nie koło/kwadrat) celowo różny od surowców w świecie
+   * (items.js), żeby nie mylić z podnoszalnym przedmiotem.
+   */
+  _drawAutoFeedPods(ctx, camX, camY, viewW, viewH, margin) {
+    if (this._autoFeedPods.length === 0) return;
+
+    this._autoFeedPods.forEach((p) => {
+      if (p.x1 < camX - margin || p.x1 > camX + viewW + margin) return;
+      if (p.y1 < camY - margin || p.y1 > camY + viewH + margin) return;
+
+      const t = Math.min(1, p.t / AUTO_FEED_POD_DURATION_MS);
+      // Łuk (paraboliczny lob) zamiast prostej linii - czyta się jako
+      // "rzut/transfer", nie ślizganie się po ziemi.
+      const x = p.x0 + (p.x1 - p.x0) * t;
+      const yLinear = p.y0 + (p.y1 - p.y0) * t;
+      const arc = Math.sin(t * Math.PI) * AUTO_FEED_POD_ARC_HEIGHT;
+      const y = yLinear - arc;
+
+      const alpha = Math.min(1, t * 6, (1 - t) * 6);
+      if (alpha <= 0) return;
+
+      ctx.save();
+
+      // Krótki, przygasający ślad ZA kapsułą (w stronę p0).
+      for (let i = 1; i <= 3; i++) {
+        const tt = Math.max(0, t - i * 0.045);
+        const gx = p.x0 + (p.x1 - p.x0) * tt;
+        const gy = p.y0 + (p.y1 - p.y0) * tt - Math.sin(tt * Math.PI) * AUTO_FEED_POD_ARC_HEIGHT;
+        ctx.globalAlpha = alpha * (0.35 - i * 0.09);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(gx, gy, AUTO_FEED_POD_SIZE * (0.5 - i * 0.1), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Miękka poświata pod kapsułą.
+      ctx.globalAlpha = alpha;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, AUTO_FEED_POD_SIZE * 2.2);
+      grad.addColorStop(0, p.color);
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, AUTO_FEED_POD_SIZE * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Korpus - biały romb z węższym rombem koloru maszyny w środku (ten
+      // sam "obwódka + wypełnienie" duch co _drawOutlinedText, tylko
+      // kształtem zamiast tekstem).
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.moveTo(x, y - AUTO_FEED_POD_SIZE);
+      ctx.lineTo(x + AUTO_FEED_POD_SIZE * 0.7, y);
+      ctx.lineTo(x, y + AUTO_FEED_POD_SIZE);
+      ctx.lineTo(x - AUTO_FEED_POD_SIZE * 0.7, y);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.moveTo(x, y - AUTO_FEED_POD_SIZE * 0.55);
+      ctx.lineTo(x + AUTO_FEED_POD_SIZE * 0.4, y);
+      ctx.lineTo(x, y + AUTO_FEED_POD_SIZE * 0.55);
+      ctx.lineTo(x - AUTO_FEED_POD_SIZE * 0.4, y);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
     });
   }
 
