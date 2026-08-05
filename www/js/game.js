@@ -669,6 +669,14 @@ class Game {
     // Rozrzut dekoracji wygenerowany RAZ, deterministycznie (patrz
     // _generateDecorations) - te same drzewa/kamienie w tym samym miejscu za
     // każdym razem, nie losowe od nowa przy każdym wczytaniu strony.
+    // BUGFIX: _generateDecorations() czyta window.economyManager (gating
+    // sign/crate Strefy C), ale `new Game()` (main.js) wywołuje się PRZED
+    // `new EconomyManager()` - w tym miejscu window.economyManager jeszcze
+    // nie istnieje, więc to pierwsze wywołanie zawsze widzi "odblokowane"
+    // (fallback dla braku economyManager). Patrz regenerateDecorations()
+    // niżej - main.js woła ją ponownie zaraz PO utworzeniu economyManagera,
+    // zanim ruszy pętla gry, więc żadna klatka nie widzi tego tymczasowego,
+    // błędnego stanu.
     this._decorations = this._generateDecorations();
     // Cienie chmur - pozycje/prędkości startowe wygenerowane RAZ, ruch sam w
     // sobie liczony w _drawCloudShadows z performance.now().
@@ -2255,7 +2263,55 @@ class Game {
 
       list.push(item);
     }
+
+    // Tomek: "na ash się respi śmieci których nie można sprzedac od
+    // początku gry" - sign/crate (jedyne "ludzkie", śmieciopodobne akcenty
+    // Strefy C, w przeciwieństwie do naturalnych rock/shard/crystal w
+    // pozostałych strefach) czytały się jak porzucony surowiec do zebrania,
+    // mimo że to czysto ambientowa dekoracja (nie items.js) - myliło to
+    // samo, co realny 'metal' TEJ strefy, dopóki nie ma go gdzie oddać
+    // (patrz IDENTYCZNY warunek zoneCUnlocked && furnaceUnlocked w
+    // items.js: _spawnItem). CELOWO osobny przebieg PO całej pętli wyżej,
+    // NIE zmiana zoneTypes.C w środku niej - próbowałem tamtędy najpierw i
+    // to PSUŁO DETERMINIZM CAŁEJ MAPY: sign/crate mają inny footprintRadius
+    // niż rock (DECOR_TYPE_SCALE), więc zależnie od tego, co akurat wypadło,
+    // ten sam rzut kośćmi na (px,py) bywał raz odrzucony (overlapsExisting),
+    // raz przyjęty - różna liczba wywołań rand() w pętli kaskadowo
+    // przestawiała pozycje WSZYSTKICH kolejnych dekoracji, nie tylko Strefy
+    // C (zmierzone Playwrightem: 87 z 175 pozycji się rozjeżdżało). Remapping
+    // PO fakcie nie rusza już rand() w ogóle - zamienia tylko `type` (i
+    // usuwa pola specyficzne dla crate/sign), pozycja/skala/reszta dekoracji
+    // zostaje bit w bit taka sama niezależnie od stanu gracza.
+    const eco = window.economyManager;
+    const zoneCReady = !eco || typeof eco.isUnlocked !== 'function'
+      || (eco.isUnlocked('zone_C') && eco.isUnlocked('furnace_c'));
+    if (!zoneCReady) {
+      list.forEach((item) => {
+        if (item.type !== 'sign' && item.type !== 'crate') return;
+        item.type = 'rock';
+        item.rotation = 0;
+        item.rockVariant = 0;
+        delete item.useAltProp;
+        delete item.altPropVariant;
+      });
+    }
+
     return list;
+  }
+
+  /**
+   * Woła _generateDecorations() PONOWNIE i podmienia this._decorations -
+   * jedyny powód: gating sign/crate Strefy C potrzebuje window.economyManager,
+   * którego NIE MA JESZCZE w konstruktorze (patrz BUGFIX przy pierwszym
+   * wywołaniu wyżej). main.js woła to zaraz po `new EconomyManager()`,
+   * zanim ruszy requestAnimationFrame - deterministyczny seed (DECOR_SEED)
+   * gwarantuje identyczny układ WSZYSTKIEGO (pozycje/skale/warianty) - ten
+   * końcowy remap sign/crate->rock jest jedyną różnicą, którą to drugie
+   * wywołanie może wprowadzić, więc to nie jest "losuj mapę od nowa", tylko
+   * "policz ten sam układ z pełną wiedzą o stanie gracza".
+   */
+  regenerateDecorations() {
+    this._decorations = this._generateDecorations();
   }
 
   /**

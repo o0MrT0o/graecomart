@@ -129,6 +129,18 @@ function startGame() {
         // (albo null przy pierwszym uruchomieniu) - patrz save.js.
         const offlineElapsedMs = window.saveManager.load();
 
+        // BUGFIX (Tomek: "na ash się respi śmieci których nie można sprzedac
+        // od początku gry") - game.js: _generateDecorations() gatuje sign/
+        // crate Strefy C przez window.economyManager.isUnlocked(), którego
+        // NIE BYŁO jeszcze przy `new Game()` (main.js ładuje moduły w
+        // konkretnej kolejności - Game przed EconomyManager). Pierwsze
+        // wywołanie (w konstruktorze Game) więc zawsze widziało "brak
+        // economyManagera" -> fallback "odblokowane". Teraz, gdy economyManager
+        // istnieje I ma już wczytany prawdziwy stan zapisu (load() wyżej -
+        // ważne dla POWRACAJĄCEGO gracza, który furnace_c ma odblokowane od
+        // dawna), przeliczamy dekoracje jeszcze RAZ, PRZED pierwszą klatką.
+        game.regenerateDecorations();
+
         // Zapis w chmurze (Tomek: "zgubiony telefon = zgubiony postęp mimo
         // eksportu") - PO load() (potrzebuje lokalnego zapisu do porównania
         // timestampów, patrz cloudsave.js). Cichy no-op bez zbudowanego
