@@ -736,17 +736,19 @@ class MachineManager {
   /**
    * Kapsuły dostawcze auto-załadunku (core_auto_feed) - Tomek: "zwizualizuj
    * ale żeby dron się nie powtarzał z grafikami które wcześniej dodaliśmy".
-   * CELOWO bez sprite'a i bez wzorca Drona Recyklingowego (drone.js - stały,
-   * krążący po mapie sprite, zbierający surowce ŚWIAT -> plecak) - to
-   * przeciwny kierunek (gracz -> maszyna) i inny charakter: efemeryczna,
-   * procedurala rysowana kapsuła żyjąca tylko AUTO_FEED_POD_DURATION_MS, nie
-   * stały towarzysz. Barwiona kolorem DOCELOWEJ maszyny (m.color), więc
-   * czyta się od razu "do której maszyny" bez potrzeby osobnego sprite'a.
-   * Kształt (romb, nie koło/kwadrat) celowo różny od surowców w świecie
-   * (items.js), żeby nie mylić z podnoszalnym przedmiotem.
+   * Pierwsza wersja była procedural rombem - Tomek obejrzał 10 kandydatów z
+   * Kenney "Space Shooter Extension" (TA SAMA paczka co Terminal/maszyny/
+   * dekoracje straganu) i wybrał małą rakietkę (Missiles/spaceMissiles_040,
+   * patrz sprites.js: autofeed_pod) - CELOWO nie z rodziny Drona
+   * Recyklingowego (drone.js, "Space Shooter Redux", stały krążący sprite
+   * zbierający surowce ŚWIAT -> plecak) - ta kapsuła leci przeciwnym
+   * kierunkiem (gracz -> maszyna) i żyje tylko AUTO_FEED_POD_DURATION_MS,
+   * nie jest stałym towarzyszem.
    */
   _drawAutoFeedPods(ctx, camX, camY, viewW, viewH, margin) {
     if (this._autoFeedPods.length === 0) return;
+    const img = window.spriteLoader && window.spriteLoader.get('autofeed_pod');
+    const spriteReady = img && img.complete && img.naturalWidth;
 
     this._autoFeedPods.forEach((p) => {
       if (p.x1 < camX - margin || p.x1 > camX + viewW + margin) return;
@@ -763,70 +765,63 @@ class MachineManager {
       const alpha = Math.min(1, t * 6, (1 - t) * 6);
       if (alpha <= 0) return;
 
+      // Kierunek lotu = pochodna toru (linia + łuk), nie stały kąt do celu -
+      // na szczycie paraboli rakietka leci niemal poziomo, nie pod tym samym
+      // kątem co przy starcie/lądowaniu. +PI/2, bo sprite ma nos "w górę".
+      const dx = p.x1 - p.x0;
+      const dy = (p.y1 - p.y0) - Math.PI * Math.cos(t * Math.PI) * AUTO_FEED_POD_ARC_HEIGHT;
+      const angle = Math.atan2(dy, dx) + Math.PI / 2;
+
       ctx.save();
 
-      // Krótki, przygasający ślad ZA kapsułą (w stronę p0) - cienka ciemna
-      // obwódka na każdej kropce z tego samego powodu co niżej: kolor
-      // Reaktora Recyklingowego (#66BB6A) na trawie inaczej ginie kompletnie.
+      // Krótki, przygasający ślad ZA rakietką (w stronę p0), w kolorze
+      // DOCELOWEJ maszyny - jedyne miejsce, gdzie ten kolor teraz żyje
+      // (sprite ma własne, stałe barwy), więc dalej widać "do której
+      // maszyny", tylko jako smuga zamiast wypełnienia kształtu.
       for (let i = 1; i <= 3; i++) {
         const tt = Math.max(0, t - i * 0.045);
         const gx = p.x0 + (p.x1 - p.x0) * tt;
         const gy = p.y0 + (p.y1 - p.y0) * tt - Math.sin(tt * Math.PI) * AUTO_FEED_POD_ARC_HEIGHT;
-        const r = AUTO_FEED_POD_SIZE * (0.5 - i * 0.1);
+        const r = AUTO_FEED_POD_SIZE * (0.42 - i * 0.08);
         ctx.globalAlpha = alpha * (0.4 - i * 0.09);
         ctx.fillStyle = p.color;
         ctx.beginPath();
         ctx.arc(gx, gy, r, 0, Math.PI * 2);
         ctx.fill();
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.stroke();
       }
 
-      // Poświata NEUTRALNA (biała), nie w kolorze maszyny - BUGFIX: Reaktor
-      // Recyklingowy jest zielony (#66BB6A), więc kolorowa łuna na trawie
-      // była praktycznie niewidoczna (zielone na zielonym). Biała poświata
-      // czyta się na KAŻDYM biomie, a "czyją to maszynę" i tak mówi mały
-      // kolorowy romb w środku, patrz niżej.
-      ctx.globalAlpha = alpha * 0.8;
+      // Poświata NEUTRALNA (biała) - ten sam powód co przy poprzedniej
+      // wersji: kolorowa łuna dla zielonego Reaktora Recyklingowego
+      // (#66BB6A) ginęła na trawie. Biała czyta się na KAŻDYM biomie.
+      ctx.globalAlpha = alpha * 0.75;
       const grad = ctx.createRadialGradient(x, y, 0, x, y, AUTO_FEED_POD_SIZE * 2.4);
-      grad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
       grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
       ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.arc(x, y, AUTO_FEED_POD_SIZE * 2.4, 0, Math.PI * 2);
       ctx.fill();
 
-      // Korpus - biały romb z ciemną obwódką (ten sam "obwódka pod
-      // wypełnieniem" trik co _drawOutlinedText - czytelne na KAŻDYM tle,
-      // nie tylko tam gdzie akurat kontrastuje), a w środku węższy romb w
-      // kolorze maszyny (też obrysowany), żeby dało się rozpoznać, do
-      // której maszyny akurat leci dostawa.
       ctx.globalAlpha = alpha;
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
-
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.moveTo(x, y - AUTO_FEED_POD_SIZE);
-      ctx.lineTo(x + AUTO_FEED_POD_SIZE * 0.7, y);
-      ctx.lineTo(x, y + AUTO_FEED_POD_SIZE);
-      ctx.lineTo(x - AUTO_FEED_POD_SIZE * 0.7, y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.moveTo(x, y - AUTO_FEED_POD_SIZE * 0.55);
-      ctx.lineTo(x + AUTO_FEED_POD_SIZE * 0.4, y);
-      ctx.lineTo(x, y + AUTO_FEED_POD_SIZE * 0.55);
-      ctx.lineTo(x - AUTO_FEED_POD_SIZE * 0.4, y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-      ctx.stroke();
+      if (spriteReady) {
+        const h = AUTO_FEED_POD_SIZE * 2.4;
+        const w = h * (img.naturalWidth / img.naturalHeight);
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      } else {
+        // Sprite jeszcze niewczytany (rzadki stan tuż po starcie gry) -
+        // prosty jasny romb zamiast pustego miejsca, ten sam fallback-duch
+        // co reszta gry (np. _drawAntenna w market.js).
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.moveTo(x, y - AUTO_FEED_POD_SIZE);
+        ctx.lineTo(x + AUTO_FEED_POD_SIZE * 0.7, y);
+        ctx.lineTo(x, y + AUTO_FEED_POD_SIZE);
+        ctx.lineTo(x - AUTO_FEED_POD_SIZE * 0.7, y);
+        ctx.closePath();
+        ctx.fill();
+      }
 
       ctx.restore();
     });

@@ -161,7 +161,15 @@ const SPRITE_PATH_CANDIDATES = {
   stall_beacon: ['assets/decor/stall_beacon.png'],
   stall_tank: ['assets/decor/stall_tank.png'],
   stall_solar: ['assets/decor/stall_solar.png'],
-  stall_satellite: ['assets/decor/stall_satellite.png']
+  stall_satellite: ['assets/decor/stall_satellite.png'],
+  // Kapsuła dostawcza auto-załadunku (machines.js: _drawAutoFeedPods,
+  // core_auto_feed w economy.js) - BYŁ procedural romb, Tomek wybrał
+  // prawdziwy sprite z 10 kandydatów: Kenney "Space Shooter Extension"
+  // (TA SAMA paczka co Terminal/maszyny/dekoracje straganu), Missiles/
+  // spaceMissiles_040.png - kompaktowa rakietka, celowo NIE z tej samej
+  // rodziny co Dron Recyklingowy (drone.js, "Space Shooter Redux") ani
+  // żaden już użyty plik - sprawdzone hashem MD5 przeciwko całemu assets/.
+  autofeed_pod: ['assets/critters/autofeed_pod.png']
 };
 
 // Zgodność wsteczna - ItemRenderer.buildCardData() (items.js) czyta stąd
