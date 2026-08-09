@@ -1493,14 +1493,14 @@ class MachineManager {
     this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.28);
     this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.66, U * 0.2, 'rgba(213, 196, 240, 0.55)', 0.00055, 6);
 
-    // --- Lej u góry, ze szkłem czekającym na wsyp. ---
     // --- Kapsuła: PRAWDZIWA bryła Kenney (sci_capsule.png) przefarbowana na
-    // fioletowo overlayem (jak klepsydra Kompresora - prawie bez saturacji). ---
+    // fioletowo overlayem (jak klepsydra Kompresora - prawie bez saturacji).
+    // satMult obniżony 1.5->1.3, spójnie z resztą przerobionej piątki. ---
     const capW = U * 1.2;
     const capH = capW * (72 / 168);
     const capTop = cy - capH / 2;
     const capLeft = cx - capW / 2;
-    const capsuleSprite = this._getRecoloredSprite('machine_sci_capsule', -69, 1.5, 0.08, [accent, 0.55]);
+    const capsuleSprite = this._getRecoloredSprite('machine_sci_capsule', -69, 1.3, 0.08, [accent, 0.55]);
     if (capsuleSprite) {
       ctx.drawImage(capsuleSprite, capLeft, capTop, capW, capH);
     } else {
@@ -1510,11 +1510,25 @@ class MachineManager {
     }
 
     // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana na fioletowo,
-    // osadzona na środku paska "okna" kapsuły - z "oddychaniem" skalą. ---
+    // osadzona na środku paska "okna" kapsuły - z "oddychaniem" skalą.
+    // Własna poświata za kulą (dotąd brakowało - rdzeń był płaskim, martwym
+    // kółkiem, ten sam brak co dawniej przy Piecu/Reaktorze) i niższy
+    // satMult (1.25->1.05) - głęboki fiolet przy wysokim satMult gubił
+    // własne jasne/ciemne cieniowanie sprite'a, więc czytał się jak jedna
+    // płaska plama zamiast kuli. ---
     const winCx = cx, winCy = capTop + capH * 0.5;
     const breath = 1 + 0.05 * Math.sin(now * 0.0035);
-    const winR = capH * 0.62 * breath;
-    const coreSprite = this._getRecoloredSprite('machine_sci_core', 250, 1.25, 0.4);
+    const winR = capH * 0.68 * breath;
+
+    const coreGlow = ctx.createRadialGradient(winCx, winCy, 0, winCx, winCy, winR * 2.1);
+    coreGlow.addColorStop(0, accentGlow);
+    coreGlow.addColorStop(1, 'rgba(213, 196, 240, 0)');
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath();
+    ctx.arc(winCx, winCy, winR * 2.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    const coreSprite = this._getRecoloredSprite('machine_sci_core', 250, 1.05, 0.4);
     if (coreSprite) {
       ctx.drawImage(coreSprite, winCx - winR, winCy - winR, winR * 2, winR * 2);
     } else {
@@ -1522,6 +1536,23 @@ class MachineManager {
       ctx.beginPath();
       ctx.arc(winCx, winCy, winR * 0.5, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Oczyszczające bąbelki UNOSZĄCE SIĘ przez okno kapsuły (motyw filtracji/
+    // "przepływu" - inny kierunek/kinematyka niż żar Pieca czy wciągane
+    // okruchy Reaktora, żeby każda maszyna miała swój własny język ruchu).
+    // Drift w górę z bocznym dryfem, przygasają blisko górnej krawędzi okna.
+    const bubble = this._getTintedFx('fx_flare', accentGlow);
+    if (bubble) {
+      for (let i = 0; i < 3; i++) {
+        const t = ((now * 0.00035 + i * 0.34) % 1);
+        const bx = winCx + Math.sin(now * 0.0015 + i * 2.4) * winR * 0.55;
+        const by = winCy + winR * 0.9 - t * winR * 1.8;
+        const bSize = winR * 0.22 * (1 - t * 0.3);
+        ctx.globalAlpha = 0.7 * Math.sin(t * Math.PI);
+        ctx.drawImage(bubble, bx - bSize / 2, by - bSize / 2, bSize, bSize);
+      }
+      ctx.globalAlpha = 1;
     }
     this._drawGlassHighlight(ctx, winCx, winCy, winR);
   }
@@ -1589,10 +1620,21 @@ class MachineManager {
 
     // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana turkusowo,
     // osadzona na klejnocie (teraz u GÓRY po obrocie) - iskrzy, jakby
-    // właśnie się szlifował. ---
+    // właśnie się szlifował. Własna poświata za kulą, dla spójności z resztą
+    // przerobionej piątki (dotąd jedyny akcent świetlny tutaj to rozlana
+    // ogólna poświata maszyny, nie punktowy blask samego klejnotu). ---
     const winCx = cx, winCy = cy - grindLen * 0.32;
     const pulse = 1 + 0.07 * Math.sin(now * 0.006);
     const winR = grindThick * 0.34 * pulse;
+
+    const coreGlow = ctx.createRadialGradient(winCx, winCy, 0, winCx, winCy, winR * 2.1);
+    coreGlow.addColorStop(0, accentGlow);
+    coreGlow.addColorStop(1, 'rgba(225, 245, 254, 0)');
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath();
+    ctx.arc(winCx, winCy, winR * 2.1, 0, Math.PI * 2);
+    ctx.fill();
+
     const coreSprite = this._getRecoloredSprite('machine_sci_core', 163, 1.2, 0.4);
     if (coreSprite) {
       ctx.drawImage(coreSprite, winCx - winR, winCy - winR, winR * 2, winR * 2);
