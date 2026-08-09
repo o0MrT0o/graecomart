@@ -1116,12 +1116,16 @@ class MachineManager {
 
     // --- Moduł: PRAWDZIWA bryła Kenney (sci_module.png, proporcje źródła
     // 344x577) przefarbowana na zielono, przeskalowana tak, by całość mieściła
-    // się w tej samej "działce" co reszta maszyn (~U wysokości). ---
+    // się w tej samej "działce" co reszta maszyn (~U wysokości). satMult
+    // obniżony z 1.7 (było najwyższe z całej piątki) na 1.3 - sprite MA
+    // własne metaliczne cieniowanie (sprawdzone wprost - powiększony
+    // podgląd), więc wysoki satMult tylko spłaszczał je w "neonowy plastik",
+    // jak wcześniej przy Kompresorze. ---
     const modH = U * 1.25;
     const modW = modH * (344 / 577);
     const modTop = cy - U * 0.7;
     const modLeft = cx - modW / 2;
-    const moduleSprite = this._getRecoloredSprite('machine_sci_module', -69, 1.7);
+    const moduleSprite = this._getRecoloredSprite('machine_sci_module', -69, 1.3);
     if (moduleSprite) {
       ctx.drawImage(moduleSprite, modLeft, modTop, modW, modH);
     } else {
@@ -1130,12 +1134,36 @@ class MachineManager {
       ctx.fill();
     }
 
+    // Poświata u stożkowatej "stopy" modułu, tam gdzie łączy się z ziemią -
+    // ten sam "światło pod ciemnym korpusem" trik co świecące szczeliny
+    // wentylacyjne Pieca / emitery Kompresora, spójny język całej rodziny.
+    const footY = modTop + modH - U * 0.02;
+    const footPulse = 0.5 + 0.3 * Math.abs(Math.sin(now * 0.0032));
+    const footGlow = ctx.createRadialGradient(cx, footY, 0, cx, footY, U * 0.32);
+    footGlow.addColorStop(0, `rgba(168, 255, 158, ${0.5 * footPulse})`);
+    footGlow.addColorStop(1, 'rgba(168, 255, 158, 0)');
+    ctx.fillStyle = footGlow;
+    ctx.beginPath();
+    ctx.arc(cx, footY, U * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+
     // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana na zielono,
     // osadzona na hubie modułu (tam, gdzie łączą się panele "słoneczne") -
-    // z delikatnym "oddychaniem" skalą, żeby było widać że maszyna żyje. ---
+    // z delikatnym "oddychaniem" skalą, żeby było widać że maszyna żyje.
+    // Własna poświata za kulą (dotąd brakowało - rdzeń był płaskim płaskim
+    // kółkiem bez życia, ten sam brak co dawniej przy Piecu). ---
     const hubCx = cx, hubCy = modTop + modH * 0.335;
     const breath = 1 + 0.05 * Math.sin(now * 0.004);
-    const coreR = modW * 0.24 * breath;
+    const coreR = modW * 0.27 * breath;
+
+    const coreGlow = ctx.createRadialGradient(hubCx, hubCy, 0, hubCx, hubCy, coreR * 2.1);
+    coreGlow.addColorStop(0, accentGlow);
+    coreGlow.addColorStop(1, 'rgba(168, 255, 158, 0)');
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath();
+    ctx.arc(hubCx, hubCy, coreR * 2.1, 0, Math.PI * 2);
+    ctx.fill();
+
     const coreSprite = this._getRecoloredSprite('machine_sci_core', 106, 1.25, 0.4);
     if (coreSprite) {
       ctx.drawImage(coreSprite, hubCx - coreR, hubCy - coreR, coreR * 2, coreR * 2);
@@ -1153,8 +1181,8 @@ class MachineManager {
         const t = ((now * 0.0006 + i * 0.3) % 1);
         const a = t * Math.PI * 6 + i;
         const r = coreR * (1 - t) * 1.3;
-        const bitSize = coreR * 0.3 * t;
-        ctx.globalAlpha = 0.9 * t;
+        const bitSize = coreR * (0.15 + 0.25 * t);
+        ctx.globalAlpha = 0.85 * (0.3 + 0.7 * t);
         ctx.drawImage(flareBit, hubCx + Math.cos(a) * r - bitSize / 2, hubCy + Math.sin(a) * r - bitSize / 2, bitSize, bitSize);
       }
       ctx.globalAlpha = 1;
