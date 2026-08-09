@@ -1114,6 +1114,56 @@ class Game {
     this.ctxUI.fillStyle = `rgba(${r}, ${g}, ${bl}, ${alpha})`;
     this.ctxUI.fillRect(0, 0, w, h);
     this.ctxUI.restore();
+
+    // Poświata maszyn "przebijająca" tę nakładkę (Tomek: "niech w nocy
+    // wyraźnie świecą") - patrz _drawMachineNightGlow.
+    this._drawMachineNightGlow(alpha);
+  }
+
+  /**
+   * Blask maszyn NAD nocną nakładką, addytywnym blendem ('lighter') - bez
+   * tego glow rdzeni maszyn (patrz machines.js, _draw*Machine) jest
+   * rysowany PRZED tą nakładką, w warstwie świata, więc ciemny,
+   * półprzezroczysty prostokąt nocy przygaszał go dokładnie tak samo jak
+   * całą resztę - w efekcie maszyny w nocy wyglądały MATOWIEJ niż w dzień,
+   * nie jaśniej. Tutaj blask jest rysowany PO nakładce, więc realnie
+   * "świeci przez ciemność" zamiast ginąć pod nią. Intensywność = ta sama
+   * alpha co nakładka nocy (przekazana z _drawDayNightOverlay), więc w
+   * dzień to zerowy koszt (funkcja tam w ogóle nie jest wołana) i płynnie
+   * narasta razem z zapadającym zmrokiem. Rysowane na ctxUI (bez własnej
+   * transformacji kamery, patrz _drawStars) - stąd ręczne odjęcie
+   * cameraX/cameraY zamiast polegania na translate() jak ctxGameplay.
+   */
+  _drawMachineNightGlow(nightAlpha) {
+    const mm = window.machineManager;
+    const eco = window.economyManager;
+    if (!mm || !Array.isArray(mm.machines)) return;
+
+    const camX = this.cameraX;
+    const camY = this.cameraY;
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const margin = 150;
+
+    this.ctxUI.save();
+    this.ctxUI.globalCompositeOperation = 'lighter';
+    mm.machines.forEach((m) => {
+      if (eco && typeof eco.isUnlocked === 'function' && !eco.isUnlocked(m.id)) return;
+      const sx = m.x - camX;
+      const sy = m.y - camY;
+      if (sx < -margin || sx > viewW + margin || sy < -margin || sy > viewH + margin) return;
+
+      const r = m.w * 1.1;
+      const glow = this.ctxUI.createRadialGradient(sx, sy, 0, sx, sy, r);
+      glow.addColorStop(0, m.color);
+      glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      this.ctxUI.globalAlpha = nightAlpha * 0.8;
+      this.ctxUI.fillStyle = glow;
+      this.ctxUI.beginPath();
+      this.ctxUI.arc(sx, sy, r, 0, Math.PI * 2);
+      this.ctxUI.fill();
+    });
+    this.ctxUI.restore();
   }
 
   /**
