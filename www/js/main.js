@@ -149,6 +149,12 @@ function startGame() {
         // żąda go jawnie (to dopiero przycisk w Menu, patrz ui.js).
         window.cloudSaveManager = new CloudSaveManager(window.saveManager);
         window.cloudSaveManager.checkAutoSignIn();
+        // Play Integrity (Tomek: "bierz się za Play [Integrity]" -> "pełna
+        // integracja") - RAZ na uruchomienie, patrz "Moment sprawdzenia" w
+        // integrity.js. Cichy no-op bez zbudowanego pluginu/bez wdrożonego
+        // backendu (INTEGRITY_VERIFY_URL puste) - patrz README-INTEGRITY.md.
+        window.integrityManager = new IntegrityManager();
+        window.integrityManager.checkNow();
         // PO load() (żeby lastLoginDateStr/dailyChallenge z zapisu były już
         // wczytane), ale PRZED syncFromGameState() (żeby HUD od razu
         // odzwierciedlił ewentualną nagrodę za dzisiejszy dzień/nowe

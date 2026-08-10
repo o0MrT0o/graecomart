@@ -91,6 +91,11 @@ const LANGUAGE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 
 // custom SVG co LANGUAGE_ICON_SVG wyżej (żadna wypakowana paczka Kenney nie
 // ma glifu chmury/synchronizacji). Klasyczny kontur chmury.
 const CLOUD_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px" fill="#81D4FA" stroke="none"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A5.5 5.5 0 0 1 17.2 8.1 4 4 0 0 1 17 16H7Z"/></svg>';
+// Ikona wiersza "Integralność" (SettingsPanel._buildIntegrityRow) - ten sam
+// powód custom SVG co CLOUD/LANGUAGE wyżej. Klasyczna tarcza (Play Integrity
+// broni apkę przed modyfikacją/podrobieniem, tarcza to od razu czytelny
+// skrót tej idei, bez potrzeby nowego assetu z paczek Kenney).
+const SHIELD_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px" fill="#A5D6A7" stroke="none"><path d="M12 2 4 5v6c0 5 3.4 8.6 8 11 4.6-2.4 8-6 8-11V5l-8-3Z"/></svg>';
 // LOCK PODMIENIONY (był ten sam cienki, ręcznie rysowany kłódkowy kontur co
 // reszta tej fali - patrz komentarz przy CART/GEAR/PAY wyżej) - dodany
 // niedawno (kłódka "za mało kasy"), ale od razu na docelowej ikonie
@@ -1316,6 +1321,14 @@ class SettingsPanel {
       if (this.isOpen) this.refresh();
     };
     Bus.subscribe(Events.CLOUD_SAVE_STATE_CHANGED, this._onCloudSaveStateChanged);
+
+    // Sprawdzenie integralności (integrity.js) jest RÓWNIEŻ asynchroniczne
+    // (round-trip przez plugin + własny backend) - ten sam powód/wzorzec co
+    // _onCloudSaveStateChanged wyżej.
+    this._onIntegrityStateChanged = () => {
+      if (this.isOpen) this.refresh();
+    };
+    Bus.subscribe(Events.INTEGRITY_STATE_CHANGED, this._onIntegrityStateChanged);
   }
 
   mount(parent) {
@@ -1380,7 +1393,7 @@ class SettingsPanel {
     this.bodyEl.innerHTML = '';
     this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.progress'), [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildDecorationsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
     this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.preferences'), [this._buildSoundRow(), this._buildMusicVolumeRow(), this._buildLanguageRow(), this._buildTutorialRow()]));
-    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.data'), [this._buildCloudSaveRow(), this._buildExportRow(), this._buildImportRow(), this._buildResetRow()]));
+    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.data'), [this._buildCloudSaveRow(), this._buildIntegrityRow(), this._buildExportRow(), this._buildImportRow(), this._buildResetRow()]));
     this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.about'), [this._buildAboutRow()]));
   }
 
@@ -1645,6 +1658,45 @@ class SettingsPanel {
     return I18n.t('ui.cloudSave.lastSync.time', { time: timeStr });
   }
 
+  /**
+   * Wiersz "Integralność" (Tomek: "bierz się za Play [Integrity]" -> "pełna
+   * integracja") - czysto INFORMACYJNY, w przeciwieństwie do wiersza Chmura
+   * NIE ma akcji, która cokolwiek zmienia w rozgrywce (patrz komentarz u
+   * góry integrity.js o zero-wpływie na rozgrywkę) - przycisk to tylko
+   * ręczne "sprawdź ponownie", przydatne np. po zainstalowaniu apki ze
+   * sklepu na nowo. 'idle' (stan PRZED pierwszym checkNow() z main.js,
+   * teoretycznie widoczny tylko na ułamek klatki) traktowany jak
+   * 'checking' - gracz nie powinien nigdy zobaczyć pustego/dziwnego stanu.
+   */
+  _buildIntegrityRow() {
+    const im = window.integrityManager;
+    const available = im && im.available();
+
+    if (!available) {
+      const btn = new UIButton({ label: I18n.t('ui.integrity.recheck.button'), variant: 'ghost', disabled: true });
+      return this._buildRow(SHIELD_ICON_SVG, I18n.t('ui.integrity.name'), I18n.t('ui.integrity.unavailable.desc'), btn.mount());
+    }
+
+    const checking = im.status === 'checking' || im.status === 'idle';
+    const btn = new UIButton({
+      label: checking ? I18n.t('ui.integrity.checking.button') : I18n.t('ui.integrity.recheck.button'),
+      variant: 'ghost',
+      disabled: checking,
+      onClick: () => {
+        im.checkNow();
+        this.refresh();
+      }
+    });
+
+    let desc;
+    if (checking) desc = I18n.t('ui.integrity.checking.desc');
+    else if (im.status === 'verified') desc = I18n.t('ui.integrity.verified.desc');
+    else if (im.status === 'warning') desc = I18n.t('ui.integrity.warning.desc', { verdict: im.verdictLabel || '?' });
+    else desc = I18n.t('ui.integrity.error.desc');
+
+    return this._buildRow(SHIELD_ICON_SVG, I18n.t('ui.integrity.name'), desc, btn.mount());
+  }
+
   /** Uruchamia samouczek od pierwszego kroku - jeśli poprzednia instancja
    * jeszcze żyje (mało prawdopodobne, skoro dismissed/ukończony samouczek
    * sam się usuwa z DOM, ale na wszelki wypadek), najpierw ją sprzątamy,
@@ -1781,6 +1833,7 @@ class SettingsPanel {
   destroy() {
     document.removeEventListener('keydown', this._onKeyDown);
     Bus.unsubscribe(Events.CLOUD_SAVE_STATE_CHANGED, this._onCloudSaveStateChanged);
+    Bus.unsubscribe(Events.INTEGRITY_STATE_CHANGED, this._onIntegrityStateChanged);
     if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
     if (this._importFileInput && this._importFileInput.parentNode) {
       this._importFileInput.parentNode.removeChild(this._importFileInput);

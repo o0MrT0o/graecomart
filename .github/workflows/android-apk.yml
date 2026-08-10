@@ -24,13 +24,15 @@ jobs:
       - run: npm ci
 
       # native-ads.bundle.js + native-notifications.bundle.js +
-      # native-haptics.bundle.js + native-cloudsave.bundle.js (jedyne cztery
-      # pliki z importem npm) + kopia gry do www/ - dokładnie to, co lokalnie
-      # robi `npm run sync` przed `npx cap sync`.
+      # native-haptics.bundle.js + native-cloudsave.bundle.js +
+      # native-integrity.bundle.js (jedyne pięć plików z importem npm) +
+      # kopia gry do www/ - dokładnie to, co lokalnie robi `npm run sync`
+      # przed `npx cap sync`.
       - run: npm run build-ads
       - run: npm run build-notifications
       - run: npm run build-haptics
       - run: npm run build-cloudsave
+      - run: npm run build-integrity
       - run: npm run prepare-www
 
       # Java 21, nie 17 - @capacitor/android@7 (node_modules/@capacitor/android/

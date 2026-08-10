@@ -162,14 +162,16 @@
          cokolwiek go użyje. -->
     <script src="js/i18n.js"></script>
     <script src="js/audio.js"></script>
-    <!-- Bundlowane osobno (esbuild) - jedyne cztery pliki w projekcie z importem
+    <!-- Bundlowane osobno (esbuild) - jedyne pięć plików w projekcie z importem
          npm (@capacitor-community/admob, @capacitor/local-notifications,
-         @capacitor/haptics, capacitor-google-game-services). Nieobecne/
-         nieszkodliwe podczas zwykłego testowania w przeglądarce (Live Server)
-         - patrz README-ADS.md/README-CLOUDSAVE.md. Muszą ładować się PRZED
-         ads.js/offline-reminder.js/haptics.js/cloudsave.js, które sprawdzają
-         czy window.NativeAds/window.NativeNotifications/window.NativeHaptics/
-         window.NativeCloudSave istnieją. -->
+         @capacitor/haptics, capacitor-google-game-services,
+         @capacitor-community/play-integrity). Nieobecne/nieszkodliwe podczas
+         zwykłego testowania w przeglądarce (Live Server) - patrz README-ADS.md/
+         README-CLOUDSAVE.md/README-INTEGRITY.md. Muszą ładować się PRZED
+         ads.js/offline-reminder.js/haptics.js/cloudsave.js/integrity.js, które
+         sprawdzają czy window.NativeAds/window.NativeNotifications/
+         window.NativeHaptics/window.NativeCloudSave/window.NativeIntegrity
+         istnieją. -->
     <script src="js/native-ads.bundle.js"></script>
     <script src="js/ads.js"></script>
     <script src="js/native-notifications.bundle.js"></script>
@@ -178,6 +180,8 @@
     <script src="js/haptics.js"></script>
     <script src="js/native-cloudsave.bundle.js"></script>
     <script src="js/cloudsave.js"></script>
+    <script src="js/native-integrity.bundle.js"></script>
+    <script src="js/integrity.js"></script>
     <script src="js/save.js"></script>
     <script src="js/economy.js"></script>
     <script src="js/sprites.js"></script>

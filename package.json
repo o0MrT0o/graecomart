@@ -8,12 +8,14 @@
     "build-notifications": "esbuild native-notifications-src.js --bundle --outfile=js/native-notifications.bundle.js --format=iife",
     "build-haptics": "esbuild native-haptics-src.js --bundle --outfile=js/native-haptics.bundle.js --format=iife",
     "build-cloudsave": "esbuild native-cloudsave-src.js --bundle --outfile=js/native-cloudsave.bundle.js --format=iife",
+    "build-integrity": "esbuild native-integrity-src.js --bundle --outfile=js/native-integrity.bundle.js --format=iife",
     "prepare-www": "node scripts/copy-www.js",
-    "sync": "npm run build-ads && npm run build-notifications && npm run build-haptics && npm run build-cloudsave && npm run prepare-www && npx cap sync",
+    "sync": "npm run build-ads && npm run build-notifications && npm run build-haptics && npm run build-cloudsave && npm run build-integrity && npm run prepare-www && npx cap sync",
     "android": "npx cap open android"
   },
   "dependencies": {
     "@capacitor-community/admob": "^7.0.0",
+    "@capacitor-community/play-integrity": "^7.1.0",
     "@capacitor/core": "^7.0.0",
     "@capacitor/haptics": "^7.0.5",
     "@capacitor/local-notifications": "^7.0.7",

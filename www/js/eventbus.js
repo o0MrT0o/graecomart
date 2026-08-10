@@ -64,6 +64,10 @@ const Events = {
     // zmienił (zalogowano, zsynchronizowano, błąd) - ui.js nasłuchuje, żeby
     // odświeżyć wiersz "Chmura" w Menu bez ręcznego odpytywania w pętli.
     CLOUD_SAVE_STATE_CHANGED: 'cloudsave:stateChanged', // { signedIn, playerName, lastSyncAt, status }
+    // Play Integrity (integrity.js) - stan sprawdzenia integralności apki się
+    // zmienił (sprawdzanie/zweryfikowano/ostrzeżenie/błąd) - ui.js nasłuchuje,
+    // żeby odświeżyć wiersz "Integralność" w Menu bez ręcznego odpytywania.
+    INTEGRITY_STATE_CHANGED: 'integrity:stateChanged', // { status, verdictLabel, checkedAt }
 };
 
 if (typeof globalThis !== 'undefined') {
