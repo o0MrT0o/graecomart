@@ -9,23 +9,30 @@
  * ItemRenderer — współdzielony renderer kart przedmiotów (świat, stos, UI).
  */
 
+// label: BYŁO emoji per typ (🗑️/♻️/📄/⚙️/💎/🎁/💠) - teraz puste, bo
+// _drawSpriteOrLabel (niżej) już go nie czyta w swoim fallbacku (prawdziwy
+// sprite -> proceduralna bryła -> neutralna plakietka koloru, ZERO tekstu/
+// emoji na żadnym etapie). Pole zostaje w kształcie danych (inne miejsca w
+// grze wciąż je odczytują/przekazują dalej), ale bez wartości do wyświetlenia.
 const ITEM_TYPES = [
-  { id: 'trash', label: '🗑️', color: '#78909C', name: 'Śmieci', rarity: 'common' },
-  { id: 'plastic', label: '♻️', color: '#42A5F5', name: 'Plastik', rarity: 'common' },
-  { id: 'paper', label: '📄', color: '#FFF176', name: 'Papier', rarity: 'common' },
-  { id: 'metal', label: '⚙️', color: '#B0BEC5', name: 'Metal', rarity: 'uncommon' },
-  { id: 'glass', label: '💎', color: '#80DEEA', name: 'Szkło', rarity: 'uncommon' },
-  { id: 'product', label: '🎁', color: '#AB47BC', name: 'Produkt', rarity: 'rare' },
+  { id: 'trash', label: '', color: '#78909C', get name() { return I18n.t('item.trash.name'); }, rarity: 'common' },
+  { id: 'plastic', label: '', color: '#42A5F5', get name() { return I18n.t('item.plastic.name'); }, rarity: 'common' },
+  { id: 'paper', label: '', color: '#FFF176', get name() { return I18n.t('item.paper.name'); }, rarity: 'common' },
+  { id: 'metal', label: '', color: '#B0BEC5', get name() { return I18n.t('item.metal.name'); }, rarity: 'uncommon' },
+  { id: 'glass', label: '', color: '#80DEEA', get name() { return I18n.t('item.glass.name'); }, rarity: 'uncommon' },
+  { id: 'product', label: '', color: '#AB47BC', get name() { return I18n.t('item.product.name'); }, rarity: 'rare' },
   // Jedyny surowiec Strefy D (Kryształowa Grań) - patrz ITEM_TYPE_ZONE niżej.
   // Pierwszy przedmiot z rzadkością 'epic' (dotąd zdefiniowaną w ITEM_RARITY,
   // ale niewykorzystaną) - najrzadszy, najcenniejszy surowiec ze świata,
   // zgodnie z tym, że D to najtrudniej dostępna strefa (wymaga OBU strojów).
-  { id: 'crystal_shard', label: '💠', color: '#9575CD', name: 'Odłamek Kryształu', rarity: 'epic' }
+  { id: 'crystal_shard', label: '', color: '#9575CD', get name() { return I18n.t('item.crystal_shard.name'); }, rarity: 'epic' }
 ];
 
 // --- Świat (Faza 2b: mapa większa niż ekran) --------------------------------
-// Te same wartości co w game.js/player.js/machines.js/market.js.
-const ITEM_WORLD_WIDTH = 1400;
+// Te same wartości co w game.js/player.js/ambient.js. 1750, było 1400 -
+// patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w game.js (poszerzenie
+// mapy pod NIEZALEŻNY pas Strefy D).
+const ITEM_WORLD_WIDTH = 1750;
 const ITEM_WORLD_HEIGHT = 2000;
 
 // --- Strefy mapy (Faza 2) ---------------------------------------------------
@@ -37,10 +44,12 @@ const ITEM_WORLD_HEIGHT = 2000;
 // Liczone teraz względem ŚWIATA (ITEM_WORLD_*), nie widoku (canvas.width/height).
 const ITEM_ZONE_C_TOP_RATIO = 0.32;
 const ITEM_ZONE_B_RIGHT_RATIO = 0.62;
-// Strefa D (Kryształowa Grań) - SAMODZIELNY róg prawy-górny (patrz identyczne
-// stałe i obszerny komentarz przy GAME_ZONE_D_LEFT_RATIO w game.js).
-const ITEM_ZONE_D_LEFT_RATIO = 0.78;
-const ITEM_ZONE_D_BOTTOM_RATIO = 0.5;
+// Strefa D (Kryształowa Grań) - NIEZALEŻNY pas na pełnej wysokości, na prawo
+// od "rdzenia" (patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w
+// game.js). ITEM_ZONE_CORE_WIDTH to STARA szerokość świata (1400, sprzed
+// poszerzenia pod Grań) - A/B/C nadal spawnują surowce względem NIEJ, nie
+// ITEM_WORLD_WIDTH, więc szerszy świat ich rozkładu nie rusza.
+const ITEM_ZONE_CORE_WIDTH = 1400;
 
 // Który surowiec spawnuje się w której strefie. Typy nieujęte tutaj (plastic,
 // product) trafiają domyślnie do Strefy A - i tak spawnują się głównie jako
@@ -53,11 +62,29 @@ const ITEM_TYPE_ZONE = {
   crystal_shard: 'D'
 };
 
+// Tomek: "niech nic się nie respi za maszynami czy terminalem albo
+// statkiem" - _spawnItem (niżej) losowało pozycję TYLKO w granicach strefy,
+// zero wiedzy o tym, gdzie stoją maszyny/statek/terminal, więc surowiec
+// mógł wylosować się dokładnie POD jednym z nich (niewidoczny, dopóki
+// gracz nie podejdzie na tyle blisko, że i tak dostanie go magnesem -
+// wygląda jak "wyskakiwanie zza" obiektu). Te same pozycje i promień co
+// keepAway w game.js (_generateDecorations) - własna kopia, konwencja
+// projektu (brak współdzielonych utili).
+const ITEM_KEEP_AWAY = [
+  { xr: 0.32, yr: 0.4 }, // recykler
+  { xr: 0.28, yr: 0.72 }, // prasa
+  { xr: 0.59, yr: 0.35 }, // piec hutniczy
+  { xr: 0.8, yr: 0.62 }, // oczyszczalnia
+  { xr: 0.5, yr: 0.85 }, // terminal handlowy
+  { xr: 0.18, yr: 0.55 }, // statek
+  { xr: 1.15, yr: 0.28 } // szlifiernia kryształów (xr > 1 - Strefa D, patrz komentarz w machines.js)
+].map((p) => ({ x: ITEM_ZONE_CORE_WIDTH * p.xr, y: ITEM_WORLD_HEIGHT * p.yr, r: 170 }));
+
 const ITEM_RARITY = {
-  common:    { border: '#B0BEC5', glow: 'rgba(176, 190, 197, 0.55)', label: 'Zwykły' },
-  uncommon:  { border: '#66BB6A', glow: 'rgba(102, 187, 106, 0.6)', label: 'Nietypowy' },
-  rare:      { border: '#FFD54F', glow: 'rgba(255, 213, 79, 0.75)', label: 'Rzadki' },
-  epic:      { border: '#AB47BC', glow: 'rgba(171, 71, 188, 0.75)', label: 'Epicki' }
+  common:    { border: '#B0BEC5', glow: 'rgba(176, 190, 197, 0.55)', get label() { return I18n.t('rarity.common'); } },
+  uncommon:  { border: '#66BB6A', glow: 'rgba(102, 187, 106, 0.6)', get label() { return I18n.t('rarity.uncommon'); } },
+  rare:      { border: '#FFD54F', glow: 'rgba(255, 213, 79, 0.75)', get label() { return I18n.t('rarity.rare'); } },
+  epic:      { border: '#AB47BC', glow: 'rgba(171, 71, 188, 0.75)', get label() { return I18n.t('rarity.epic'); } }
 };
 
 const ITEM_SPAWN_MARGIN = 24;
@@ -200,10 +227,30 @@ class ItemRenderer {
       ItemRenderer._drawCrystal(ctx, x, y, size, typeId === 'crystal_shard');
       return;
     }
-    ctx.font = `${size * 0.52}px "Segoe UI Emoji", Arial, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label || '?', x, y);
+    // 'crystal_gem' (ze Szlifierni Kryształów, machines.js) - ten sam powód
+    // co crystal/crystal_shard wyżej: brak pliku PNG, więc dostaje własną
+    // proceduralną bryłę zamiast emoji '✨' w skali size*0.52, żeby nie
+    // wyglądał drobniejszy niż sąsiedzi na liście cen terminala.
+    if (typeId === 'crystal_gem') {
+      ItemRenderer._drawPolishedGem(ctx, x, y, size);
+      return;
+    }
+    // Fallback OSTATECZNY - brak sprite'a I brak dedykowanej proceduralnej
+    // bryły (typy wyżej). W praktyce nieosiągalne dla podstawowych surowców
+    // (trash/plastic/paper/metal/glass/product) - te MAJĄ prawdziwe sprite'y
+    // (assets/items/*.png), więc trafiają tu tylko, gdyby plik się nie
+    // wczytał. BYŁO: fillText(label) z emoji per typ (🗑️/♻️/📄/⚙️/💎/🎁) -
+    // zastąpione neutralną, kolorową plakietką (kolor z ITEM_TYPES, jeśli
+    // typeId jest rozpoznany), żeby NIGDY nie pokazać emoji, nawet w tym
+    // skrajnym przypadku.
+    const meta = ITEM_TYPES.find((t) => t.id === typeId);
+    const fallbackColor = (meta && meta.color) || '#B0BEC5';
+    ctx.fillStyle = fallbackColor;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.lineWidth = Math.max(1, size * 0.04);
+    ItemRenderer._traceRoundedRect(ctx, x - size * 0.3, y - size * 0.3, size * 0.6, size * 0.6, size * 0.12);
+    ctx.fill();
+    ctx.stroke();
   }
 
   /**
@@ -306,6 +353,78 @@ class ItemRenderer {
     ctx.beginPath();
     ctx.moveTo(top.x, top.y + size * 0.06);
     ctx.lineTo(left.x + w * 0.12, left.y + size * 0.05);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  /**
+   * Proceduralny OSZLIFOWANY kryształ (crystal_gem, ze Szlifierni Kryształów -
+   * machines.js) - ten sam sześciokątny szkielet co _drawCrystal (czyta się
+   * jako "ten sam materiał, kolejny etap"), ale bledsza/lodowata paleta
+   * (zgodna z outputColor Szlifierni, #E1F5FE) zamiast fioletu surowego
+   * odłamka, GĘSTSZA siatka facetów (dodatkowe cięcia między wierzchołkami)
+   * i błysk w kształcie gwiazdki zamiast pojedynczej linii odblasku -
+   * wizualnie "bardziej dopracowany", zgodnie z tym, że to najdroższy towar
+   * w grze (patrz MARKET_BASE_PRICES.crystal_gem).
+   */
+  static _drawPolishedGem(ctx, x, y, size) {
+    const w = size * 0.7;
+    const h = size * 0.7;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    const top = { x: 0, y: -h / 2 };
+    const right = { x: w / 2, y: -h * 0.08 };
+    const bottomRight = { x: w * 0.32, y: h / 2 };
+    const bottomLeft = { x: -w * 0.32, y: h / 2 };
+    const left = { x: -w / 2, y: -h * 0.08 };
+    const center = { x: 0, y: h * 0.06 };
+
+    const grad = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
+    grad.addColorStop(0, '#FFFFFF');
+    grad.addColorStop(0.45, '#E1F5FE');
+    grad.addColorStop(1, '#7FD8D0');
+
+    ctx.beginPath();
+    ctx.moveTo(top.x, top.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.lineTo(bottomRight.x, bottomRight.y);
+    ctx.lineTo(bottomLeft.x, bottomLeft.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.lineWidth = Math.max(1, size * 0.03);
+    ctx.stroke();
+
+    // Gęstsza siatka facetów niż surowy odłamek - wierzchołki DO środka,
+    // plus dodatkowe cięcia między sąsiednimi wierzchołkami.
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = Math.max(1, size * 0.018);
+    ctx.beginPath();
+    [top, left, right, bottomLeft, bottomRight].forEach((p) => {
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(center.x, center.y);
+    });
+    [[top, right], [right, bottomRight], [bottomLeft, left], [left, top]].forEach(([a, b]) => {
+      ctx.moveTo((a.x + b.x) / 2, (a.y + b.y) / 2);
+      ctx.lineTo(center.x, center.y);
+    });
+    ctx.stroke();
+
+    // Błysk w kształcie gwiazdki (4 ramiona) - sygnał "gotowy/wypolerowany",
+    // którego surowy odłamek (jeden prosty odblask) nie ma.
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = Math.max(1, size * 0.025);
+    const sparkX = -w * 0.12, sparkY = -h * 0.15, sparkR = size * 0.09;
+    ctx.beginPath();
+    ctx.moveTo(sparkX - sparkR, sparkY);
+    ctx.lineTo(sparkX + sparkR, sparkY);
+    ctx.moveTo(sparkX, sparkY - sparkR);
+    ctx.lineTo(sparkX, sparkY + sparkR);
     ctx.stroke();
 
     ctx.restore();
@@ -477,17 +596,38 @@ class ItemManager {
 
     const type = ITEM_TYPES.find((t) => t.id === typeId) || ITEM_TYPES[0];
     const bounds = this._getZoneBounds(ITEM_TYPE_ZONE[typeId] || 'A');
+    const pos = this._rollSpawnPosition(bounds);
 
     const item = this._makeItem({
       typeId,
       label: type.label,
       color: type.color,
-      x: bounds.minX + Math.random() * (bounds.maxX - bounds.minX),
-      y: bounds.minY + Math.random() * (bounds.maxY - bounds.minY)
+      x: pos.x,
+      y: pos.y
     });
 
     this.items.push(item);
     return item;
+  }
+
+  /** Losuje pozycję w granicach strefy, odrzucając te zbyt blisko maszyn/
+   * statku/terminala (patrz ITEM_KEEP_AWAY) - do 20 prób, potem poddaje się
+   * i zwraca ostatnią wylosowaną (skrajny przypadek: strefa na tyle mała, że
+   * ŻADNA pozycja jej nie spełnia - lepiej dostać surowiec trochę za blisko
+   * niż zawiesić spawn na stałe). */
+  _rollSpawnPosition(bounds) {
+    let x; let y;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      x = bounds.minX + Math.random() * (bounds.maxX - bounds.minX);
+      y = bounds.minY + Math.random() * (bounds.maxY - bounds.minY);
+      const tooClose = ITEM_KEEP_AWAY.some((k) => {
+        const dx = x - k.x;
+        const dy = y - k.y;
+        return Math.sqrt(dx * dx + dy * dy) < k.r;
+      });
+      if (!tooClose) break;
+    }
+    return { x, y };
   }
 
   /**
@@ -496,33 +636,32 @@ class ItemManager {
    * Strefa A to cała reszta - patrz stałe ITEM_ZONE_*_RATIO na górze pliku.
    */
   _getZoneBounds(zone) {
-    const w = ITEM_WORLD_WIDTH;
+    const w = ITEM_WORLD_WIDTH; // pełna szerokość świata (rdzeń + pas D)
     const h = ITEM_WORLD_HEIGHT;
+    const coreW = ITEM_ZONE_CORE_WIDTH; // rdzeń (A/B/C) - NIE zmienia się z poszerzeniem mapy
     const m = ITEM_SPAWN_MARGIN;
     const topH = h * ITEM_ZONE_C_TOP_RATIO;
-    const rightX = w * ITEM_ZONE_B_RIGHT_RATIO;
-    const dLeftX = w * ITEM_ZONE_D_LEFT_RATIO;
-    const dBottomY = h * ITEM_ZONE_D_BOTTOM_RATIO;
+    const rightX = coreW * ITEM_ZONE_B_RIGHT_RATIO;
+    const dLeftX = coreW;
 
     if (zone === 'D') {
-      // SAMODZIELNY róg prawy-górny (nie wycinek pasa C) - patrz
-      // ITEM_ZONE_D_LEFT_RATIO/BOTTOM_RATIO. Margines od DOLNEJ krawędzi
-      // Grani też, żeby odłamki nie spawnowały się dokładnie na pofalowanej
-      // granicy z bagnem (tam wizualnie już nie widać kryształowego podłoża).
-      return { minX: Math.min(dLeftX + m, w - m - 1), maxX: Math.max(dLeftX + m + 1, w - m), minY: m, maxY: Math.max(m + 1, dBottomY - m) };
+      // NIEZALEŻNY pas na pełnej wysokości (nie róg jak dawniej) - sięga od
+      // dLeftX (koniec rdzenia) do prawej krawędzi ŚWIATA (w, poszerzonej).
+      return { minX: Math.min(dLeftX + m, w - m - 1), maxX: Math.max(dLeftX + m + 1, w - m), minY: m, maxY: Math.max(m + 1, h - m) };
     }
     if (zone === 'C') {
       // Reszta pasa C, NA LEWO od Strefy D - metal zostaje wyraźnie oddzielony
-      // od kryształów (patrz komentarz przy zone==='D' wyżej), zamiast dwóch
-      // surowców losowo mieszających się w tym samym rogu mapy.
+      // od kryształów (patrz komentarz przy zone==='D' wyżej). C sięga teraz
+      // do PEŁNEJ szerokości rdzenia (dLeftX = coreW) - odkąd D jest osobnym
+      // pasem, C nie musi już zostawiać miejsca w swoim rogu.
       return { minX: m, maxX: Math.max(m + 1, dLeftX - m), minY: m, maxY: Math.max(m + 1, topH - m) };
     }
     if (zone === 'B') {
-      // Bagno zaczyna się PONIŻEJ pasa C, ale w prawym-górnym rogu siedzi
-      // teraz Grań (sięga do dBottomY) - szkło spawnujemy więc dopiero pod
-      // nią, inaczej trafiałoby na kryształowe podłoże.
+      // Bagno zaczyna się PONIŻEJ pasa C - D nie dzieli już z nim rogu (jest
+      // osobnym pasem za coreW), więc B sięga do pełnej wysokości rdzenia bez
+      // dawnego dolnego marginesu pod Granią.
       const bMinY = Math.max(topH + m, m);
-      return { minX: Math.min(rightX + m, w - m - 1), maxX: Math.max(rightX + m + 1, w - m), minY: Math.max(bMinY, dBottomY + m), maxY: Math.max(dBottomY + m + 1, h - m) };
+      return { minX: Math.min(rightX + m, coreW - m - 1), maxX: Math.max(rightX + m + 1, coreW - m), minY: bMinY, maxY: Math.max(bMinY + 1, h - m) };
     }
     // Strefa A: reszta (lewa/środkowa część, poniżej pasa C, na lewo od pasa B).
     return { minX: m, maxX: Math.max(m + 1, rightX - m), minY: Math.max(topH + m, m), maxY: Math.max(topH + m + 1, h - m) };
@@ -531,7 +670,12 @@ class ItemManager {
   _spawnSpecificAt(typeId, x, y, label, color) {
     const item = this._makeItem({
       typeId,
-      label: label || '❓',
+      // BUGFIX: było `label || '❓'` - '' (pusty label, teraz normalna
+      // wartość dla większości typów, patrz komentarz przy ITEM_TYPES) jest
+      // FALSY w JS, więc ten fallback po cichu podmieniał go z powrotem na
+      // emoji przy KAŻDYM spawnie z maszyny. label ?? zamiast || - pusty
+      // string zostaje pustym stringiem, fallback trafia tylko w undefined/null.
+      label: label ?? '',
       color: color || '#8BC34A',
       x,
       y
@@ -562,8 +706,15 @@ class ItemManager {
     this.time += sec;
 
     // NOWE: Automatyczne dodawanie śmieci co jakiś czas, żeby mapa nie była pusta
+    // Modyfikator planety (patrz PLANET_MODIFIERS w economy.js) skraca/wydłuża
+    // efektywny odstęp - spawnInterval samo w sobie zostaje stałe (>1 mult =
+    // częściej, więc dzielimy, nie mnożymy).
+    const eco = window.economyManager;
+    const spawnMult = (eco && typeof eco.getPlanetSpawnMultiplier === 'function')
+      ? eco.getPlanetSpawnMultiplier()
+      : 1;
     this.spawnTimer += delta;
-    if (this.spawnTimer >= this.spawnInterval) {
+    if (this.spawnTimer >= this.spawnInterval / spawnMult) {
       this.spawnTimer = 0;
       if (this.items.length < 25) { // Maksymalny limit przedmiotów na mapie
         this._spawnItem(null);
@@ -620,8 +771,28 @@ class ItemManager {
     }
   }
 
+  /**
+   * Viewport culling (patrz ten sam wzorzec w ambient.js/critters.js/
+   * game.js._drawDecorations) - przedmioty POZA kadrem (+margines) w ogóle
+   * nie trafiają do drawWorld(), więc nie płacimy za ich sprite/poświatę/cień
+   * na klatkach, w których i tak nie są widoczne. Margines >= promień
+   * poświaty (ITEM_GLOW_RADIUS_MULT), żeby przedmiot był już w pełni
+   * narysowany, ZANIM jego krawędź wjedzie na ekran - inaczej byłoby widać
+   * "wyskakiwanie" zamiast płynnego wjazdu w kadr. update() (zbieranie/
+   * respawn/animacja) NIE jest tu ruszane - działa zawsze, niezależnie od
+   * widoczności, bo to stan gry, nie tylko rendering.
+   */
   draw(ctxBg, ctx, ctxUI) {
+    const camX = window.game ? window.game.cameraX : 0;
+    const camY = window.game ? window.game.cameraY : 0;
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const margin = ITEM_VISUAL_SIZE * ITEM_GLOW_RADIUS_MULT + 40;
+
     this.items.forEach((item) => {
+      if (item.x < camX - margin || item.x > camX + viewW + margin) return;
+      if (item.y < camY - margin || item.y > camY + viewH + margin) return;
+
       ItemRenderer.drawWorld(ctx, item, this.time);
 
       if (this.debugShowPickupRadius) {

@@ -21,7 +21,7 @@
  * Zależności globalne (muszą być załadowane przed tym plikiem):
  *   - window.Bus / window.Events (m.in. ITEM_PICKUP, MACHINE_RECEIVED,
  *      MACHINE_OUTPUT, MONEY_COLLECTED, UPGRADE_BOUGHT, SHIP_MODULE_COMPLETED,
- *      GAME_WON, FOOTSTEP, ZONE_HAZARD_WARNING)
+ *      GAME_WON, FOOTSTEP, ZONE_HAZARD_WARNING, ACHIEVEMENT_UNLOCKED, ITEM_LOST)
  *
  * Użycie w main.js:
  *   window.audioManager = new AudioManager();
@@ -31,28 +31,103 @@
 
 const AUDIO_SRC = {
   pickup: 'assets/audio/pickup.mp3',
-  machine_feed: 'assets/audio/machine_feed.mp3',
-  machine_complete: 'assets/audio/machine_complete.mp3',
+  // machine_feed/machine_complete/hazard PODMIENIONE na Kenney Sci-Fi Sounds
+  // (Tomek: "sci fi sound") - gra jest o kosmitach/statku, generyczne
+  // kliknięcia/brzęki nie pasowały tematycznie:
+  //   machine_feed     - BUGFIX (Tomek: "jak się daje wiele śmieci na raz to
+  //                       nie dość że jest głośny to jeszcze nakłada się na
+  //                       siebie"): był tu computerNoise_000, opisany w
+  //                       poprzednim komentarzu jako "krótki, cichy bip" -
+  //                       w RZECZYWISTOŚCI to ~5-sekundowy, stale głośny szum
+  //                       (zmierzone przez Web Audio decodeAudioData, nie
+  //                       samą nazwę pliku). Maszyny auto-karmią się co 150ms
+  //                       (MACHINE_UNLOAD_INTERVAL_MS, machines.js) - przy
+  //                       serii przedmiotów odpalało to dziesiątki 5-sekundowych
+  //                       klipów NA SIEBIE, stąd i głośność, i nakładanie.
+  //                       Zamiast tego impactMetal_000 - krótki, ostry "stuk"
+  //                       (peak w pierwszych ~30ms, cisza po ~200ms wg tej
+  //                       samej analizy) - surowiec fizycznie uderza o komorę
+  //                       maszyny, kolejne karmienia nakładają się już tylko
+  //                       wygasającymi "ogonami", nie pełną głośnością.
+  //   machine_complete - doorOpen_000 - syczący odgłos otwieranej śluzy/luku -
+  //                       czyta się jako "produkt gotowy, klapa się otwiera"
+  //                       lepiej niż zwykły dzwonek.
+  //   hazard            - forceField_000 - elektryczny warkot bariery
+  //                       energetycznej, czyta się jako "niebezpieczne pole"
+  //                       dużo bardziej sci-fi niż generyczny alarm.
+  machine_feed: 'assets/audio/machine_feed.ogg',
+  machine_complete: 'assets/audio/machine_complete.ogg',
   coin: 'assets/audio/coin.mp3',
   purchase: 'assets/audio/purchase.mp3',
-  ui_click: 'assets/audio/ui_click.mp3',
-  hazard: 'assets/audio/hazard.mp3',
-  module_complete: 'assets/audio/module_complete.mp3',
+  // Tomek wgrał do repo pełne paczki Kenney (nie same PNG jak wcześniej -
+  // "Sounds"/"Bonus" foldery wewnątrz kilku z nich mają gotowe efekty CC0).
+  // ui_click/module_complete PODMIENIONE (te same klucze, nowe pliki - zero
+  // zmian w miejscach wołających play()): ui_click na 'tap-a' z tego samego
+  // Kenney UI Pack, którego teksturami są już przyciski (style.css .ui-btn) -
+  // dźwięk i wygląd przycisków wreszcie z jednego zestawu. module_complete
+  // na 'sfx_shieldUp' z Space Shooter Remastered - "tarcza w górze" czyta się
+  // dużo bardziej jako "moduł statku naprawiony/zasilony" niż ogólny jingle.
+  ui_click: 'assets/audio/ui_click.ogg',
+  hazard: 'assets/audio/hazard.ogg',
+  module_complete: 'assets/audio/module_complete.ogg',
   victory: 'assets/audio/victory.mp3',
+  // NOWE klucze (uzupełniają zdarzenia, które wcześniej nie miały ŻADNEGO
+  // dźwięku - nie podmiana, tylko brakujący efekt):
+  //   ui_switch    - 'switch-a' (Kenney UI Pack) - WYŁĄCZNIE przycisk Dźwięk
+  //                  w Menu (patrz UIButton sound param, ui.js) - jedyny
+  //                  przycisk w grze będący faktycznym przełącznikiem.
+  //   achievement  - 'sfx_magic' (Kenney New Platformer Pack) -
+  //                  Events.ACHIEVEMENT_UNLOCKED nie miało wcześniej ŻADNEGO
+  //                  dźwięku (audio.js go nawet nie subskrybował).
+  //   item_lost    - 'sfx_lose' (Kenney Space Shooter Remastered) - utrata
+  //                  przedmiotu w strefie hazardu (Events.ITEM_LOST, nowy
+  //                  event - patrz player.js/eventbus.js) miała dotąd tylko
+  //                  wstrząs ekranu + popup, żadnego dźwięku.
+  ui_switch: 'assets/audio/ui_switch.ogg',
+  achievement: 'assets/audio/achievement.ogg',
+  item_lost: 'assets/audio/item_lost.ogg',
+  // Dźwięk odmowy - "za mało pieniędzy/Rdzeni" na przyciskach kupna w sklepie
+  // (Tomek: "dźwięki UI/error feedback"). Wcześniej kliknięcie takiego
+  // przycisku było KOMPLETNIE ciche (patrz UIButton `denied` w ui.js -
+  // natywny <button disabled> w ogóle nie emituje eventu 'click', więc do
+  // teraz gracz nie miał ŻADNEGO sygnału poza samym wyglądem przycisku).
+  // lowDown (Kenney "Digital Audio") - krótki, opadający ton, jednoznacznie
+  // czytany jako "nie" w odróżnieniu od jasnego/rosnącego 'purchase'.
+  error: 'assets/audio/error.ogg',
   footstep0: 'assets/audio/footstep0.mp3',
   footstep1: 'assets/audio/footstep1.mp3',
   footstep2: 'assets/audio/footstep2.mp3',
   footstep3: 'assets/audio/footstep3.mp3',
-  // Kroki per NAWIERZCHNIA - osobno wyrenderowane pliki (patrz
-  // AUDIO_STEP_FILES niżej), po 2 warianty na podłoże.
-  step_grass0: 'assets/audio/step_grass0.wav',
-  step_grass1: 'assets/audio/step_grass1.wav',
-  step_swamp0: 'assets/audio/step_swamp0.wav',
-  step_swamp1: 'assets/audio/step_swamp1.wav',
-  step_ash0: 'assets/audio/step_ash0.wav',
-  step_ash1: 'assets/audio/step_ash1.wav',
-  step_crystal0: 'assets/audio/step_crystal0.wav',
-  step_crystal1: 'assets/audio/step_crystal1.wav'
+  // Kroki per NAWIERZCHNIA - dotąd własna synteza wyrenderowana do .wav
+  // (patrz komentarz przy AUDIO_STEP_SURFACE niżej - synteza ZOSTAJE jako
+  // awaryjna ścieżka), teraz prawdziwe nagrania z Kenney "Impact Sounds"
+  // (Tomek: "podmień kroki na prawdziwe, dopasuj do regionu"), po 3
+  // warianty na podłoże zamiast 2 - mniej słyszalne powtórzenie przy
+  // szybkim marszu. Dobór per strefa (żadna z 5 dostępnych faktur w paczce
+  // nie nazywa się dosłownie "bagno" ani "kryształ", więc dopasowanie po
+  // BRZMIENIU, nie po nazwie pliku):
+  //   A trawa    - footstep_grass - jedyne dokładne 1:1 trafienie.
+  //   B bagno    - footstep_carpet - najbardziej stłumiona/miękka z
+  //                dostępnych (bez chrzęstu, bez dzwonienia) - najbliższy
+  //                odpowiednik dawnego "mokrego mlaśnięcia" (concrete/wood/
+  //                snow wszystkie brzmią zbyt twardo/sucho na bagno).
+  //   C popiół   - footstep_snow - chrzęszcząca faktura śniegu czyta się
+  //                bliżej "chrzęstu kruszywa" niż twarde concrete/wood.
+  //   D kryształ - impactGlass_light (NIE footstep_*) - szklany, jasny
+  //                impakt pasuje do "szklanego, dzwoniącego stąpnięcia"
+  //                dużo lepiej niż jakikolwiek footstep w tej paczce.
+  step_grass0: 'assets/audio/step_grass0.ogg',
+  step_grass1: 'assets/audio/step_grass1.ogg',
+  step_grass2: 'assets/audio/step_grass2.ogg',
+  step_swamp0: 'assets/audio/step_swamp0.ogg',
+  step_swamp1: 'assets/audio/step_swamp1.ogg',
+  step_swamp2: 'assets/audio/step_swamp2.ogg',
+  step_ash0: 'assets/audio/step_ash0.ogg',
+  step_ash1: 'assets/audio/step_ash1.ogg',
+  step_ash2: 'assets/audio/step_ash2.ogg',
+  step_crystal0: 'assets/audio/step_crystal0.ogg',
+  step_crystal1: 'assets/audio/step_crystal1.ogg',
+  step_crystal2: 'assets/audio/step_crystal2.ogg'
 };
 
 // Głośność per dźwięk (0..1). Częste/drobne (pickup, feed, kroki) wyraźnie
@@ -60,14 +135,29 @@ const AUDIO_SRC = {
 // szybkich zdarzeń nie zagłuszała wszystkiego innego.
 const AUDIO_VOLUME = {
   pickup: 0.32,
-  machine_feed: 0.38,
-  machine_complete: 0.5,
+  // BUGFIX: obniżone z 0.38 razem z podmianą pliku (patrz AUDIO_SRC.machine_feed)
+  // - impactMetal_000 ma ostrzejszy, wyższy peak (~0.9) niż stary, płaski szum,
+  // więc trochę niżej tu, żeby seria szybkich karmień dalej brzmiała jak
+  // "częste/drobne", nie głośniej niż pickup mimo krótszego czasu trwania.
+  // BUGFIX (Tomek: "dźwięk maszyn niech będzie cichszy, jest dosyć głośny") -
+  // dalsze obniżenie z 0.3/0.5, maszyny grają najczęściej ze wszystkich
+  // dźwięków w grze (kilka na sekundę przy pełnym magazynie), więc nawet
+  // małe zbicie głośności każdego odtworzenia mocno redukuje odczuwalny hałas.
+  machine_feed: 0.2,
+  machine_complete: 0.35,
   coin: 0.42,
   purchase: 0.48,
   ui_click: 0.35,
+  ui_switch: 0.4,
   hazard: 0.42,
   module_complete: 0.65,
   victory: 0.75,
+  achievement: 0.55,
+  item_lost: 0.4,
+  // Wyraźnie głośniejszy niż ui_click (0.35) - to jedyny dźwięk w interfejsie,
+  // który MUSI się przebić i zostać zauważony przy pierwszym "nie stać cię",
+  // nie zlać się z tłem kliknięć.
+  error: 0.45,
   footstep0: 0.14,
   footstep1: 0.14,
   footstep2: 0.14,
@@ -86,7 +176,18 @@ const AUDIO_MIN_INTERVAL = {
   // drugi krok przy szybkim marszu i dźwięk rozjeżdżał się z nogami. Teraz
   // 90ms: nadal chroni przed patologicznym spamem, ale nie odrzuca żadnego
   // prawdziwego kroku (najszybszy możliwy to ~180ms).
-  footstep: 90
+  footstep: 90,
+  // AUDYT (ta sama metodologia co przy machine_feed - zmierzone przez Web
+  // Audio decodeAudioData): error.ogg ma ~450ms GŁOŚNEGO, sustainowanego
+  // "opadającego brzęczenia" (nie krótki transient jak reszta UI), zanim
+  // faktycznie ucichnie. Domyślny throttle (150ms) na "za mało kasy/Rdzeni"
+  // - jedynym dźwięku w grze odpalanym wprost przez powtarzane, ludzkie
+  // tapanie w przycisk (nie automatyczny event co stałe X ms jak przy
+  // machine_feed) - pozwalał na kilka nakładających się, głośnych "buczeń"
+  // przy niecierpliwym domashowaniu zablokowanego przycisku. Dłuższy próg
+  // tu jest też dobrym UX-em samym w sobie: negatywny feedback NIE musi
+  // być błyskawicznie powtarzalny jak pozytywny (pickup/coin).
+  error: 400
 };
 const AUDIO_DEFAULT_MIN_INTERVAL = 150;
 
@@ -130,18 +231,19 @@ const AUDIO_STEP_SURFACE = {
 // próbki (0.14), żeby kroki nie zaczęły nagle dominować nad resztą gry.
 const AUDIO_STEP_VOLUME = 0.16;
 
-// Gotowe PLIKI kroków per strefa (=nawierzchnia). Wyrenderowane z tej samej
-// syntezy co AUDIO_STEP_SURFACE wyżej, ale zapisane jako .wav - dzięki temu
-// nie trzeba liczyć DSP przy każdym kroku (2-3 razy na sekundę na telefonie)
-// ani zależeć od Web Audio. Po 2 warianty na podłoże, wybierane naprzemiennie,
-// żeby kolejne kroki nie brzmiały identycznie.
+// Gotowe PLIKI kroków per strefa (=nawierzchnia) - prawdziwe nagrania
+// (Kenney "Impact Sounds", patrz AUDIO_SRC), nie trzeba liczyć DSP przy
+// każdym kroku (2-3 razy na sekundę na telefonie) ani zależeć od Web Audio.
+// Po 3 warianty na podłoże (było 2), wybierane po kolei (patrz
+// _playSurfaceFile - footstepIndex % keys.length), żeby kolejne kroki nie
+// brzmiały identycznie nawet przy dłuższym marszu w jedną stronę.
 // Synteza w _playSynthFootstep zostaje jako awaryjna ścieżka, gdyby któryś
 // plik się nie wczytał.
 const AUDIO_STEP_FILES = {
-  A: ['step_grass0', 'step_grass1'],
-  B: ['step_swamp0', 'step_swamp1'],
-  C: ['step_ash0', 'step_ash1'],
-  D: ['step_crystal0', 'step_crystal1']
+  A: ['step_grass0', 'step_grass1', 'step_grass2'],
+  B: ['step_swamp0', 'step_swamp1', 'step_swamp2'],
+  C: ['step_ash0', 'step_ash1', 'step_ash2'],
+  D: ['step_crystal0', 'step_crystal1', 'step_crystal2']
 };
 // Głośność plików kroków (te same proporcje między nawierzchniami co miała
 // synteza - patrz vol w AUDIO_STEP_SURFACE; poziom bazowy jak reszta efektów).
@@ -149,10 +251,26 @@ const AUDIO_STEP_FILE_VOLUME = 0.3;
 
 // Klucz w localStorage do zapamiętania preferencji wyciszenia między sesjami.
 const AUDIO_MUTE_STORAGE_KEY = 'ecomart_muted';
+// Klucz w localStorage dla suwaka głośności muzyki (SettingsPanel w ui.js) -
+// osobny od wyciszenia (AUDIO_MUTE_STORAGE_KEY): mute to "cisza teraz", to
+// tutaj to "jak głośno, gdy NIE wyciszone" - dwie niezależne preferencje.
+const AUDIO_MUSIC_VOLUME_STORAGE_KEY = 'ecomart_music_volume';
+
+// Prawdziwy podkład muzyczny (Tomek: "suwak i pliki już, muzykę dodam
+// później") - gdy plik istnieje pod tą ścieżką, ZASTĘPUJE proceduralny pad
+// niżej (patrz _tryStartRealMusicTrack). Dopóki go nie ma, ładowanie po
+// prostu zawodzi (błąd sieci na ten JEDEN plik, złapany przez 'error' niżej)
+// i cicho spadamy z powrotem na już działającą muzykę proceduralną - zero
+// zmiany w zachowaniu gry, dopóki plik faktycznie nie trafi do repo pod tą
+// nazwą. Format mp3 dla szerokiej kompatybilności (Safari/iOS nie gra ogg).
+const AUDIO_MUSIC_TRACK_SRC = 'assets/audio/music_theme.mp3';
 
 // --- Muzyka w tle (proceduralna - patrz startMusic) --------------------------
 // Wyraźnie ciszej niż JAKIKOLWIEK efekt (najcichszy to krok, 0.14) - to ma być
 // tło, którego się nie zauważa, a nie drugi plan konkurujący z dźwiękami gry.
+// Traktowane jako SUFIT proceduralnego pada - suwak głośności (musicVolume,
+// 0..1) mnoży tę wartość, więc domyślne musicVolume=1 daje DOKŁADNIE
+// dotychczasowe brzmienie (zero zmiany, dopóki gracz sam nie ruszy suwaka).
 const AUDIO_MUSIC_VOLUME = 0.075;
 // Skala pentatoniczna (A-moll: A C D E G) w dwóch oktawach. Pentatonika NIE
 // zawiera półtonów ani trytonu, więc DOWOLNE dwie nuty z tej listy brzmią
@@ -162,6 +280,49 @@ const AUDIO_MUSIC_SCALE = [
   110.00, 130.81, 146.83, 164.81, 196.00, // A2 C3 D3 E3 G3
   220.00, 261.63, 293.66, 329.63, 392.00  // A3 C4 D4 E4 G4
 ];
+
+// --- Muzyka: kilka "nastrojów" grających NA ZMIANĘ ---------------------------
+// PIERWSZA wersja tego pomysłu wiązała brzmienie ze strefą, w której akurat
+// stoi gracz (biom = nastrój) - zmienione na prośbę: nastroje mają rotować
+// OGÓLNIE, w tle, niezależnie od tego, gdzie gracz akurat jest, zamiast
+// przełączać się przy każdym przekroczeniu granicy strefy.
+//
+// Ten sam generator nut (pentatonika, zero ryzyka dysonansu) gra kolejno
+// "utwory" z AUDIO_MUSIC_TRACKS - każdy to inne nastrojenie: który rejestr
+// skali (scaleFrom/scaleTo, indeksy w AUDIO_MUSIC_SCALE), jak jasno/matowo
+// brzmi (filterFreq - niżej = bardziej stłumione), jak gęsto/rzadko lecą
+// nuty (gapMin/gapMax) i jak głośno (peak). Rotacja co AUDIO_MUSIC_TRACK_*
+// nut (patrz _scheduleNextNote), NIE co event z Bus - żaden inny moduł nie
+// musi o tym wiedzieć.
+//
+// Track 0 to DOKŁADNIE dotychczasowe wartości (scaleFrom:0, scaleTo:10,
+// filterFreq:900, dur 2.6-4.8, gap 1400-3000, peak 0.9) - zerowa zmiana
+// brzmienia w pierwszej fazie rotacji, żeby nic, co już działało, się nie
+// zepsuło.
+const AUDIO_MUSIC_TRACKS = [
+  // 0: spokojny (dotychczasowe brzmienie, bez zmian).
+  { scaleFrom: 0, scaleTo: 10, filterFreq: 900, durMin: 2.6, durMax: 4.8, gapMin: 1400, gapMax: 3000, peak: 0.9 },
+  // 1: mroczny/przytłumiony - tylko DOLNA oktawa (indeksy 0-4), mocno
+  // stłumiony filtr, wolniej i ciszej - ten sam charakter co bagno
+  // (najdłuższy/najciemniejszy krok, AUDIO_STEP_SURFACE.B).
+  { scaleFrom: 0, scaleTo: 5, filterFreq: 480, durMin: 3.4, durMax: 6.2, gapMin: 2000, gapMax: 3800, peak: 0.75 },
+  // 2: niespokojny - PEŁNY rejestr, ale szybciej/gęściej i odrobinę
+  // głośniej - napięcie zamiast spokoju, bez łamania pentatoniki.
+  { scaleFrom: 0, scaleTo: 10, filterFreq: 700, durMin: 1.6, durMax: 3.0, gapMin: 850, gapMax: 1700, peak: 1.0 },
+  // 3: jasny/eteryczny - tylko GÓRNA oktawa (indeksy 5-9), jasny filtr +
+  // shimmer (patrz _maybePlayShimmer) - "szklane" brzmienie zgodne z
+  // dzwoniącym tonem kroku Kryształowej Grani (AUDIO_STEP_SURFACE.D.ring).
+  { scaleFrom: 5, scaleTo: 10, filterFreq: 1700, durMin: 2.2, durMax: 4.0, gapMin: 1200, gapMax: 2600, peak: 0.85, shimmer: true }
+];
+// Po ilu nutach (losowo w tym zakresie) rotujemy na kolejny utwór z listy -
+// "fraza muzyczna", nie sztywna liczba, żeby przejścia nie wypadały w
+// przewidywalnym rytmie.
+const AUDIO_MUSIC_TRACK_NOTES_MIN = 5;
+const AUDIO_MUSIC_TRACK_NOTES_MAX = 9;
+// Szansa na dodatkowy "błysk" (wysoki, szybko gasnący sinus - jak
+// _playSynthFootstep's ring) NAŁOŻONY na główną nutę, TYLKO gdy bieżący
+// utwór ma shimmer:true (patrz AUDIO_MUSIC_TRACKS[3]).
+const AUDIO_MUSIC_SHIMMER_CHANCE = 0.4;
 
 // Losowe wahnięcie wysokości dźwięku (playbackRate) przy KAŻDYM odtworzeniu -
 // bez tego częste dźwięki (pickup/machine_feed/kroki, kilka razy na sekundę
@@ -177,12 +338,27 @@ class AudioManager {
     this._lastPlayedAt = {};
     this._footstepIndex = 0;
     this.muted = this._loadMutePreference();
+    // Suwak głośności muzyki (SettingsPanel._buildMusicVolumeRow, ui.js) -
+    // 0..1, mnożony przez sufit odpowiedniego backendu (AUDIO_MUSIC_VOLUME
+    // dla pada, wprost jako .volume dla prawdziwego pliku - patrz
+    // setMusicVolume). Domyślnie 1 = dotychczasowe brzmienie bez zmian.
+    this.musicVolume = this._loadMusicVolumePreference();
 
-    // Muzyka w tle (proceduralna) - tworzone leniwie w startMusic(), patrz
-    // komentarz tam (autoplay policy przeglądarek).
+    // Muzyka w tle - startMusic() najpierw PRÓBUJE prawdziwego pliku
+    // (AUDIO_MUSIC_TRACK_SRC), a dopiero gdy ten zawiedzie, tworzy poniższe
+    // proceduralnie (leniwie, patrz komentarz przy startMusic - autoplay
+    // policy przeglądarek).
+    this._musicStarted = false;
+    this._realMusicEl = null;
     this._audioCtx = null;
     this._musicGain = null;
     this._musicTimer = null;
+    // Rotacja "utworów" (patrz AUDIO_MUSIC_TRACKS) - zaczynamy od 0 (dawne,
+    // niezmienione brzmienie), _musicTrackNotesLeft losowany dopiero przy
+    // starcie muzyki (patrz startMusic/_scheduleNextNote), żeby pierwsza
+    // fraza też miała losową długość, nie zawsze tę samą.
+    this._musicTrackIndex = 0;
+    this._musicTrackNotesLeft = null;
     // Szyna + bufor szumu dla SYNTEZOWANYCH kroków (patrz AUDIO_STEP_SURFACE).
     this._sfxGain = null;
     this._noiseBuffer = null;
@@ -198,7 +374,14 @@ class AudioManager {
 
     this._onItemPickup = () => this.play('pickup');
     this._onMachineReceived = () => this.play('machine_feed');
-    this._onMachineOutput = () => this.play('machine_complete');
+    // Szlifiernia Kryształów (machines.js) - JEDYNA maszyna z WŁASNYM
+    // dźwiękiem ukończenia zamiast wspólnego 'machine_complete' - najdroższy
+    // produkt w grze (patrz MARKET_BASE_PRICES.crystal_gem) zasługuje na
+    // wyraźnie inny, bardziej "specjalny" sygnał niż reszta maszyn.
+    this._onMachineOutput = (data) => {
+      if (data && data.machineId === 'crystal_polisher') this._playCrystalChime();
+      else this.play('machine_complete');
+    };
     this._onMoneyCollected = (data) => {
       // Tylko FAKTYCZNIE zarobione pieniądze (amount > 0) - EconomyManager
       // publikuje ten sam event z amount:0 też przy wydawaniu (np. wpłata
@@ -213,6 +396,12 @@ class AudioManager {
     // której _playFootstep dobiera brzmienie kroku.
     this._onFootstep = (data) => this._playFootstep(data);
     this._onZoneHazardWarning = () => this.play('hazard');
+    this._onAchievementUnlocked = () => this.play('achievement');
+    this._onItemLost = () => this.play('item_lost');
+    // Złoty Bonus (goldbonus.js) - reużywa 'achievement' (sfx_magic), ten
+    // sam "rzadki, celebracyjny moment" co odblokowanie osiągnięcia, żeby
+    // NIE dublować kluczy audio o jeden nowy plik dla jednego zdarzenia.
+    this._onGoldBonusCollected = () => this.play('achievement');
 
     Bus.subscribe(Events.ITEM_PICKUP, this._onItemPickup);
     Bus.subscribe(Events.MACHINE_RECEIVED, this._onMachineReceived);
@@ -223,6 +412,9 @@ class AudioManager {
     if (Events.GAME_WON) Bus.subscribe(Events.GAME_WON, this._onGameWon);
     if (Events.FOOTSTEP) Bus.subscribe(Events.FOOTSTEP, this._onFootstep);
     if (Events.ZONE_HAZARD_WARNING) Bus.subscribe(Events.ZONE_HAZARD_WARNING, this._onZoneHazardWarning);
+    if (Events.ACHIEVEMENT_UNLOCKED) Bus.subscribe(Events.ACHIEVEMENT_UNLOCKED, this._onAchievementUnlocked);
+    if (Events.ITEM_LOST) Bus.subscribe(Events.ITEM_LOST, this._onItemLost);
+    if (Events.GOLD_BONUS_COLLECTED) Bus.subscribe(Events.GOLD_BONUS_COLLECTED, this._onGoldBonusCollected);
   }
 
   /**
@@ -422,7 +614,7 @@ class AudioManager {
     this._audioCtx = new Ctx();
 
     this._musicGain = this._audioCtx.createGain();
-    this._musicGain.gain.value = this.muted ? 0 : AUDIO_MUSIC_VOLUME;
+    this._musicGain.gain.value = this.muted ? 0 : this.musicVolume * AUDIO_MUSIC_VOLUME;
     this._musicGain.connect(this._audioCtx.destination);
 
     // Osobna szyna dla syntezowanych kroków - własna głośność, niezależna
@@ -444,7 +636,47 @@ class AudioManager {
     return true;
   }
 
+  /**
+   * PRÓBUJE prawdziwego pliku (AUDIO_MUSIC_TRACK_SRC) jako pierwszy wybór -
+   * dopiero gdy ten zawiedzie (patrz _tryStartRealMusicTrack), startuje
+   * proceduralny pad (_startProceduralMusic, dawne zachowanie tej metody).
+   * Idempotentne przez _musicStarted - druga i kolejne wywołania (np. gdyby
+   * odpaliło się więcej niż jedno zdarzenie "pierwsza interakcja" w main.js)
+   * nic nie robią.
+   */
   startMusic() {
+    if (this._musicStarted) return;
+    this._musicStarted = true;
+    this._tryStartRealMusicTrack();
+  }
+
+  /**
+   * BUGFIX/FEATURE (Tomek: "przygotuj już suwak głośności i pliki, a
+   * muzykę dodam później"): dopóki AUDIO_MUSIC_TRACK_SRC nie istnieje w
+   * repo, 'error' poniżej złapie nieudane wczytanie i cicho przełączy na
+   * _startProceduralMusic - grę dziś to NIE zmienia (dalej gra pad), tylko
+   * przygotowuje ścieżkę, pod którą wystarczy podmienić plik, żeby zabrzmiał
+   * PRAWDZIWY utwór, bez dalszych zmian w kodzie.
+   */
+  _tryStartRealMusicTrack() {
+    const el = new Audio();
+    el.loop = true;
+    el.volume = this.muted ? 0 : this.musicVolume;
+    el.addEventListener('canplaythrough', () => {
+      if (this._realMusicEl) return; // już wystartowało (podwójny event)
+      this._realMusicEl = el;
+      el.play().catch(() => {}); // autoplay policy - ciche niepowodzenie, i tak wołane po geście użytkownika
+    }, { once: true });
+    el.addEventListener('error', () => {
+      this._startProceduralMusic();
+    }, { once: true });
+    el.src = AUDIO_MUSIC_TRACK_SRC;
+    el.load();
+  }
+
+  /** Dawna treść startMusic() - proceduralny pad (patrz _scheduleNextNote),
+   * teraz FALLBACK gdy prawdziwego pliku nie ma (patrz _tryStartRealMusicTrack). */
+  _startProceduralMusic() {
     if (this._musicTimer) return; // już gra
     try {
       if (!this._ensureAudioContext()) return;
@@ -459,11 +691,18 @@ class AudioManager {
       clearTimeout(this._musicTimer);
       this._musicTimer = null;
     }
+    if (this._realMusicEl) {
+      this._realMusicEl.pause();
+      this._realMusicEl = null;
+    }
   }
 
   /** Gra JEDNĄ nutę (miękki trójkąt + filtr dolnoprzepustowy, długi atak i
    * wybrzmienie) i planuje kolejną. Rekurencyjny setTimeout zamiast setInterval -
-   * odstęp jest losowy, więc frazy nie wpadają w słyszalny, mechaniczny rytm. */
+   * odstęp jest losowy, więc frazy nie wpadają w słyszalny, mechaniczny rytm.
+   * Co AUDIO_MUSIC_TRACK_NOTES_MIN..MAX nut rotuje na kolejny "utwór" z
+   * AUDIO_MUSIC_TRACKS (patrz komentarz tam) - NIEZALEŻNIE od tego, gdzie
+   * akurat jest gracz, w przeciwieństwie do pierwszej wersji tego pomysłu. */
   _scheduleNextNote() {
     const ctx = this._audioCtx;
     if (!ctx) return;
@@ -476,26 +715,31 @@ class AudioManager {
       return;
     }
 
+    const track = AUDIO_MUSIC_TRACKS[this._musicTrackIndex];
+
     if (!this.muted) {
-      const freq = AUDIO_MUSIC_SCALE[Math.floor(Math.random() * AUDIO_MUSIC_SCALE.length)];
+      const scaleSlice = AUDIO_MUSIC_SCALE.slice(track.scaleFrom, track.scaleTo);
+      const freq = scaleSlice[Math.floor(Math.random() * scaleSlice.length)];
       const now = ctx.currentTime;
-      const dur = 2.6 + Math.random() * 2.2;
+      const dur = track.durMin + Math.random() * (track.durMax - track.durMin);
 
       const osc = ctx.createOscillator();
       osc.type = 'triangle';
       osc.frequency.value = freq;
 
       // Filtr ścina ostre górne harmoniczne - bez niego trójkąt brzmi
-      // "elektronicznie/piskliwie", z nim miękko, jak pad.
+      // "elektronicznie/piskliwie", z nim miękko, jak pad. Częstotliwość
+      // zależy od bieżącego utworu (track.filterFreq) - niżej = bardziej
+      // stłumione/matowe, wyżej = jaśniejsze/dzwoniące.
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.value = 900;
+      filter.frequency.value = track.filterFreq;
 
       // Obwiednia: powolne narastanie i długie wybrzmienie (żadnych
       // słyszalnych "klików" na starcie/końcu nuty).
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.9, now + dur * 0.35);
+      gain.gain.linearRampToValueAtTime(track.peak, now + dur * 0.35);
       gain.gain.linearRampToValueAtTime(0, now + dur);
 
       osc.connect(filter);
@@ -503,12 +747,95 @@ class AudioManager {
       gain.connect(this._musicGain);
       osc.start(now);
       osc.stop(now + dur);
+
+      if (track.shimmer) this._maybePlayShimmer(now);
+    }
+
+    // Rotacja utworów - odliczana NIEZALEŻNIE od this.muted (cichy gracz
+    // wraca do dźwięku dokładnie w tym samym miejscu rotacji, w którym by
+    // był, gdyby nie wyciszał), więc tylko SAMO odtworzenie jest pominięte
+    // wyżej, nie licznik frazy.
+    if (this._musicTrackNotesLeft === null) {
+      this._musicTrackNotesLeft = AUDIO_MUSIC_TRACK_NOTES_MIN
+        + Math.floor(Math.random() * (AUDIO_MUSIC_TRACK_NOTES_MAX - AUDIO_MUSIC_TRACK_NOTES_MIN + 1));
+    }
+    this._musicTrackNotesLeft--;
+    if (this._musicTrackNotesLeft <= 0) {
+      this._musicTrackIndex = (this._musicTrackIndex + 1) % AUDIO_MUSIC_TRACKS.length;
+      this._musicTrackNotesLeft = AUDIO_MUSIC_TRACK_NOTES_MIN
+        + Math.floor(Math.random() * (AUDIO_MUSIC_TRACK_NOTES_MAX - AUDIO_MUSIC_TRACK_NOTES_MIN + 1));
     }
 
     // Kolejna nuta zachodzi na poprzednią (krótszy odstęp niż czas trwania) -
     // stąd wrażenie ciągłego, nakładającego się padu zamiast pojedynczych,
-    // odseparowanych dźwięków.
-    this._musicTimer = setTimeout(() => this._scheduleNextNote(), 1400 + Math.random() * 1600);
+    // odseparowanych dźwięków. Odstęp też zależy od bieżącego utworu.
+    this._musicTimer = setTimeout(() => this._scheduleNextNote(), track.gapMin + Math.random() * (track.gapMax - track.gapMin));
+  }
+
+  /**
+   * "Błysk" - krótki, cichy, wysoki sinus nałożony NA GŁÓWNĄ nutę, tylko gdy
+   * bieżący utwór ma shimmer:true (patrz AUDIO_MUSIC_TRACKS[3]) - ten sam
+   * duch co dzwoniący ton kroku Kryształowej Grani (_playSynthFootstep,
+   * AUDIO_STEP_SURFACE.D.ring), tylko wpleciony w podkład muzyczny zamiast
+   * w krok. Oktawa WYŻEJ niż najwyższa nuta skali (×2 częstotliwości) - ma
+   * brzmieć jak odległy brzęk szkła/kryształu, nie jak kolejna nuta melodii.
+   */
+  _maybePlayShimmer(now) {
+    if (Math.random() > AUDIO_MUSIC_SHIMMER_CHANCE) return;
+    const ctx = this._audioCtx;
+    const base = AUDIO_MUSIC_SCALE[5 + Math.floor(Math.random() * 5)]; // górna oktawa
+    const delay = Math.random() * 0.6; // nie zawsze dokładnie razem z nutą
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = base * 2;
+
+    const gain = ctx.createGain();
+    const dur = 0.9 + Math.random() * 0.6;
+    const t0 = now + delay;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(0.22, t0 + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+
+    osc.connect(gain);
+    gain.connect(this._musicGain);
+    osc.start(t0);
+    osc.stop(t0 + dur);
+  }
+
+  /**
+   * "Fanfara" ukończenia Szlifierni Kryształów (machines.js) - trzy szybkie,
+   * wznoszące sinusy z górnej oktawy skali (ten sam budulec co
+   * _maybePlayShimmer, tylko trzy nuty pod rząd zamiast jednej) zamiast
+   * wspólnego 'machine_complete' reszty maszyn - najdroższy produkt w grze
+   * (patrz MARKET_BASE_PRICES.crystal_gem) ma się wyraźnie wyróżniać na
+   * ucho. Gra na _sfxGain (SFX, nie muzyka w tle), więc respektuje ten sam
+   * mute co _playFootstep/play(), niezależnie od stanu podkładu muzycznego.
+   */
+  _playCrystalChime() {
+    if (this.muted) return;
+    if (!this._ensureAudioContext()) return;
+    const ctx = this._audioCtx;
+    const now = ctx.currentTime;
+    const notes = [7, 8, 9]; // górna oktawa, wznoszące (indeksy w AUDIO_MUSIC_SCALE)
+
+    notes.forEach((idx, i) => {
+      const t0 = now + i * 0.09;
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = AUDIO_MUSIC_SCALE[idx] * 2; // oktawa wyżej niż skala bazowa
+
+      const gain = ctx.createGain();
+      const dur = 0.5;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.3, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+
+      osc.connect(gain);
+      gain.connect(this._sfxGain);
+      osc.start(t0);
+      osc.stop(t0 + dur);
+    });
   }
 
   toggleMute() {
@@ -519,13 +846,37 @@ class AudioManager {
     this.muted = muted;
     this._saveMutePreference(muted);
     // Wyciszenie musi łapać też muzykę - efekty sprawdzają this.muted przy
-    // każdym play(), ale muzyka leci przez własny węzeł wzmocnienia.
+    // każdym play(), ale muzyka leci przez własny węzeł wzmocnienia (pad)
+    // albo własny <audio> (prawdziwy plik, patrz _realMusicEl) - obie ścieżki
+    // trzeba wyciszyć osobno.
     if (this._musicGain && this._audioCtx) {
       this._musicGain.gain.setTargetAtTime(
-        muted ? 0 : AUDIO_MUSIC_VOLUME,
+        muted ? 0 : this.musicVolume * AUDIO_MUSIC_VOLUME,
         this._audioCtx.currentTime,
         0.05
       );
+    }
+    if (this._realMusicEl) {
+      this._realMusicEl.volume = muted ? 0 : this.musicVolume;
+    }
+  }
+
+  /**
+   * Suwak głośności muzyki (SettingsPanel._buildMusicVolumeRow, ui.js) -
+   * JEDEN suwak steruje oboma możliwymi backendami naraz (proceduralny pad
+   * PRZEZ _musicGain, prawdziwy plik wprost przez .volume elementu audio),
+   * więc Tomek nie musi wiedzieć/pamiętać, który akurat gra.
+   * @param {number} value - 0..1
+   */
+  setMusicVolume(value) {
+    this.musicVolume = Math.max(0, Math.min(1, value));
+    this._saveMusicVolumePreference(this.musicVolume);
+    if (this.muted) return; // i tak wyciszone - nic do zastosowania NA RAZ
+    if (this._musicGain && this._audioCtx) {
+      this._musicGain.gain.setTargetAtTime(this.musicVolume * AUDIO_MUSIC_VOLUME, this._audioCtx.currentTime, 0.05);
+    }
+    if (this._realMusicEl) {
+      this._realMusicEl.volume = this.musicVolume;
     }
   }
 
@@ -546,6 +897,25 @@ class AudioManager {
     }
   }
 
+  _loadMusicVolumePreference() {
+    try {
+      const raw = localStorage.getItem(AUDIO_MUSIC_VOLUME_STORAGE_KEY);
+      if (raw === null) return 1; // domyślnie = dotychczasowe brzmienie (patrz AUDIO_MUSIC_VOLUME)
+      const val = parseFloat(raw);
+      return Number.isFinite(val) ? Math.max(0, Math.min(1, val)) : 1;
+    } catch (e) {
+      return 1;
+    }
+  }
+
+  _saveMusicVolumePreference(value) {
+    try {
+      localStorage.setItem(AUDIO_MUSIC_VOLUME_STORAGE_KEY, String(value));
+    } catch (e) {
+      // localStorage niedostepny - cicho ignorujemy, jak przy _saveMutePreference.
+    }
+  }
+
   /**
    * Usuwa subskrypcje z Bus. Przydatne przy restarcie gry / tworzeniu nowej
    * instancji, analogicznie do destroy() w innych modułach projektu.
@@ -560,6 +930,9 @@ class AudioManager {
     if (Events.GAME_WON) Bus.unsubscribe(Events.GAME_WON, this._onGameWon);
     if (Events.FOOTSTEP) Bus.unsubscribe(Events.FOOTSTEP, this._onFootstep);
     if (Events.ZONE_HAZARD_WARNING) Bus.unsubscribe(Events.ZONE_HAZARD_WARNING, this._onZoneHazardWarning);
+    if (Events.ACHIEVEMENT_UNLOCKED) Bus.unsubscribe(Events.ACHIEVEMENT_UNLOCKED, this._onAchievementUnlocked);
+    if (Events.ITEM_LOST) Bus.unsubscribe(Events.ITEM_LOST, this._onItemLost);
+    if (Events.GOLD_BONUS_COLLECTED) Bus.unsubscribe(Events.GOLD_BONUS_COLLECTED, this._onGoldBonusCollected);
 
     this.stopMusic();
     if (this._audioCtx && typeof this._audioCtx.close === 'function') {

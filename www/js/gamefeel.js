@@ -11,6 +11,17 @@ const FEEL_PARTICLE_DRAG = 0.96;
 const FEEL_POPUP_RISE_SPEED = 42;
 const FEEL_POPUP_FADE_MS = 900;
 
+// Twarde sufity na liczbę jednoczesnych efektów - żywotność każdej cząstki/
+// popupu i tak jest krótka (patrz update()), więc w normalnej rozgrywce nigdy
+// się do tego nie zbliżamy. To czysto zabezpieczenie na wypadek patologicznego
+// nagromadzenia zdarzeń (np. wiele maszyn kończących produkcję w tej samej
+// sekundzie na słabym telefonie, gdzie klatki są rzadsze niż tempo spawnów) -
+// bez sufitu tablice rosłyby bez ograniczeń, każda dodatkowa cząstka to kolejny
+// drawImage() w draw() poniżej, więc runaway wzrost wprost przekłada się na
+// coraz gorsze FPS w najgorszym możliwym momencie.
+const FEEL_MAX_PARTICLES = 160;
+const FEEL_MAX_POPUPS = 40;
+
 class GameFeel {
   constructor() {
     this.drawLayer = 'gameplay';
@@ -47,6 +58,10 @@ class GameFeel {
         color
       });
     }
+
+    if (this.particles.length > FEEL_MAX_PARTICLES) {
+      this.particles.splice(0, this.particles.length - FEEL_MAX_PARTICLES);
+    }
   }
 
   /**
@@ -71,6 +86,11 @@ class GameFeel {
     if (!data || !data.text) return;
     this.popups.push({
       text: data.text,
+      // Ikona rysowana PROCEDURALNIE nad tekstem (patrz _drawPopupIcon) -
+      // zamiast dawnego emoji wtopionego w text (⚠️/💢/✅/🔥) - fillText()
+      // z emoji polegał na podstawianiu systemowej czcionki emoji, co dawało
+      // inny styl niż reszta gry. null = brak ikony (większość popupów).
+      icon: data.icon || null,
       x: typeof data.x === 'number' ? data.x : null,
       y: typeof data.y === 'number' ? data.y : null,
       color: data.color || '#FFD700',
@@ -78,6 +98,10 @@ class GameFeel {
       age: 0,
       scale: 0.6
     });
+
+    if (this.popups.length > FEEL_MAX_POPUPS) {
+      this.popups.splice(0, this.popups.length - FEEL_MAX_POPUPS);
+    }
   }
 
   update(delta) {
@@ -114,15 +138,51 @@ class GameFeel {
     });
   }
 
+  /**
+   * Tonuje prawdziwą, miękką teksturkę blasku (fx_glow.png, Kenney Particle
+   * Pack CC0 - ta sama grafika co poświata pod maszynami, machines.js
+   * _drawCosmicGlow) na dowolny kolor cząsteczki, techniką "source-atop"
+   * (jak tint skinów gracza w player.js) - zamiast płaskiego wypełnionego
+   * kółka. Cache'owany per DOKŁADNY string koloru (hex ALBO rgba - obojętne,
+   * oba są poprawnym fillStyle), więc każdy unikalny kolor liczy się raz,
+   * nie co klatkę/cząsteczkę. Własna kopia (nie import z machines.js) zgodnie
+   * z konwencją "brak współdzielonych utili" w tym projekcie.
+   */
+  _getTintedGlow(color) {
+    this._glowCache = this._glowCache || {};
+    if (this._glowCache[color]) return this._glowCache[color];
+    const img = window.spriteLoader && window.spriteLoader.get('fx_glow');
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const size = img.naturalWidth;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const tctx = canvas.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    tctx.globalCompositeOperation = 'source-atop';
+    tctx.fillStyle = color;
+    tctx.fillRect(0, 0, size, size);
+    this._glowCache[color] = canvas;
+    return canvas;
+  }
+
   draw(ctxBg, ctx, ctxUI) {
     const target = ctx;
 
     this.particles.forEach((p) => {
       const alpha = Math.max(0, p.life / p.maxLife);
-      target.fillStyle = ItemRenderer.withAlpha(p.color, alpha * 0.85);
-      target.beginPath();
-      target.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
-      target.fill();
+      const glow = this._getTintedGlow(p.color);
+      if (glow) {
+        const r = p.size * alpha * 2.1;
+        target.globalAlpha = alpha * 0.9;
+        target.drawImage(glow, p.x - r, p.y - r, r * 2, r * 2);
+        target.globalAlpha = 1;
+      } else {
+        target.fillStyle = ItemRenderer.withAlpha(p.color, alpha * 0.85);
+        target.beginPath();
+        target.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+        target.fill();
+      }
     });
 
     this.shockwaves.forEach((s) => {
@@ -163,12 +223,134 @@ class GameFeel {
       target.font = 'bold 22px "Segoe UI", Arial, sans-serif';
       target.textAlign = 'center';
       target.textBaseline = 'middle';
-      target.fillStyle = 'rgba(0,0,0,0.45)';
-      target.fillText(p.text, 2, 2);
-      target.fillStyle = p.color;
-      target.fillText(p.text, 0, 0);
+
+      // BUGFIX: ostrzeżenia stref (player.js, np. "Strefa Skażenia - bez
+      // Filtra Toksyn stracisz przedmiot!") to pełne zdania - jedna linia w
+      // tym foncie wychodzi grubo ponad szerokość telefonu i uciekała za oba
+      // brzegi ekranu. Reszta popupów w grze ("+50" itp.) to pojedyncze
+      // krótkie słowa/liczby, więc zawijanie ich nie dotyczy (zawsze 1 linia).
+      const maxWidth = (window.innerWidth || 400) * 0.84;
+      const lines = this._wrapPopupLines(target, p.text, maxWidth);
+      const lineHeight = 25;
+      const startY = -((lines.length - 1) * lineHeight) / 2;
+
+      if (p.icon) {
+        target.save();
+        target.translate(0, startY);
+        this._drawPopupIcon(target, p.icon, p.color);
+        target.restore();
+      }
+
+      lines.forEach((line, i) => {
+        const ly = startY + i * lineHeight;
+        target.fillStyle = 'rgba(0,0,0,0.45)';
+        target.fillText(line, 2, ly + 2);
+        target.fillStyle = p.color;
+        target.fillText(line, 0, ly);
+      });
       target.restore();
     });
+  }
+
+  /** Dzieli tekst na linie nieprzekraczające maxWidth (mierzone aktualnym
+   * ctx.font) łamiąc po spacjach - pojedyncze słowo dłuższe niż maxWidth
+   * zostaje na swojej linii bez łamania (w praktyce nie występuje w tekstach
+   * gry). */
+  _wrapPopupLines(ctx, text, maxWidth) {
+    const words = String(text).split(' ');
+    const lines = [];
+    let current = '';
+    words.forEach((word) => {
+      const test = current ? `${current} ${word}` : word;
+      if (current && ctx.measureText(test).width > maxWidth) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
+    });
+    if (current) lines.push(current);
+    return lines;
+  }
+
+  /**
+   * Mała ikona rysowana proceduralnie NAD tekstem popupu (przesunięcie w
+   * górę o 18px, ten sam punkt (0,0) już przesunięty/przeskalowany przez
+   * wywołującego) - zastępuje dawne emoji wtopione wprost w string tekstu
+   * (⚠️ ostrzeżenie, 💢 utracono, ✅ gotowe, 🔥 combo). Woła się TYLKO gdy
+   * popup faktycznie ma icon (patrz _spawnPopup) - reszta (większość
+   * popupów w grze, np. zwykłe "+50") nadal nie rysuje nic ponad tekstem.
+   */
+  _drawPopupIcon(ctx, iconKey, color) {
+    const s = 8;
+    ctx.save();
+    ctx.translate(0, -18);
+    if (iconKey === 'warning') {
+      // Trójkąt ostrzegawczy z wykrzyknikiem - hazard w player.js.
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, -s);
+      ctx.lineTo(s, s);
+      ctx.lineTo(-s, s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(-1.3, -s * 0.3, 2.6, s * 0.7);
+      ctx.beginPath();
+      ctx.arc(0, s * 0.62, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (iconKey === 'lost') {
+      // X - utrata przedmiotu w hazardzie (player.js).
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.7, -s * 0.7);
+      ctx.lineTo(s * 0.7, s * 0.7);
+      ctx.moveTo(s * 0.7, -s * 0.7);
+      ctx.lineTo(-s * 0.7, s * 0.7);
+      ctx.stroke();
+    } else if (iconKey === 'done') {
+      // Checkmark w kółku - moduł statku ukończony (ship.js).
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(0, 0, s, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.45, 0);
+      ctx.lineTo(-s * 0.1, s * 0.4);
+      ctx.lineTo(s * 0.5, -s * 0.4);
+      ctx.stroke();
+    } else if (iconKey === 'flame') {
+      // Płomień - combo sprzedaży (economy.js).
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, -s);
+      ctx.bezierCurveTo(s * 0.8, -s * 0.2, s * 0.5, s * 0.6, 0, s);
+      ctx.bezierCurveTo(-s * 0.5, s * 0.6, -s * 0.8, -s * 0.2, 0, -s);
+      ctx.closePath();
+      ctx.fill();
+    } else if (iconKey === 'star') {
+      // Gwiazdka - Złoty Bonus (economy.js: collectGoldBonus). 5-ramienna,
+      // ten sam prosty "wypełniony kształt" jak flame wyżej, nie kontur.
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const outerA = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+        const innerA = outerA + Math.PI / 5;
+        const ox = Math.cos(outerA) * s;
+        const oy = Math.sin(outerA) * s;
+        const ix = Math.cos(innerA) * s * 0.42;
+        const iy = Math.sin(innerA) * s * 0.42;
+        if (i === 0) ctx.moveTo(ox, oy);
+        else ctx.lineTo(ox, oy);
+        ctx.lineTo(ix, iy);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   destroy() {

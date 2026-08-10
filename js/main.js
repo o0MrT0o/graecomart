@@ -23,6 +23,10 @@ function startGame() {
     // (dalej) czyta window.audioManager.muted przy budowaniu przycisku wyciszenia.
     window.audioManager = new AudioManager();
 
+    // Wibracje (Tomek: "haptics") - jak audio, zero zależności od reszty gry,
+    // działa wyłącznie na zdarzeniach z Bus (patrz haptics.js).
+    window.hapticsManager = new HapticsManager();
+
     // Muzyka w tle rusza dopiero przy PIERWSZEJ interakcji gracza (dotknięcie
     // ekranu / klik / klawisz) - przeglądarki blokują odtwarzanie dźwięku
     // zanim użytkownik czegokolwiek nie dotknie (autoplay policy), więc
@@ -37,6 +41,10 @@ function startGame() {
 
     window.stackController = new StackController();
     window.itemManager = new ItemManager(gameplayCanvas);
+    // PRZED goldBonusManager - ten w _rollSpawnDelay() czyta
+    // window.seasonalEventManager.isActive() (patrz events.js).
+    window.seasonalEventManager = new SeasonalEventManager();
+    window.goldBonusManager = new GoldBonusManager();
 
     const player = new PlayerController(gameplayCanvas);
     window.playerController = player;
@@ -66,11 +74,29 @@ function startGame() {
 
     game.registerModule(window.stackController);
     game.registerModule(window.itemManager);
-    game.registerModule(player);
+    game.registerModule(window.seasonalEventManager);
+    game.registerModule(window.goldBonusManager);
+    // Maszyny/Terminal/Statek PRZED graczem (moduły rysują się w kolejności
+    // rejestracji, patrz game.js draw()) - Tomek: "postać niech wchodzi na
+    // to i na maszyny, a nie chowa się za nimi". Kolizja z tymi obiektami
+    // dopuszcza spory zakład (gracz może podejść blisko/częściowo nachodzić
+    // na sprite), więc bez tej kolejności gracz znikał POD nimi zamiast
+    // stać przed nimi. Brak pełnego sortowania po Y (byłoby "za" gdy gracz
+    // stoi wyżej, "przed" gdy niżej) - to prostsza, zawsze-na-wierzchu
+    // reguła, zgodna z tym, o co poproszono.
     game.registerModule(window.machineManager);
     game.registerModule(window.marketManager);
     game.registerModule(window.tradingPost);
     game.registerModule(window.ship);
+    game.registerModule(player);
+
+    // Dron Recyklingowy (SHOP_UPGRADES: 'drone' w economy.js) - PO graczu
+    // (rejestracja = kolejność rysowania), żeby dron latający tuż nad
+    // graczem nigdy nie chował się pod jego sylwetką. Poziom (liczba dronów)
+    // czytany na żywo z economyManager.upgradeLevels.drone co klatkę - nie
+    // wymaga, żeby economyManager już istniał w TYM miejscu kodu.
+    window.droneManager = new DroneManager();
+    game.registerModule(window.droneManager);
 
     window.economyManager = new EconomyManager(game);
     // Faza 5: economyManager MUSI być zarejestrowany, żeby jego update()
@@ -78,6 +104,12 @@ function startGame() {
     // ogóle ruszył. Wcześniej nie był modułem (nie potrzebował - wszystko
     // inne w nim jest event-driven/Date.now()-based).
     game.registerModule(window.economyManager);
+
+    // Powiadomienie "wróć po odbiór" przy chowaniu apki w tło - patrz
+    // offline-reminder.js. Nie jest modułem gry (czysto event-driven przez
+    // document.visibilitychange, brak update()/draw()) - wystarczy raz init().
+    window.offlineReminderManager = new OfflineReminderManager(window.economyManager);
+    window.offlineReminderManager.init();
     window.gameFeel = new GameFeel();
     game.registerModule(window.gameFeel);
 
@@ -96,6 +128,33 @@ function startGame() {
         // Faza 5: load() teraz zwraca ile ms minęło od ostatniego zapisu
         // (albo null przy pierwszym uruchomieniu) - patrz save.js.
         const offlineElapsedMs = window.saveManager.load();
+
+        // BUGFIX (Tomek: "na ash się respi śmieci których nie można sprzedac
+        // od początku gry") - game.js: _generateDecorations() gatuje sign/
+        // crate Strefy C przez window.economyManager.isUnlocked(), którego
+        // NIE BYŁO jeszcze przy `new Game()` (main.js ładuje moduły w
+        // konkretnej kolejności - Game przed EconomyManager). Pierwsze
+        // wywołanie (w konstruktorze Game) więc zawsze widziało "brak
+        // economyManagera" -> fallback "odblokowane". Teraz, gdy economyManager
+        // istnieje I ma już wczytany prawdziwy stan zapisu (load() wyżej -
+        // ważne dla POWRACAJĄCEGO gracza, który furnace_c ma odblokowane od
+        // dawna), przeliczamy dekoracje jeszcze RAZ, PRZED pierwszą klatką.
+        game.regenerateDecorations();
+
+        // Zapis w chmurze (Tomek: "zgubiony telefon = zgubiony postęp mimo
+        // eksportu") - PO load() (potrzebuje lokalnego zapisu do porównania
+        // timestampów, patrz cloudsave.js). Cichy no-op bez zbudowanego
+        // pluginu/bez wcześniejszego logowania - checkAutoSignIn() tylko
+        // SPRAWDZA, czy automatyczne logowanie pluginu się powiodło, nie
+        // żąda go jawnie (to dopiero przycisk w Menu, patrz ui.js).
+        window.cloudSaveManager = new CloudSaveManager(window.saveManager);
+        window.cloudSaveManager.checkAutoSignIn();
+        // Play Integrity (Tomek: "bierz się za Play [Integrity]" -> "pełna
+        // integracja") - RAZ na uruchomienie, patrz "Moment sprawdzenia" w
+        // integrity.js. Cichy no-op bez zbudowanego pluginu/bez wdrożonego
+        // backendu (INTEGRITY_VERIFY_URL puste) - patrz README-INTEGRITY.md.
+        window.integrityManager = new IntegrityManager();
+        window.integrityManager.checkNow();
         // PO load() (żeby lastLoginDateStr/dailyChallenge z zapisu były już
         // wczytane), ale PRZED syncFromGameState() (żeby HUD od razu
         // odzwierciedlił ewentualną nagrodę za dzisiejszy dzień/nowe
@@ -114,6 +173,16 @@ function startGame() {
         if (offlineElapsedMs !== null) {
             const offline = window.economyManager.computeOfflineReward(offlineElapsedMs);
             if (offline) window.uiManager.showOfflineReward(offline);
+        }
+
+        // Wydarzenie sezonowe (events.js) - jednorazowy toast przy starcie,
+        // bo jedynym innym sygnałem byłyby spadające gwiazdy na niebie,
+        // łatwe przeoczyć przy pierwszym spojrzeniu na ekran.
+        if (window.seasonalEventManager.isActive()) {
+            window.uiManager.notifications.show(
+                I18n.t('toast.seasonalEvent.meteorShower', { icon: SPARKLE_ICON_SVG }),
+                { type: 'success', duration: 4200 }
+            );
         }
     } catch (err) {
         console.error('[main] UI/Save init failed — gra działa bez HUD:', err);
@@ -200,7 +269,7 @@ function startGame() {
             // 'alloy' celowo NIE jest w ITEM_TYPES (items.js) - nie spawnuje
             // się nigdy losowo w świecie, tylko jako output Pieca Hutniczego
             // (patrz machines.js), stąd fallback na jego kolory tutaj.
-            const label = meta ? meta.label : (typeId === 'alloy' ? '🧱' : '❓');
+            const label = meta ? meta.label : '';
             const color = meta ? meta.color : (typeId === 'alloy' ? '#D4A574' : '#FFFFFF');
             const px = window.playerController ? window.playerController.x : 0;
             const py = window.playerController ? window.playerController.y : 0;
@@ -256,13 +325,61 @@ function startGame() {
             } else {
                 console.log('[DEBUG] Brak nagrody - albo za krótko (< 2 min), albo tempo zarobku = 0 (nic jeszcze nie sprzedane w tym przebiegu).');
             }
+        },
+
+        /** PRAWDZIWY prestige (kasa->rdzenie, reset przebiegu, +1 planetNumber,
+         * nowy activeModifier) - normalnie zablokowany, dopóki statek nie jest
+         * w pełni złożony (isReadyToPrestige()). Do testów tymczasowo podmienia
+         * tę metodę na "zawsze gotowy", woła prawdziwe economyManager.prestige()
+         * (więc liczy się TAK SAMO jak w grze - żadnej osobnej "testowej"
+         * ścieżki), i od razu przywraca oryginalny warunek. Zwraca to samo co
+         * prestige() - {coresEarned, totalCores, planetNumber} albo null. */
+        forcePrestige() {
+            if (!window.economyManager) return null;
+            const em = window.economyManager;
+            const originalCheck = em.isReadyToPrestige;
+            em.isReadyToPrestige = () => true;
+            const result = em.prestige();
+            em.isReadyToPrestige = originalCheck;
+            return result;
+        },
+
+        /** Podgląd wyglądu DOWOLNEJ planety BEZ prawdziwego prestige - kasa/
+         * rdzenie/ulepszenia/activeModifier zostają jak są, zmienia się TYLKO
+         * planetNumber (steruje wyborem DECOR_SETS - patrz _currentDecorSetIndex
+         * w game.js) + wymuszone przepieczenie tła świata (_requestWorldRebake -
+         * ten sam mechanizm co po prawdziwym prestige'u, z nakładką ładowania).
+         * Do szybkiego porównania zestawów dekoracji/filtrów (indeks = (n-1) % 3:
+         * 1/4/7... domyślny, 2/5/8... zimowy, 3/6/9... pustynny) bez
+         * przechodzenia całego przebiegu za każdym razem. */
+        setPlanet(n = 1) {
+            if (!window.economyManager || !window.game) return;
+            window.economyManager.planetNumber = n;
+            window.game._requestWorldRebake();
         }
     };
     console.log(
         '🛠️ DEBUG dostępne: DEBUG.addMoney(n), DEBUG.giveItems(typeId, n), ' +
-        'DEBUG.giveShipMaterials(), DEBUG.resetSave(), DEBUG.simulateOffline(godziny)'
+        'DEBUG.giveShipMaterials(), DEBUG.resetSave(), DEBUG.simulateOffline(godziny), ' +
+        'DEBUG.forcePrestige(), DEBUG.setPlanet(n)'
     );
 }
+
+// Minimalny czas, przez jaki ekran ładowania ZOSTAJE na ekranie, nawet gdy
+// assety wczytają się błyskawicznie (bundlowana apka czyta je lokalnie, więc
+// bez tego ekran potrafił błysnąć i zniknąć w ułamek sekundy - "za szybko,
+// żeby cokolwiek zdążyło się na spokojnie załadować"). Nie jest to fake
+// opóźnienie bez powodu: dopiero PO tym czasie (plus zapas klatek niżej)
+// świat zdążył upiec swoje statyczne tło (patrz komentarz przy
+// LOADING_SCREEN_SETTLE_FRAMES).
+const LOADING_SCREEN_MIN_MS = 2200;
+// Ile klatek requestAnimationFrame czekamy PO tym, jak assety są już gotowe,
+// zanim schowamy ekran. game.start() (patrz startGame() wyżej) już wtedy
+// działa POD ekranem ładowania, więc w tym oknie Game._bakeWorldBackground
+// (jednorazowe upieczenie tła świata - patrz game.js, dawniej główny
+// winowajca zacinania) zdąży się wykonać, zamiast być widoczne jako
+// zacięcie NA GOŁYM EKRANIE GRY tuż po zniknięciu tego ekranu.
+const LOADING_SCREEN_SETTLE_FRAMES = 3;
 
 function hideLoadingScreenWhenReady(game, player) {
     const loadingScreen = document.getElementById('loading-screen');
@@ -270,11 +387,40 @@ function hideLoadingScreenWhenReady(game, player) {
 
     const ready = Promise.all([
         game.assetsReady || Promise.resolve(),
-        player.spritesReady || Promise.resolve()
+        player.spritesReady || Promise.resolve(),
+        // game.firstQualityCheckReady - dawniej czekało na pierwszą kalibrację
+        // adaptacyjnej jakości; ten mechanizm jest teraz wyłączony (patrz
+        // komentarz przy GAME_QUALITY_DPR_STEPS w game.js), więc ta promise
+        // rozwiązuje się NATYCHMIAST w konstruktorze Game. Zostaje w tej puli
+        // (nieszkodliwie) na wypadek, gdyby kiedyś w przyszłości znów była
+        // czegoś warta.
+        game.firstQualityCheckReady || Promise.resolve()
     ]);
-    const timeout = new Promise((resolve) => setTimeout(resolve, 6000));
+    // Zabezpieczenie "gdyby jakiś obrazek nigdy się nie wczytał" (rzadkie).
+    const timeout = new Promise((resolve) => setTimeout(resolve, 9000));
+    const minDelay = new Promise((resolve) => setTimeout(resolve, LOADING_SCREEN_MIN_MS));
 
-    Promise.race([ready, timeout]).then(() => {
-        loadingScreen.classList.add('loading-screen--hidden');
+    Promise.all([Promise.race([ready, timeout]), minDelay]).then(() => {
+        let framesLeft = LOADING_SCREEN_SETTLE_FRAMES;
+        const waitForSettle = () => {
+            framesLeft--;
+            if (framesLeft > 0) {
+                requestAnimationFrame(waitForSettle);
+                return;
+            }
+            // Domyka pasek do 100% (patrz animacja "na oko" w index.html) -
+            // gracz widzi wyraźne zakończenie zamiast paska ucinającego się
+            // w połowie, zanim ekran zniknie.
+            if (window.__loadingBarGrowInterval) {
+                clearInterval(window.__loadingBarGrowInterval);
+            }
+            const fillEl = document.getElementById('loading-bar-fill');
+            if (fillEl) fillEl.style.width = '100%';
+
+            setTimeout(() => {
+                loadingScreen.classList.add('loading-screen--hidden');
+            }, 200);
+        };
+        requestAnimationFrame(waitForSettle);
     });
 }

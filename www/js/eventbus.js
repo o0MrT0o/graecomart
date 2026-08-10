@@ -49,6 +49,25 @@ const Events = {
     FX_SHOCKWAVE:      'fx:shockwave',        // { x, y, color, maxRadius } - ekspandujący pierścień
     UNLOCK_GRANTED:    'progress:unlock',     // { id, kind, name } - nowo odblokowana strefa/maszyna
     ACHIEVEMENT_UNLOCKED: 'progress:achievement', // { id, name, icon, desc } - zdobyte osiągnięcie
+    // Utrata losowego przedmiotu ze stosu w niezabezpieczonej strefie hazardu
+    // (player.js) - publikowane OBOK istniejących FX_SHAKE/FX_PARTICLES/
+    // FX_POPUP w tym samym miejscu, wyłącznie żeby audio.js mogło zareagować
+    // dźwiękiem bez własnej wiedzy o mechanice hazardu (ten sam wzorzec co
+    // reszta subskrypcji AudioManagera).
+    ITEM_LOST:         'player:itemLost',       // { typeId }
+    // Złoty Bonus (goldbonus.js) - rzadki, zanikający pickup na mapie,
+    // niezależny od zwykłego systemu surowców (items.js). audio.js reaguje
+    // dźwiękiem, economy.js sam publikuje FX_POPUP/FX_PARTICLES w miejscu
+    // zdarzenia (ten sam wzorzec co sellItem).
+    GOLD_BONUS_COLLECTED: 'goldbonus:collected', // { reward, x, y }
+    // Zapis w chmurze (cloudsave.js) - stan logowania/synchronizacji się
+    // zmienił (zalogowano, zsynchronizowano, błąd) - ui.js nasłuchuje, żeby
+    // odświeżyć wiersz "Chmura" w Menu bez ręcznego odpytywania w pętli.
+    CLOUD_SAVE_STATE_CHANGED: 'cloudsave:stateChanged', // { signedIn, playerName, lastSyncAt, status }
+    // Play Integrity (integrity.js) - stan sprawdzenia integralności apki się
+    // zmienił (sprawdzanie/zweryfikowano/ostrzeżenie/błąd) - ui.js nasłuchuje,
+    // żeby odświeżyć wiersz "Integralność" w Menu bez ręcznego odpytywania.
+    INTEGRITY_STATE_CHANGED: 'integrity:stateChanged', // { status, verdictLabel, checkedAt }
 };
 
 if (typeof globalThis !== 'undefined') {

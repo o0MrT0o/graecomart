@@ -1,0 +1,13 @@
+{
+  "name": "verify-integrity",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloud Function - weryfikuje token Play Integrity dla Eco Mart. Patrz README-INTEGRITY.md w korzeniu repo.",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "googleapis": "^140.0.0"
+  }
+}

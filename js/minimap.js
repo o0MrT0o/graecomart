@@ -46,6 +46,11 @@ const MINIMAP_PLAYER_SIZE = 3.4;
 // Minimalna prędkość^2, przy której aktualizujemy kąt strzałki (patrz
 // _onPlayerMoved) - poniżej traktujemy gracza jako stojącego.
 const MINIMAP_HEADING_MIN_SPEED_SQ = 25;
+// Pełny obrót linii radaru (_drawSweep) - czysto atmosferyczne, ten sam
+// akcent koloru co Terminal Handlowy/poświata maszyn (#69F0AE), żeby radar
+// czytał się jako część tego samego systemu HUD, nie osobna stylistyka.
+const MINIMAP_SWEEP_PERIOD_MS = 3200;
+const MINIMAP_ACCENT = '#69F0AE';
 
 // Stałe punkty zainteresowania - te same pozycje i kolory co w
 // machines.js/market.js/ship.js (własne kopie, konwencja projektu).
@@ -55,7 +60,10 @@ const MINIMAP_POIS = [
   { xr: 0.59, yr: 0.35, color: '#EF5350' }, // piec hutniczy
   { xr: 0.8, yr: 0.62, color: '#7E57C2' }, // oczyszczalnia (te same xr/yr co refinery_b w machines.js)
   { xr: 0.5, yr: 0.85, color: '#FFD54F' }, // terminal handlowy
-  { xr: 0.18, yr: 0.55, color: '#81D4FA' } // statek
+  { xr: 0.18, yr: 0.55, color: '#81D4FA' }, // statek
+  // Szlifiernia Kryształów - xr > 1 CELOWO (te same xr/yr co crystal_polisher
+  // w machines.js) - stoi w Strefie D, za starą szerokością rdzenia.
+  { xr: 1.15, yr: 0.28, color: '#4DD0C8' } // szlifiernia kryształów
 ];
 
 class MinimapManager {
@@ -70,6 +78,10 @@ class MinimapManager {
     // pełne 360°. Startowo "w górę" (-PI/2), żeby przed pierwszym ruchem
     // strzałka nie leżała na boku.
     this.heading = -Math.PI / 2;
+    // Kąt "zamiatającej" linii radaru (_drawSweep) - czysto kosmetyczny,
+    // niezależny od heading gracza, ten sam duch co klasyczny sweep
+    // prawdziwych radarów. Pełny obrót co MINIMAP_SWEEP_PERIOD_MS.
+    this._sweepAngle = 0;
 
     // Canvas (w przeciwieństwie do reszty HUD w ui.js, który jest DOM i ma
     // dostęp wprost do CSS) NIE rozumie env(safe-area-inset-*) - ale style.css
@@ -110,8 +122,10 @@ class MinimapManager {
   }
 
   update(delta) {
-    // Brak stanu do naliczania - draw() liczy wszystko na bieżąco, czytając
+    // Jedyny naliczany stan - kąt zamiatającej linii radaru (_drawSweep).
+    // Reszta (kropki POI/przedmiotów) liczona na bieżąco w draw(), czytając
     // window.itemManager.items wprost (ten sam wzorzec co dawny compass.js).
+    this._sweepAngle = (this._sweepAngle + (Math.PI * 2 * delta) / MINIMAP_SWEEP_PERIOD_MS) % (Math.PI * 2);
   }
 
   draw(ctxBg, ctx, ctxUI) {
@@ -140,21 +154,44 @@ class MinimapManager {
 
     ctxUI.save();
 
-    // Tło + obwódka.
-    ctxUI.fillStyle = 'rgba(15, 23, 20, 0.72)';
+    // Miękka poświata za obwódką - kilka coraz większych/bledszych warstw
+    // (BEZ shadowBlur, ten sam trik co poświata ekranu Terminalu w
+    // market.js - jeden z najdroższych efektów Canvas, celowo unikany w
+    // tym projekcie), spójnie z resztą HUD-u tej sesji.
+    for (let i = 3; i >= 1; i--) {
+      ctxUI.globalAlpha = 0.07 * i;
+      ctxUI.fillStyle = MINIMAP_ACCENT;
+      ctxUI.beginPath();
+      ctxUI.arc(cx, cy, MINIMAP_RADIUS + i * 2, 0, Math.PI * 2);
+      ctxUI.fill();
+    }
+    ctxUI.globalAlpha = 1;
+
+    // Tło.
+    ctxUI.fillStyle = 'rgba(15, 23, 20, 0.78)';
     ctxUI.beginPath();
     ctxUI.arc(cx, cy, MINIMAP_RADIUS, 0, Math.PI * 2);
     ctxUI.fill();
-    ctxUI.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-    ctxUI.lineWidth = 2;
-    ctxUI.stroke();
 
-    // Kropki POI/surowców przycięte do wnętrza koła - osobny save/clip, żeby
-    // obwódka wyżej i gracz na środku niżej NIE były przycinane razem z nimi.
+    // Kropki POI/surowców + pierścienie zasięgu + zamiatająca linia,
+    // przycięte do wnętrza koła - osobny save/clip, żeby obwódka i gracz na
+    // środku niżej NIE były przycinane razem z nimi.
     ctxUI.save();
     ctxUI.beginPath();
     ctxUI.arc(cx, cy, MINIMAP_RADIUS - 1, 0, Math.PI * 2);
     ctxUI.clip();
+
+    // Pierścienie zasięgu - klasyczny "radar", pomaga też ocenić odległość
+    // POI/surowców na oko, nie tylko ich kierunek.
+    ctxUI.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctxUI.lineWidth = 1;
+    [0.35, 0.68].forEach((f) => {
+      ctxUI.beginPath();
+      ctxUI.arc(cx, cy, MINIMAP_RADIUS * f, 0, Math.PI * 2);
+      ctxUI.stroke();
+    });
+
+    this._drawSweep(ctxUI, cx, cy, MINIMAP_RADIUS);
 
     MINIMAP_POIS.forEach((poi) => {
       const wx = MINIMAP_WORLD_WIDTH * poi.xr;
@@ -176,7 +213,42 @@ class MinimapManager {
       });
     }
 
+    // Złoty Bonus (goldbonus.js) - clampToEdge=true (jak POI), bo to rzadka,
+    // pilna okazja - gracz ma wiedzieć w którą stronę biec NAWET z drugiego
+    // końca mapy, nie tylko gdy akurat jest blisko. Rozmiar pulsuje szybciej
+    // niż zwykłe POI, żeby wyraźnie odróżnić się od stałych punktów.
+    const gb = window.goldBonusManager && window.goldBonusManager.active;
+    if (gb) {
+      const pulse = MINIMAP_POI_DOT_SIZE * (1.15 + Math.sin(performance.now() / 140) * 0.25);
+      this._drawDot(ctxUI, cx, cy, gb.x, gb.y, scale, '#FFD700', pulse, true);
+    }
+
     ctxUI.restore();
+
+    // Znaczniki N/E/S/W na obwodzie - drobny "kompasowy" detal, ten sam
+    // akcent koloru co obwódka niżej.
+    ctxUI.strokeStyle = MINIMAP_ACCENT;
+    ctxUI.globalAlpha = 0.55;
+    ctxUI.lineWidth = 1.5;
+    for (let i = 0; i < 4; i++) {
+      const a = (Math.PI / 2) * i - Math.PI / 2;
+      const ox = Math.cos(a), oy = Math.sin(a);
+      ctxUI.beginPath();
+      ctxUI.moveTo(cx + ox * (MINIMAP_RADIUS - 5), cy + oy * (MINIMAP_RADIUS - 5));
+      ctxUI.lineTo(cx + ox * MINIMAP_RADIUS, cy + oy * MINIMAP_RADIUS);
+      ctxUI.stroke();
+    }
+    ctxUI.globalAlpha = 1;
+
+    // Obwódka - w kolorze akcentu zamiast płaskiej bieli, spójnie z resztą
+    // HUD-u (Terminal Handlowy, poświata maszyn) zamiast osobnej stylistyki.
+    ctxUI.strokeStyle = MINIMAP_ACCENT;
+    ctxUI.globalAlpha = 0.65;
+    ctxUI.lineWidth = 1.5;
+    ctxUI.beginPath();
+    ctxUI.arc(cx, cy, MINIMAP_RADIUS, 0, Math.PI * 2);
+    ctxUI.stroke();
+    ctxUI.globalAlpha = 1;
 
     // Gracz - zawsze DOKŁADNIE na środku (wszystko inne jest względem NIEGO
     // przeliczone), mały grot obrócony wg FAKTYCZNEGO kierunku marszu
@@ -204,6 +276,33 @@ class MinimapManager {
     ctxUI.restore();
 
     ctxUI.restore();
+  }
+
+  /**
+   * "Zamiatająca" linia radaru - klasyczny efekt prawdziwego ekranu radaru,
+   * czysto atmosferyczny (this._sweepAngle, patrz update()). BEZ
+   * createConicGradient (nowsze API canvasa, ryzykowne na starszych
+   * WebView Androida - patrz konwencja projektu unikania niepewnej
+   * kompatybilności) - imitacja gradientu kątowego przez kilkanaście cienkich,
+   * nakładających się wycinków koła o malejącej alfie, ten sam trik co
+   * warstwowa poświata w market.js/tu wyżej (draw()).
+   */
+  _drawSweep(ctx, cx, cy, radius) {
+    const segments = 16;
+    const spread = Math.PI / 2.6; // "ogon" za czołem linii (~69°)
+    for (let i = 0; i < segments; i++) {
+      const t = i / segments;
+      const a0 = this._sweepAngle - spread * t;
+      const a1 = this._sweepAngle - spread * (t + 1 / segments);
+      ctx.fillStyle = MINIMAP_ACCENT;
+      ctx.globalAlpha = 0.16 * (1 - t);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, radius, a0, a1, true);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   }
 
   /**

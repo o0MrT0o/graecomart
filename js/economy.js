@@ -19,36 +19,180 @@ const ECONOMY_COMBO_WINDOW_MS = 4000;
 const ECONOMY_COMBO_MAX_STACKS = 8;
 const ECONOMY_COMBO_BONUS_PER_STACK = 0.08; // +8% do wypłaty za poziom combo
 
+// Złoty Bonus (goldbonus.js) - rzadki, zanikający pickup na mapie, osobny od
+// zwykłej sprzedaży (nagroda "za granie aktywne" w duchu "arcade" połowy
+// nazwy gry, nie kolejny mnożnik ekonomii). Nagroda liczona z REALNEGO tempa
+// zarobku gracza (sellEarnings/totalPlaytimeSeconds - ta sama para pól co
+// computeOfflineReward), nie ze stałej kwoty - late-game gracz z wykupionymi
+// ulepszeniami dostaje proporcjonalnie więcej, early-game nie czuje się
+// pominięty dzięki GOLD_BONUS_MIN_REWARD. "SECONDS_WORTH" = ile sekund
+// normalnego zarobku reprezentuje jeden bonus - 90s to zauważalny, ale nie
+// ekonomię-łamiący zastrzyk (dla porównania: offline daje maks. 8h × 40%
+// skuteczności, więc pojedynczy bonus to ułamek tego).
+const GOLD_BONUS_SECONDS_WORTH = 90;
+const GOLD_BONUS_MIN_REWARD = 15;
+
+// Symbol głównej waluty - własna kopia ui.js CREDIT_ICON_SVG, pod INNĄ
+// nazwą (przedrostek ECONOMY_) - klasyczne <script> (nie moduły) dzielą
+// JEDNĄ globalną przestrzeń nazw najwyższego poziomu, więc dwie stałe
+// `const` o tej samej nazwie w dwóch plikach wysadzają całą stronę
+// (SyntaxError: already been declared) zamiast się cicho nadpisać jak
+// `var`. economy.js i tak ładuje się PRZED ui.js (patrz kolejność
+// <script> w index.html), więc nie mógłby się odwołać do tamtej stałej
+// nawet gdyby nazwa się zgadzała - stąd pełna, osobna kopia (ta sama
+// "brak współdzielonych utili" konwencja co reszta projektu). Wstawiany
+// jako sufiks w opisach wyzwań/osiągnięć/ulepszeń zamiast dawnego "180$".
+const ECONOMY_CREDIT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px" fill="#FFD54F" stroke="none"><path fill-rule="evenodd" d="M21 12 16.5 19.79 7.5 19.79 3 12 7.5 4.21 16.5 4.21Z M14.2 12A2.2 2.2 0 1 1 9.8 12A2.2 2.2 0 1 1 14.2 12Z"/></svg>';
+
+// Ikonka-plakietka z PRAWDZIWEGO assetu Kenney (kółko tła + .ui-icon maska) -
+// JEDEN wspólny helper dla WSZYSTKICH katalogów w tym pliku (Sklep/Statek/
+// Ulepszenia maszyn/Osiągnięcia), żeby każdy panel w grze miał TEN SAM styl
+// ikon (Tomek: "żeby każde miało ten sam styl, sprawdź paczki i lecisz").
+// Wcześniej istniał TYLKO dla ACHIEVEMENTS (tier 3, jako _achKenneyIcon) -
+// SHOP_UPGRADES/PRESTIGE_UPGRADES/MACHINE_UPGRADE_KINDS i pierwsze 13
+// osiągnięć dalej rysowały ręczne, wielokolorowe SVG. Zdefiniowany TU (przed
+// SHOP_UPGRADES), nie przy ACHIEVEMENTS jak poprzednio - wszystkie trzy
+// katalogi go potrzebują, a SHOP_UPGRADES jest zdefiniowany pierwszy w pliku.
+const _kenneyIcon = (maskClass, color) =>
+  `<span class="ui-shop-item__icon-badge" style="background:${color}26"><span class="ui-icon ui-icon--${maskClass}" style="color:${color}" aria-hidden="true"></span></span>`;
+
+// Wyjątek od powyższego - "magnes" to JEDYNA koncepcja w tych katalogach, dla
+// której żadna z przejrzanych paczek Kenney (Game Icons, Game Icons
+// Expansion, Board Game Icons, Generic Items) nie miała pasującego kształtu.
+// Płaski, jednokolorowy SVG w TEJ SAMEJ plakietce co _kenneyIcon wyżej - ten
+// sam "custom SVG gdy paczka nie ma odpowiednika" wyjątek co PLANET/core w
+// getStatsCatalog niżej (tam udokumentowany podobnie).
+const _magnetIcon = (color) =>
+  `<span class="ui-shop-item__icon-badge" style="background:${color}26"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round"><path d="M7 4 v7 a5 5 0 0 0 10 0 V4"/><path d="M7 4 h4 M13 4 h4"/><path d="M7 9 h4 M13 9 h4"/></svg></span>`;
+
+// Ta sama "brak odpowiednika w paczkach" sytuacja co magnes wyżej - dotyczy
+// całej rodziny sprzętu ochronnego (headlamp/boots/toxic_filter/
+// radiation_suit). Wcześniej WSZYSTKIE 4 dzieliły jedną tarczę ('shield') w
+// różnych kolorach (patrz commit e770f73), co Tomek trafnie wychwycił jako
+// wizualnie powtarzalne przy przejściu na drzewko zależności. Przejrzane
+// PONOWNIE pod kątem realnego kasku/buta/maski/kombinezonu: Game Icons,
+// Game Icons Expansion, Board Game Icons, Generic Items, UI Pack (RPG
+// Expansion), New Platformer Pack (w tym "hud_player_helmet" - odrzucony,
+// bo to portret gracza z buźką, nie sylwetka kasku), Platformer Pack
+// Industrial - żadna nie miała pasującego kształtu. Cztery osobne,
+// rozpoznawalne kształty w TEJ SAMEJ plakietce co _magnetIcon: kask z
+// lampą (helmet), odcisk buta (boot - czytelniejszy niż sylwetka buta przy
+// 16px), kartridż filtra (filter), międzynarodowy symbol
+// promieniowania (radiation - jedyny "fill", bo oryginał jest wypełniony,
+// nie konturowy).
+const _protectionIcon = (kind, color) => {
+  const shapes = {
+    helmet: `<path d="M4 15a8 8 0 0 1 16 0"/><path d="M3 15h18"/><circle cx="12" cy="11" r="2.4"/>`,
+    filter: `<rect x="7" y="5" width="10" height="15" rx="2.5"/><path d="M7 10h10M7 15h10"/>`
+  };
+  if (kind === 'boot') {
+    return `<span class="ui-shop-item__icon-badge" style="background:${color}26"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="${color}" stroke="none"><ellipse cx="12" cy="15.5" rx="5.5" ry="7"/><circle cx="8" cy="4.5" r="1.7"/><circle cx="11.5" cy="3" r="1.9"/><circle cx="15" cy="3.3" r="1.8"/><circle cx="18" cy="5" r="1.5"/></svg></span>`;
+  }
+  if (kind === 'radiation') {
+    return `<span class="ui-shop-item__icon-badge" style="background:${color}26"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="${color}" stroke="none"><circle cx="12" cy="12" r="2.6"/><path d="M10.55,9.15 L7.37,2.91 A10.2,10.2 0 0 1 16.63,2.91 L13.45,9.15 A3.2,3.2 0 0 0 10.55,9.15 Z"/><path d="M15.2,12.17 L22.19,12.53 A10.2,10.2 0 0 1 17.56,20.55 L13.74,14.68 A3.2,3.2 0 0 0 15.2,12.17 Z"/><path d="M10.26,14.68 L6.44,20.55 A10.2,10.2 0 0 1 1.81,12.53 L8.8,12.17 A3.2,3.2 0 0 0 10.26,14.68 Z"/></svg></span>`;
+  }
+  return `<span class="ui-shop-item__icon-badge" style="background:${color}26"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${shapes[kind]}</svg></span>`;
+};
+
+// Wariant plakietki dla PRAWDZIWYCH, wielokolorowych sprite'ów Kenney (patrz
+// STALL_DECORATIONS niżej) - w przeciwieństwie do _kenneyIcon (jednokolorowa
+// maska CSS) tu chcemy NATYWNE barwy assetu (pomarańczowy sygnalizator,
+// żółty panel słoneczny), więc zwykły <img>, nie .ui-icon mask-image.
+const _stallIcon = (assetPath, bgColor) =>
+  `<span class="ui-shop-item__icon-badge" style="background:${bgColor}26"><img src="${assetPath}" alt="" width="22" height="22" style="display:block;object-fit:contain"></span>`;
+
+// --- Dekoracje Terminalu Handlowego (kosmetyka za gotówkę) -------------------
+// Tomek: "zacznijmy od kosmetyki straganu... Katalog dekoracji (5-8 pozycji)
+// — kupowane za gotówkę, ten sam wzorzec co Sklep... tylko żeby wszystko
+// pasowało do siebie i było fajne ładne".
+//
+// PIERWSZA wersja (skrzynia/tabliczka/grzybek/flaga/pochodnia/płot, Kenney
+// "Platformer Pack Remastered") - Tomek: "usuń to bo wziąłeś jakieś kurwa
+// randomowe obiekty". Słusznie: te rekwizyty pasowały STYLEM (ten sam płaski
+// Kenney), ale NIE FIKCJĄ - Terminal to "fragment technologii ze statku"
+// (patrz sci_terminal w sprites.js), a grzybek/pochodnia/płot to
+// średniowieczno-platformowe klimaty, zero związku ze stacją kosmiczną.
+//
+// TA wersja: PRAWDZIWE elementy stacji kosmicznej z Kenney "Space Shooter
+// Extension" (folder Building) - TA SAMA paczka, z której pochodzi sam
+// korpus/antena Terminalu ORAZ ciała wszystkich 5 maszyn (patrz komentarze
+// przy machine_sci_* w sprites.js) - więc to nie tylko podobny styl, tylko
+// DOSŁOWNIE ta sama rodzina assetów co reszta "ship tech" w tej grze.
+// Przejrzane pod kątem czegoś, co realnie stałoby obok terminala handlowego
+// stacji: sygnalizator/panel sterowania/antena/panel słoneczny/mini-satelita.
+//
+// Kupowane RAZ (jak PLAYER_SKINS/PROGRESSION_UNLOCKS), TRWAŁE - NIE zerowane
+// przez prestige() (this.decorationsOwned, patrz konstruktor EconomyManager),
+// rysowane w stałych slotach wokół Terminalu (_drawStallDecorations w
+// market.js). Realna nagroda, nie tylko kosmetyka (ten sam duch co
+// MARKET_SEASONAL_PRICE_MULT w market.js): każda POSIADANA dekoracja dokłada
+// +2% do ceny sprzedaży na Terminalu (getDecorationPriceBonusMult niżej) -
+// stackuje się, komplet 5 sztuk = +10% na stałe.
+const STALL_DECORATION_PRICE_BONUS_PER_ITEM = 0.02;
+const STALL_DECORATIONS = [
+  {
+    id: 'console',
+    icon: _stallIcon('assets/decor/stall_console.png', '#90A4AE'),
+    get name() { return I18n.t('decor.console.name'); },
+    get desc() { return I18n.t('decor.console.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 150
+  },
+  {
+    // Ten sam pulsujący sygnał co dioda na maszcie anteny terminala
+    // (_drawAntenna w market.js) - _drawStallDecorations dokłada mu
+    // niezależnie fazowaną poświatę, żeby czytał się jako AKTYWNY
+    // sygnalizator, nie martwa naklejka.
+    id: 'beacon',
+    icon: _stallIcon('assets/decor/stall_beacon.png', '#FF7043'),
+    get name() { return I18n.t('decor.beacon.name'); },
+    get desc() { return I18n.t('decor.beacon.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 200
+  },
+  {
+    id: 'tank',
+    icon: _stallIcon('assets/decor/stall_tank.png', '#78909C'),
+    get name() { return I18n.t('decor.tank.name'); },
+    get desc() { return I18n.t('decor.tank.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 260
+  },
+  {
+    id: 'solar',
+    icon: _stallIcon('assets/decor/stall_solar.png', '#FFD54F'),
+    get name() { return I18n.t('decor.solar.name'); },
+    get desc() { return I18n.t('decor.solar.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 320
+  },
+  {
+    id: 'satellite',
+    icon: _stallIcon('assets/decor/stall_satellite.png', '#42A5F5'),
+    get name() { return I18n.t('decor.satellite.name'); },
+    get desc() { return I18n.t('decor.satellite.desc', { pct: Math.round(STALL_DECORATION_PRICE_BONUS_PER_ITEM * 100) }); },
+    cost: 380
+  }
+];
+
+// Drzewko zależności (Tomek: "Drzewko ulepszeń zamiast płaskiej listy - daje
+// poczucie budowania buildu, nie tylko klikania kup po kolei"). `branch`
+// grupuje węzły do pionowych kolumn w ShopPanel, `requires` blokuje zakup
+// (i wyszarza węzeł), dopóki gracz nie ma co najmniej 1 poziomu wskazanego
+// ID - patrz isUpgradeUnlocked()/buyUpgrade() niżej. Węzły BEZ `branch`
+// (speed/stage_paper/minimap) to samodzielne, niezależne od reszty gałęzie
+// jednowęzłowe - proste "kup i gotowe", bez sztucznego wymuszania
+// zależności tam, gdzie w grze żadnej nie ma. Rdzenie (PRESTIGE_UPGRADES)
+// CELOWO zostają płaskie - już mają własną, grubszą bramkę
+// (unlockPlanet), a przerabianie ich to osobny temat.
 const SHOP_UPGRADES = [
   {
-    id: 'capacity',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2"><rect x="5" y="9" width="14" height="12" rx="3"/><path d="M9 9 V6 a3 3 0 0 1 6 0 v3"/><rect x="9.5" y="12.5" width="5" height="4" rx="1" fill="#E8EAF6" stroke="none"/></svg>',
-    name: 'Większy plecak',
-    description: '+2 miejsca na stosie',
-    baseCost: 40,
-    costScale: 1.65,
-    maxLevel: 5,
-    getValue(level) {
-      return 10 + level * 2;
-    }
-  },
-  {
-    id: 'speed',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2.2" stroke-linecap="round"><path d="M3 7 H9"/><path d="M2 12 H13"/><path d="M3 17 H9"/><path d="M14 6 L21 12 L14 18 Z" fill="#E8EAF6" stroke="none"/></svg>',
-    name: 'Szybsze buty',
-    description: '+15% prędkości ruchu',
-    baseCost: 60,
-    costScale: 1.8,
-    maxLevel: 4,
-    getValue(level) {
-      return 180 * (1 + level * 0.15);
-    }
-  },
-  {
+    // Korzeń gałęzi Zbieranie - CELOWO magnes, nie plecak (patrz komentarz
+    // przy 'capacity' niżej dla uzasadnienia kolejności). Szerszy zasięg
+    // podnoszenia to naturalny pierwszy krok: zanim zapłacisz za więcej
+    // miejsca na stosie, najpierw w ogóle zgarniasz więcej na raz.
     id: 'pickup',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke-width="2.4" stroke-linecap="round"><path d="M6 4 V13 a6 6 0 0 0 12 0 V4" stroke="#E8EAF6"/><path d="M6 4 H10" stroke="#EF5350"/><path d="M14 4 H18" stroke="#64B5F6"/></svg>',
-    name: 'Magnes na śmieci',
-    description: '+10 px zasięgu podnoszenia',
+    branch: 'collection',
+    requires: null,
+    icon: _magnetIcon('#EF5350'),
+    get name() { return I18n.t('shop.item.pickup.name'); },
+    get description() { return I18n.t('shop.item.pickup.desc'); },
     baseCost: 35,
     costScale: 1.5,
     maxLevel: 3,
@@ -57,42 +201,58 @@ const SHOP_UPGRADES = [
     }
   },
   {
-    id: 'stage_paper',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3 H15 L19 7 V21 H6 Z"/><path d="M15 3 V7 H19"/><path d="M9 12 H16 M9 16 H15"/></svg>',
-    name: 'Licencja: Papier',
-    description: 'Odblokowuje papierowe odpady na mapie',
-    baseCost: 150,
-    costScale: 1.0,
-    maxLevel: 1,
+    // BALANS/FABUŁA drzewka: `requires: pickup`, NIE odwrotnie. Szerszy
+    // magnes (pickup) sam z siebie nie potrzebuje większego plecaka - ale
+    // większy plecak MA sens dopiero, gdy magnes faktycznie zgarnia więcej
+    // na raz i stos zaczyna się szybciej zapełniać. "Najpierw zbieraj
+    // więcej, potem miej gdzie to trzymać" czyta się jako logiczna
+    // eskalacja buildu; odwrotna kolejność (plecak odblokowujący magnes)
+    // nie miała żadnego uzasadnienia poza samym istnieniem zależności.
+    id: 'capacity',
+    branch: 'collection',
+    requires: 'pickup',
+    icon: _kenneyIcon('backpack', '#E8EAF6'),
+    get name() { return I18n.t('shop.item.capacity.name'); },
+    get description() { return I18n.t('shop.item.capacity.desc'); },
+    baseCost: 40,
+    costScale: 1.65,
+    maxLevel: 5,
+    getValue(level) {
+      return 10 + level * 2;
+    }
+  },
+  {
+    // Automatyzacja (drone.js) - JEDYNE ulepszenie, które zbiera surowce
+    // BEZ obecności gracza w pobliżu (w przeciwieństwie do 'pickup' wyżej,
+    // który tylko poszerza zasięg PRZY graczu). getValue(level) = liczba
+    // dronów, czytana NA ŻYWO przez DroneManager (window.economyManager.
+    // upgradeLevels.drone) - zeruje się przy prestige() jak każde inne
+    // ulepszenie sklepowe, więc drony znikają/pojawiają się same, bez
+    // żadnego dodatkowego kodu w _applyUpgrade/prestige().
+    id: 'drone',
+    branch: 'collection',
+    requires: 'capacity',
+    icon: _kenneyIcon('gear', '#64B5F6'),
+    get name() { return I18n.t('shop.item.drone.name'); },
+    get description() { return I18n.t('shop.item.drone.desc'); },
+    baseCost: 300,
+    costScale: 2.0,
+    maxLevel: 3,
     getValue(level) {
       return level;
     }
   },
   {
-    // Tańszy, WCZEŚNIEJSZY stopień pośredni przed Filtrem Toksyn/Kombinezonem
-    // Radiacyjnym niżej - łagodzi karę prędkości w hazardzie, ale NIE daje
-    // pełnej odporności (patrz player.js _getHazardSpeedMult). Widoczny na
-    // postaci jako kask nad głową (_drawHelmet w player.js).
-    id: 'headlamp',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14 Q4 5 12 5 Q20 5 20 14"/><path d="M3 14 H21"/><circle cx="12" cy="9.5" r="2" fill="#FFD54F" stroke="none"/></svg>',
-    name: 'Kask z Latarką',
-    description: 'Mniejsza kara prędkości w strefach skażenia bez pełnej ochrony',
-    baseCost: 130,
-    costScale: 1.0,
-    maxLevel: 1,
-    getValue(level) {
-      return level;
-    }
-  },
-  {
-    // Ten sam duch co headlamp wyżej - częściowa, tania ulga PRZED pełnymi
-    // strojami niżej. Wydłuża czas przed utratą przedmiotu (patrz player.js
-    // _getHazardLossThreshold). Widoczny na postaci jako buty przy stopach
-    // (_drawBoots w player.js).
+    // Najtańszy, WCZEŚNIEJSZY stopień w gałęzi Ochrona - łagodzi karę
+    // (dłuższy czas przed utratą przedmiotu), ale NIE daje pełnej odporności
+    // (patrz player.js _getHazardLossThreshold). Widoczny na postaci jako
+    // buty przy stopach (_drawBoots w player.js).
     id: 'boots',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M8 3 V12.5 Q8 14 9.5 14.5 L17 17 Q19 17.7 19 19 Q19 20 17.5 20 H6 Q5 20 5 19 V3 Z"/><path d="M8 12 H13"/></svg>',
-    name: 'Robocze Buty',
-    description: 'Więcej czasu, zanim stracisz przedmiot w hazardzie bez pełnej ochrony',
+    branch: 'protection',
+    requires: null,
+    icon: _protectionIcon('boot', '#A1887F'),
+    get name() { return I18n.t('shop.item.boots.name'); },
+    get description() { return I18n.t('shop.item.boots.desc'); },
     baseCost: 100,
     costScale: 1.0,
     maxLevel: 1,
@@ -101,10 +261,30 @@ const SHOP_UPGRADES = [
     }
   },
   {
+    // Kolejny stopień pośredni przed Filtrem Toksyn/Kombinezonem Radiacyjnym
+    // niżej - łagodzi karę prędkości w hazardzie, ale wciąż NIE daje pełnej
+    // odporności (patrz player.js _getHazardSpeedMult). Widoczny na postaci
+    // jako kask nad głową (_drawHelmet w player.js).
+    id: 'headlamp',
+    branch: 'protection',
+    requires: 'boots',
+    icon: _protectionIcon('helmet', '#FFD54F'),
+    get name() { return I18n.t('shop.item.headlamp.name'); },
+    get description() { return I18n.t('shop.item.headlamp.desc'); },
+    baseCost: 130,
+    costScale: 1.0,
+    maxLevel: 1,
+    getValue(level) {
+      return level;
+    }
+  },
+  {
     id: 'toxic_filter',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="2" stroke-linejoin="round"><path d="M4 11 Q4 6 12 6 Q20 6 20 11 Q20 16 12 17.5 Q4 16 4 11 Z"/><circle cx="9" cy="11" r="1.6" fill="#E8EAF6" stroke="none"/><circle cx="15" cy="11" r="1.6" fill="#E8EAF6" stroke="none"/></svg>',
-    name: 'Filtr Toksyn',
-    description: 'Bez spowolnienia ani utraty przedmiotów w Strefie Skażenia (szkło)',
+    branch: 'protection',
+    requires: 'headlamp',
+    icon: _protectionIcon('filter', '#66BB6A'),
+    get name() { return I18n.t('shop.item.toxic_filter.name'); },
+    get description() { return I18n.t('shop.item.toxic_filter.desc'); },
     baseCost: 250,
     costScale: 1.0,
     maxLevel: 1,
@@ -114,10 +294,40 @@ const SHOP_UPGRADES = [
   },
   {
     id: 'radiation_suit',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26"><circle cx="12" cy="12" r="10" fill="#FFC107"/><path d="M12 12 L12 4 A8 8 0 0 1 18.93 8 Z" fill="#212121"/><path d="M12 12 L12 4 A8 8 0 0 1 18.93 8 Z" fill="#212121" transform="rotate(120 12 12)"/><path d="M12 12 L12 4 A8 8 0 0 1 18.93 8 Z" fill="#212121" transform="rotate(240 12 12)"/><circle cx="12" cy="12" r="2" fill="#212121"/></svg>',
-    name: 'Kombinezon Radiacyjny',
-    description: 'Bez spowolnienia ani utraty przedmiotów w Strefie Atomowej (metal)',
+    branch: 'protection',
+    requires: 'toxic_filter',
+    icon: _protectionIcon('radiation', '#FFC107'),
+    get name() { return I18n.t('shop.item.radiation_suit.name'); },
+    get description() { return I18n.t('shop.item.radiation_suit.desc'); },
     baseCost: 500,
+    costScale: 1.0,
+    maxLevel: 1,
+    getValue(level) {
+      return level;
+    }
+  },
+  {
+    id: 'speed',
+    branch: null,
+    requires: null,
+    icon: _kenneyIcon('star', '#FFEE58'),
+    get name() { return I18n.t('shop.item.speed.name'); },
+    get description() { return I18n.t('shop.item.speed.desc'); },
+    baseCost: 60,
+    costScale: 1.8,
+    maxLevel: 4,
+    getValue(level) {
+      return 180 * (1 + level * 0.15);
+    }
+  },
+  {
+    id: 'stage_paper',
+    branch: null,
+    requires: null,
+    icon: _kenneyIcon('book', '#E8EAF6'),
+    get name() { return I18n.t('shop.item.stage_paper.name'); },
+    get description() { return I18n.t('shop.item.stage_paper.desc'); },
+    baseCost: 150,
     costScale: 1.0,
     maxLevel: 1,
     getValue(level) {
@@ -132,9 +342,11 @@ const SHOP_UPGRADES = [
     // z tym, czym to ulepszenie faktycznie jest - patrz też SHIP_MODULE_PERKS
     // (free_minimap) niżej.
     id: 'minimap',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#E8EAF6" stroke-width="1.6" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 5 L8 17 L16 19 L16 7 Z"/><path d="M8 5 L16 7" stroke-dasharray="1.5 1.5"/><circle cx="12" cy="12" r="1.4" fill="#FFD54F" stroke="none"/></svg>',
-    name: 'Minimapa',
-    description: 'Mały radar w rogu ekranu - pokazuje pobliskie maszyny, statek, terminal i surowce',
+    branch: null,
+    requires: null,
+    icon: _kenneyIcon('target', '#FFD54F'),
+    get name() { return I18n.t('shop.item.minimap.name'); },
+    get description() { return I18n.t('shop.item.minimap.desc'); },
     baseCost: 350,
     costScale: 1.0,
     maxLevel: 1,
@@ -172,12 +384,17 @@ const ECONOMY_SHIP_MODULE_COUNT = 5;
 // aktualnego money - inaczej opłacałoby się zostać z pustym portfelem tuż
 // przed odlotem (np. przez zakup upgrade'u na chwilę przed), co byłoby
 // mylące i karałoby dokładnie odwrotne zachowanie niż chcemy nagradzać.
+//
+// Od której planetNumber odblokowuje się drugi poziom ulepszeń niżej
+// (unlockPlanet: CORE_TIER2_UNLOCK_PLANET) - patrz komentarz przy "Drugi
+// poziom (weterani)".
+const CORE_TIER2_UNLOCK_PLANET = 5;
 const PRESTIGE_UPGRADES = [
   {
     id: 'core_income',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M9.5 10.5 Q9.5 9 12 9 Q14.5 9 14.5 10.7 Q14.5 12 12 12.5 Q9.5 13 9.5 14.8 Q9.5 17 12 17 Q14.5 17 14.5 15.5"/><path d="M12 8 V9 M12 17 V18"/><path d="M12 1.5 L14.2 5 H9.8 Z" fill="#FFD54F" stroke="none"/></svg>',
-    name: 'Wzmacniacz Zarobku',
-    description: '+10% do każdej wypłaty, na zawsze - NIE zeruje się na nowej planecie',
+    icon: _kenneyIcon('coin', '#FFD54F'),
+    get name() { return I18n.t('core.item.core_income.name'); },
+    get description() { return I18n.t('core.item.core_income.desc'); },
     baseCost: 3,
     costScale: 1.7,
     maxLevel: 10,
@@ -187,9 +404,9 @@ const PRESTIGE_UPGRADES = [
   },
   {
     id: 'core_headstart',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81D4FA" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3 C16 6 17 11 15 16 L9 16 C7 11 8 6 12 3 Z" fill="#81D4FA" fill-opacity="0.25"/><path d="M9 16 L7 20 M15 16 L17 20 M10.5 16 L10.5 21 M13.5 16 L13.5 21"/><circle cx="12" cy="9.5" r="1.6" fill="#81D4FA" stroke="none"/></svg>',
-    name: 'Zapasy Startowe',
-    description: '+200 gotówki na start każdej nowej planety',
+    icon: _kenneyIcon('pouch', '#81D4FA'),
+    get name() { return I18n.t('core.item.core_headstart.name'); },
+    get description() { return I18n.t('core.item.core_headstart.desc'); },
     baseCost: 2,
     costScale: 1.6,
     maxLevel: 8,
@@ -205,9 +422,9 @@ const PRESTIGE_UPGRADES = [
   // przetwarzanie, zbieranie, ceny i start przebiegu.
   {
     id: 'core_machine_speed',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#66BB6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5 V12 l3 2"/><path d="M19 5.5 L21 3.5 M5 5.5 L3 3.5"/></svg>',
-    name: 'Turbo Maszyn',
-    description: 'Wszystkie maszyny przetwarzają o 8% szybciej za poziom',
+    icon: _kenneyIcon('gear', '#66BB6A'),
+    get name() { return I18n.t('core.item.core_machine_speed.name'); },
+    get description() { return I18n.t('core.item.core_machine_speed.desc'); },
     baseCost: 3,
     costScale: 1.65,
     maxLevel: 8,
@@ -219,9 +436,9 @@ const PRESTIGE_UPGRADES = [
   },
   {
     id: 'core_magnet',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#EF5350" stroke-width="2" stroke-linecap="round"><path d="M7 4 v7 a5 5 0 0 0 10 0 V4"/><path d="M7 4 h4 M13 4 h4" stroke-width="2.4"/><path d="M7 9 h4 M13 9 h4" stroke="#B0BEC5"/></svg>',
-    name: 'Magnes Kwantowy',
-    description: '+12 px zasięgu podnoszenia za poziom - działa od razu na nowej planecie',
+    icon: _magnetIcon('#FF8A80'),
+    get name() { return I18n.t('core.item.core_magnet.name'); },
+    get description() { return I18n.t('core.item.core_magnet.desc'); },
     baseCost: 2,
     costScale: 1.55,
     maxLevel: 6,
@@ -231,9 +448,9 @@ const PRESTIGE_UPGRADES = [
   },
   {
     id: 'core_prices',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 L9 11 L13 15 L21 7"/><path d="M15 7 h6 v6"/></svg>',
-    name: 'Kontrakty Handlowe',
-    description: '+6% do ceny KAŻDEGO surowca na targu za poziom',
+    icon: _kenneyIcon('chart', '#FFD54F'),
+    get name() { return I18n.t('core.item.core_prices.name'); },
+    get description() { return I18n.t('core.item.core_prices.desc'); },
     baseCost: 4,
     costScale: 1.7,
     maxLevel: 8,
@@ -243,14 +460,126 @@ const PRESTIGE_UPGRADES = [
   },
   {
     id: 'core_backpack',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#AB47BC" stroke-width="2" stroke-linejoin="round"><rect x="5" y="8" width="14" height="13" rx="3"/><path d="M9 8 V6 a3 3 0 0 1 6 0 v2"/><path d="M9 13 h6" stroke-width="2.2"/><path d="M12 11 v4" stroke-width="2.2"/></svg>',
-    name: 'Wymiarowy Plecak',
-    description: '+3 miejsca na stosie na start każdej nowej planety',
+    icon: _kenneyIcon('backpack', '#AB47BC'),
+    get name() { return I18n.t('core.item.core_backpack.name'); },
+    get description() { return I18n.t('core.item.core_backpack.desc'); },
     baseCost: 3,
     costScale: 1.6,
     maxLevel: 6,
     getValue(level) {
       return level * 3;
+    }
+  },
+  // --- Drugi poziom (weterani) -----------------------------------------------
+  // Sześć ulepszeń wyżej wyczerpuje się po kilku odlotach (maxLevel 6-10,
+  // koszty rosną, ale w końcu każde da się dobić do maksa) - gracz, który
+  // zebrał sporo Rdzeni, zostawał bez żadnego powodu, żeby dalej odlatywać.
+  // Te sześć odblokowuje się dopiero na planetNumber >= CORE_TIER2_UNLOCK_PLANET
+  // (patrz getCoreShopCatalog/buyCoreUpgrade niżej) - CELOWO ukryte, nie
+  // pokazane jako "zablokowane" (w przeciwieństwie do SHOP_UPGRADES, ten
+  // katalog nie ma wzorca zaszarzonych pozycji), żeby dotarcie do 5. planety
+  // dawało realną, nieoczekiwaną nagrodę: nowy rząd katalogu. Pierwsze cztery
+  // CELOWO dotykają innej, już istniejącej formuły (combo/offline/streak/
+  // prestiż) - zero nowych systemów, tylko głębsze skalowanie tego, co już
+  // jest.
+  //
+  // Ostatnie dwa (core_auto_feed/core_auto_sell) są WYJĄTKIEM od tej zasady -
+  // Tomek: "mimo nazwy Idle gra wciąż wymaga sporo aktywnego chodzenia i
+  // ręcznego zbierania - magnes/dron pomagają, ale nie zastępują gracza".
+  // To pierwsza para ulepszeń, która faktycznie automatyzuje samą PĘTLĘ
+  // (karmienie maszyn + sprzedaż), nie tylko przyspiesza/podbija to, co
+  // gracz i tak robi ręcznie. Celowo NIE 100% skuteczności na maksie (patrz
+  // getValue niżej) - ręczna gra ma zostać zauważalnie lepsza, inaczej
+  // automatyzacja po prostu zastąpiłaby rdzeń gry zamiast go dopełniać.
+  {
+    id: 'core_combo_master',
+    icon: _kenneyIcon('fire', '#FF7043'),
+    get name() { return I18n.t('core.item.core_combo_master.name'); },
+    get description() { return I18n.t('core.item.core_combo_master.desc'); },
+    baseCost: 6,
+    costScale: 1.9,
+    maxLevel: 6,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return level;
+    }
+  },
+  {
+    id: 'core_offline_master',
+    icon: _kenneyIcon('hourglass', '#26C6DA'),
+    get name() { return I18n.t('core.item.core_offline_master.name'); },
+    get description() { return I18n.t('core.item.core_offline_master.desc'); },
+    baseCost: 8,
+    costScale: 1.85,
+    maxLevel: 6,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return level * 0.05;
+    }
+  },
+  {
+    id: 'core_daily_master',
+    icon: _kenneyIcon('award', '#EC407A'),
+    get name() { return I18n.t('core.item.core_daily_master.name'); },
+    get description() { return I18n.t('core.item.core_daily_master.desc'); },
+    baseCost: 6,
+    costScale: 1.85,
+    maxLevel: 6,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return 1 + level * 0.08;
+    }
+  },
+  {
+    id: 'core_prestige_boost',
+    icon: _kenneyIcon('diamond', '#7E57C2'),
+    get name() { return I18n.t('core.item.core_prestige_boost.name'); },
+    get description() { return I18n.t('core.item.core_prestige_boost.desc'); },
+    baseCost: 10,
+    costScale: 2.0,
+    maxLevel: 5,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return 1 + level * 0.1;
+    }
+  },
+  // Czytane na bieżąco w machines.js (_getAutoFeedEfficiency) - maszyny same
+  // ciągną surowiec z plecaka niezależnie od pozycji gracza, tempem
+  // MACHINE_UNLOAD_INTERVAL_MS/skuteczność (więc WOLNIEJ niż ręczne stanie
+  // przy maszynie, nigdy szybciej). 0.72 na maksie (poziom 6) - ręczne
+  // karmienie zostaje wyraźnie lepszą opcją, gdy gracz akurat jest przy
+  // maszynie.
+  {
+    id: 'core_auto_feed',
+    icon: _kenneyIcon('wrench', '#4FC3F7'),
+    get name() { return I18n.t('core.item.core_auto_feed.name'); },
+    get description() { return I18n.t('core.item.core_auto_feed.desc'); },
+    baseCost: 9,
+    costScale: 1.9,
+    maxLevel: 6,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return level * 0.12;
+    }
+  },
+  // Czytane na bieżąco w machines.js (_getAutoSellEfficiency) - gotowy
+  // produkt (bez dalszego odbiorcy-maszyny) sprzedaje się WPROST przez
+  // economyManager.autoSellItem() zamiast spawnować się w świecie, za
+  // cenę*skuteczność - bez combo (combo nagradza aktywne, szybkie chodzenie
+  // do Terminalu, nie pasuje do biernego strumyka w tle). 0.72 na maksie -
+  // ten sam sufit co core_auto_feed, ręczne noszenie do Terminalu dalej daje
+  // 100% ceny.
+  {
+    id: 'core_auto_sell',
+    icon: _kenneyIcon('export', '#4DB6AC'),
+    get name() { return I18n.t('core.item.core_auto_sell.name'); },
+    get description() { return I18n.t('core.item.core_auto_sell.desc'); },
+    baseCost: 9,
+    costScale: 1.9,
+    maxLevel: 6,
+    unlockPlanet: CORE_TIER2_UNLOCK_PLANET,
+    getValue(level) {
+      return level * 0.12;
     }
   }
 ];
@@ -272,9 +601,9 @@ const PRESTIGE_UPGRADES = [
 const MACHINE_UPGRADE_KINDS = [
   {
     id: 'speed',
-    name: 'Przyspieszenie',
-    description: 'Skraca czas przetwarzania o 12%',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#4FC3F7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 L5 13 h5 l-1 9 8-11 h-5 Z" fill="#4FC3F7" fill-opacity="0.25"/></svg>',
+    get name() { return I18n.t('machineUpgrade.speed.name'); },
+    get description() { return I18n.t('machineUpgrade.speed.desc'); },
+    icon: _kenneyIcon('gear', '#4FC3F7'),
     maxLevel: 4,
     // Mnożnik czasu: 1.0 -> 0.52 przy maksie (prawie 2x szybciej).
     getValue(level) {
@@ -283,9 +612,9 @@ const MACHINE_UPGRADE_KINDS = [
   },
   {
     id: 'yield',
-    name: 'Zwiększona Produkcja',
-    description: '+1 sztuka na każdym cyklu przetwarzania',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#FFB74D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8 L12 4 l8 4 v8 l-8 4 -8-4 Z" fill="#FFB74D" fill-opacity="0.2"/><path d="M12 4 v16 M4 8 l8 4 8-4"/></svg>',
+    get name() { return I18n.t('machineUpgrade.yield.name'); },
+    get description() { return I18n.t('machineUpgrade.yield.desc'); },
+    icon: _kenneyIcon('award', '#FFB74D'),
     maxLevel: 2,
     // Ile sztuk wypada z jednego cyklu: 1 -> 3 przy maksie.
     getValue(level) {
@@ -301,15 +630,22 @@ const MACHINE_UPGRADE_BASE_COST = {
   recycle_a: 120,
   press_b: 180,
   furnace_c: 260,
-  refinery_b: 340
+  refinery_b: 340,
+  // BALANS: brakowało tego wpisu - Szlifiernia Kryształów (najdroższa i
+  // najpóźniej odblokowana maszyna, patrz PROGRESSION_UNLOCKS) nie miała
+  // WCALE ulepszeń, bo getMachineUpgradeCost()/getMachineUpgradeCatalog()
+  // iterują tylko po kluczach tego obiektu. Wartość kontynuuje wzorzec
+  // wzrostu (+60/+80/+80) powyższych maszyn.
+  crystal_polisher: 450
 };
 // Nazwy maszyn do UI - własna kopia etykiet z MACHINE_DEFINITIONS (machines.js),
 // zgodnie z konwencją projektu (brak współdzielonych utili).
 const MACHINE_UPGRADE_LABELS = {
-  recycle_a: 'Recykler',
-  press_b: 'Prasa',
-  furnace_c: 'Piec',
-  refinery_b: 'Oczyszczalnia'
+  get recycle_a() { return I18n.t('machine.recycle_a.label'); },
+  get press_b() { return I18n.t('machine.press_b.label'); },
+  get furnace_c() { return I18n.t('machine.furnace_c.label'); },
+  get refinery_b() { return I18n.t('machine.refinery_b.label'); },
+  get crystal_polisher() { return I18n.t('machine.crystal_polisher.label'); }
 };
 // O ile drożeje każdy kolejny poziom TEJ SAMEJ maszyny.
 const MACHINE_UPGRADE_COST_SCALE = 1.85;
@@ -338,12 +674,15 @@ const DAILY_STREAK_CORE_INTERVAL = 7;
 // nagrodę z ŚREDNIEGO tempa zarobku W TYM PRZEBIEGU (totalEarned /
 // totalPlaytimeSeconds) - samokorygujące się: silniejsza ekonomia gracza =
 // wyższe tempo = większa nagroda, bez osobnego strojenia per-etap gry.
-// 40% aktywnego tempa (nie 100%) - to bonus za sam fakt wracania, nie
-// zamiennik grania. Pułap 8h chroni przed absurdalnymi liczbami z
-// zostawionej karty na tydzień, ale wciąż zostawia sensowną nagrodę za noc.
+// BALANS: 40%/8h (poprzednie wartości) dawało za dużo - kilka godzin offline
+// starczało na wykupienie niemal całego drzewka ulepszeń, więc powrót do
+// gry przestawał się różnić od zwykłego grania. 15% aktywnego tempa (nie
+// 100%) - to bonus za sam fakt wracania, nie zamiennik grania. Pułap 5h
+// chroni przed absurdalnymi liczbami z zostawionej karty na tydzień, ale
+// wciąż zostawia sensowną nagrodę za noc.
 const OFFLINE_MIN_SECONDS = 120; // ponizej tego nie pokazujemy modala (np. szybkie odswiezenie)
-const OFFLINE_MAX_SECONDS = 8 * 3600;
-const OFFLINE_EFFICIENCY = 0.4;
+const OFFLINE_MAX_SECONDS = 5 * 3600;
+const OFFLINE_EFFICIENCY = 0.15;
 // BUGFIX: dodatkowe zabezpieczenie przed dzieleniem przez prawie-zero na
 // samym początku sesji (nawet z czystym sellEarnings, kilka sekund gry +
 // jedna szczęśliwa sprzedaż dałoby chwilowo zawyżone tempo). Poniżej tego
@@ -359,17 +698,35 @@ const OFFLINE_MIN_PLAYTIME_SECONDS = 120;
 // 'sell' i 'earn' liczone są w sellItem(); 'collect' w _onItemPickup;
 // 'process' w _onMachineReceived (patrz handlery w konstruktorze).
 const DAILY_CHALLENGE_TEMPLATES = [
-  { type: 'collect', material: 'trash', target: 20, reward: 90, label: 'Zbierz 20x Śmieci' },
-  { type: 'collect', material: 'plastic', target: 15, reward: 100, label: 'Zbierz 15x Plastiku' },
-  { type: 'collect', material: 'paper', target: 15, reward: 100, label: 'Zbierz 15x Papieru' },
-  { type: 'collect', material: 'glass', target: 10, reward: 110, label: 'Zbierz 10x Szkła' },
-  { type: 'collect', material: 'metal', target: 10, reward: 110, label: 'Zbierz 10x Metalu' },
-  { type: 'earn', target: 180, reward: 100, label: 'Zarób 180$' },
-  { type: 'earn', target: 400, reward: 200, label: 'Zarób 400$' },
-  { type: 'process', target: 15, reward: 90, label: 'Nakarm maszyny 15 razy' },
-  { type: 'process', target: 30, reward: 160, label: 'Nakarm maszyny 30 razy' },
-  { type: 'sell', target: 20, reward: 110, label: 'Sprzedaj 20 przedmiotów' },
-  { type: 'sell', target: 40, reward: 190, label: 'Sprzedaj 40 przedmiotów' }
+  { type: 'collect', material: 'trash', target: 20, reward: 90, get label() { return I18n.t('challenge.0.label'); } },
+  { type: 'collect', material: 'plastic', target: 15, reward: 100, get label() { return I18n.t('challenge.1.label'); } },
+  { type: 'collect', material: 'paper', target: 15, reward: 100, get label() { return I18n.t('challenge.2.label'); } },
+  { type: 'collect', material: 'glass', target: 10, reward: 110, get label() { return I18n.t('challenge.3.label'); } },
+  { type: 'collect', material: 'metal', target: 10, reward: 110, get label() { return I18n.t('challenge.4.label'); } },
+  // Odłamek Kryształu (Strefa D) - jedyny surowiec BEZ maszyny-odbiorcy (od
+  // razu na targ, patrz TRADING_POST_ACCEPTS w market.js), więc niższy cel
+  // niż reszta "collect" (8, nie 10-20) - dotarcie do Grani samo w sobie
+  // kosztuje więcej (pełna ochrona), zbieranie ma być krótkim dodatkiem, nie
+  // drugim wyzwaniem. Nagroda wyższa - najcenniejszy surowiec w grze.
+  { type: 'collect', material: 'crystal_shard', target: 8, reward: 240, get label() { return I18n.t('challenge.5.label'); } },
+  { type: 'earn', target: 180, reward: 100, get label() { return I18n.t('challenge.6.label', { icon: ECONOMY_CREDIT_ICON_SVG }); } },
+  { type: 'earn', target: 400, reward: 200, get label() { return I18n.t('challenge.7.label', { icon: ECONOMY_CREDIT_ICON_SVG }); } },
+  // Trzeci próg 'earn' (po 180/400) - reszta typów ma już 2 poziomy trudności,
+  // 'earn' miało tylko dwa, mimo że to najbardziej uniwersalny typ (działa
+  // od pierwszej sekundy, nie wymaga żadnego konkretnego surowca/strefy).
+  { type: 'earn', target: 800, reward: 320, get label() { return I18n.t('challenge.8.label', { icon: ECONOMY_CREDIT_ICON_SVG }); } },
+  { type: 'process', target: 15, reward: 90, get label() { return I18n.t('challenge.9.label'); } },
+  { type: 'process', target: 30, reward: 160, get label() { return I18n.t('challenge.10.label'); } },
+  { type: 'sell', target: 20, reward: 110, get label() { return I18n.t('challenge.11.label'); } },
+  { type: 'sell', target: 40, reward: 190, get label() { return I18n.t('challenge.12.label'); } },
+  // --- Dołożone (Tomek: "więcej wyzwań sezonowych/dziennych") - więcej
+  // rozstawu w istniejących typach zamiast nowej mechaniki, ten sam wzorzec
+  // co reszta puli wyżej. Nagrody skalowane proporcjonalnie do progu, tak
+  // samo jak istniejące pary niżej/wyżej danego typu.
+  { type: 'collect', material: 'metal', target: 20, reward: 190, get label() { return I18n.t('challenge.13.label'); } },
+  { type: 'earn', target: 1500, reward: 450, get label() { return I18n.t('challenge.14.label', { icon: ECONOMY_CREDIT_ICON_SVG }); } },
+  { type: 'process', target: 50, reward: 250, get label() { return I18n.t('challenge.15.label'); } },
+  { type: 'sell', target: 60, reward: 260, get label() { return I18n.t('challenge.16.label'); } }
 ];
 
 // --- Osiągnięcia (meta-progresja) -------------------------------------------
@@ -380,23 +737,100 @@ const DAILY_CHALLENGE_TEMPLATES = [
 // "ograna". Każde jest czysto danymi: `stat` wskazuje licznik w this.stats,
 // `target` to próg - system nie ma logiki per-osiągnięcie, tylko sprawdza
 // stat >= target (patrz _checkAchievements). Dzięki temu dodanie nowego to
-// jedna linijka tutaj, zero nowego kodu. Ikony emoji (nie SVG jak sklep) -
-// osiągnięcia to "trofea", cieplejszy, bardziej nagradzający rejestr niż
-// funkcjonalne ikony narzędzi w sklepie.
+// jedna linijka tutaj, zero nowego kodu. Ikony SVG (ten sam styl co
+// SHOP_UPGRADES/PRESTIGE_UPGRADES niżej) - BYŁY emoji ("trofea, cieplejszy
+// rejestr"), ale gra już nigdzie indziej ich nie używa, więc osiągnięcia
+// zostawały jedynym niespójnym miejscem.
+//
+// BALANS: osiągnięcia dawały WYŁĄCZNIE toast - zero realnej korzyści, więc
+// zdobywanie ich nie miało żadnej wagi poza kolekcjonerską satysfakcją.
+// Typowe gry idle spinają achievementy z małym, TRWAŁYM bonusem (patrz
+// ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK + _getAchievementIncomeMultiplier w
+// _addMoney niżej) - stąd jest już realny powód, żeby o nie zabiegać, nie
+// tylko żeby "odhaczyć listę". Płaski +1%/osiągnięcie (nie osobna wartość
+// per wpis) - prościej dla gracza do policzenia w głowie ("mam 5/13, więc
+// +5% na zawsze") niż zapamiętywanie różnych wartości dla różnych wpisów,
+// a NIGDY nie zerowany prestiżem (jak unlockedAchievements), więc to
+// jedyny mnożnik zarobku, który rośnie z każdym kolejnym przebiegiem
+// niezależnie od bieżących ulepszeń.
+const ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK = 0.01;
+
+// Lokalna tablica wyników (Tomek: "najlepsze przebiegi - zarobek, czas do
+// prestiżu, liczba planet - lepsza alternatywa dla auto-kupowania, daje
+// powód do rywalizacji z samym sobą"). Ile najlepszych przebiegów trzymamy
+// NA LISTĘ (dwie osobne listy, patrz bestRunsByEarned/bestRunsByTime w
+// konstruktorze) - 10 wystarcza, żeby było "o co grać" bez rozdymania save'a.
+const LEADERBOARD_MAX_ENTRIES = 10;
+
+// Format czasu przebiegu dla tablicy wyników - w SEKUNDACH przy krótszych
+// czasach (typowy przedział pojedynczego przebiegu), bo minutowa
+// granularność (jak fmtPlaytime w getStatsCatalog, myślana dla łącznego
+// czasu gry liczonego w godzinach) zlewałaby blisko siebie leżące, ale
+// realnie różne wyniki ("5min" dla 5:02 I 5:58 to nie to samo miejsce w
+// rankingu najszybszych przelotów).
+const _formatRunTime = (totalSeconds) => {
+  const s = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}min`;
+  if (m > 0) return `${m}min ${sec}s`;
+  return `${sec}s`;
+};
+
+
 const ACHIEVEMENTS = [
-  { id: 'first_pickup', icon: '🌱', name: 'Pierwszy krok', desc: 'Zbierz pierwszy surowiec', stat: 'itemsCollected', target: 1 },
-  { id: 'collector_100', icon: '♻️', name: 'Recyklingowicz', desc: 'Zbierz łącznie 100 surowców', stat: 'itemsCollected', target: 100 },
-  { id: 'collector_1000', icon: '🌍', name: 'Strażnik planety', desc: 'Zbierz łącznie 1000 surowców', stat: 'itemsCollected', target: 1000 },
-  { id: 'feeder_50', icon: '🏭', name: 'Taśmowa produkcja', desc: 'Nakarm maszyny 50 razy', stat: 'machinesFed', target: 50 },
-  { id: 'feeder_500', icon: '⚙️', name: 'Król fabryki', desc: 'Nakarm maszyny 500 razy', stat: 'machinesFed', target: 500 },
-  { id: 'earn_500', icon: '💵', name: 'Pierwsze zarobki', desc: 'Zarób łącznie 500$', stat: 'lifetimeEarned', target: 500 },
-  { id: 'earn_10000', icon: '🤑', name: 'Magnat odpadów', desc: 'Zarób łącznie 10 000$', stat: 'lifetimeEarned', target: 10000 },
-  { id: 'shopper_10', icon: '🛒', name: 'Zakupoholik', desc: 'Kup 10 ulepszeń', stat: 'upgradesBought', target: 10 },
-  { id: 'first_planet', icon: '🚀', name: 'Odlot', desc: 'Ukończ pierwszą planetę', stat: 'planetsCompleted', target: 1 },
-  { id: 'planets_3', icon: '🌌', name: 'Podróżnik', desc: 'Ukończ 3 planety', stat: 'planetsCompleted', target: 3 },
-  { id: 'modules_5', icon: '🔧', name: 'Mechanik', desc: 'Ukończ 5 modułów statku', stat: 'shipModulesCompleted', target: 5 },
-  { id: 'streak_3', icon: '🔥', name: 'Codzienny gracz', desc: 'Zaloguj się 3 dni z rzędu', stat: 'maxLoginStreak', target: 3 },
-  { id: 'challenges_5', icon: '📅', name: 'Wyzwaniowiec', desc: 'Odbierz 5 wyzwań dnia', stat: 'challengesClaimed', target: 5 }
+  { id: 'first_pickup', icon: _kenneyIcon('trashcan', '#81C784'), get name() { return I18n.t('achievement.first_pickup.name'); }, get desc() { return I18n.t('achievement.first_pickup.desc'); }, stat: 'itemsCollected', target: 1 },
+  { id: 'collector_100', icon: _kenneyIcon('trashcan', '#66BB6A'), get name() { return I18n.t('achievement.collector_100.name'); }, get desc() { return I18n.t('achievement.collector_100.desc'); }, stat: 'itemsCollected', target: 100 },
+  { id: 'collector_1000', icon: _kenneyIcon('trashcan', '#4FC3F7'), get name() { return I18n.t('achievement.collector_1000.name'); }, get desc() { return I18n.t('achievement.collector_1000.desc'); }, stat: 'itemsCollected', target: 1000 },
+  { id: 'feeder_50', icon: _kenneyIcon('wrench', '#FFB74D'), get name() { return I18n.t('achievement.feeder_50.name'); }, get desc() { return I18n.t('achievement.feeder_50.desc'); }, stat: 'machinesFed', target: 50 },
+  { id: 'feeder_500', icon: _kenneyIcon('wrench', '#FFD54F'), get name() { return I18n.t('achievement.feeder_500.name'); }, get desc() { return I18n.t('achievement.feeder_500.desc'); }, stat: 'machinesFed', target: 500 },
+  { id: 'earn_500', icon: _kenneyIcon('coin', '#A5D6A7'), get name() { return I18n.t('achievement.earn_500.name'); }, get desc() { return I18n.t('achievement.earn_500.desc', { icon: ECONOMY_CREDIT_ICON_SVG }); }, stat: 'lifetimeEarned', target: 500 },
+  { id: 'earn_10000', icon: _kenneyIcon('coin', '#FFD54F'), get name() { return I18n.t('achievement.earn_10000.name'); }, get desc() { return I18n.t('achievement.earn_10000.desc', { icon: ECONOMY_CREDIT_ICON_SVG }); }, stat: 'lifetimeEarned', target: 10000 },
+  { id: 'shopper_10', icon: _kenneyIcon('cart', '#FFE082'), get name() { return I18n.t('achievement.shopper_10.name'); }, get desc() { return I18n.t('achievement.shopper_10.desc'); }, stat: 'upgradesBought', target: 10 },
+  { id: 'first_planet', icon: _kenneyIcon('flag', '#81D4FA'), get name() { return I18n.t('achievement.first_planet.name'); }, get desc() { return I18n.t('achievement.first_planet.desc'); }, stat: 'planetsCompleted', target: 1 },
+  { id: 'planets_3', icon: _kenneyIcon('flag', '#B39DDB'), get name() { return I18n.t('achievement.planets_3.name'); }, get desc() { return I18n.t('achievement.planets_3.desc'); }, stat: 'planetsCompleted', target: 3 },
+  { id: 'modules_5', icon: _kenneyIcon('wrench', '#B0BEC5'), get name() { return I18n.t('achievement.modules_5.name'); }, get desc() { return I18n.t('achievement.modules_5.desc'); }, stat: 'shipModulesCompleted', target: 5 },
+  { id: 'streak_3', icon: _kenneyIcon('fire', '#FF7043'), get name() { return I18n.t('achievement.streak_3.name'); }, get desc() { return I18n.t('achievement.streak_3.desc'); }, stat: 'maxLoginStreak', target: 3 },
+  { id: 'challenges_5', icon: _kenneyIcon('target', '#CE93D8'), get name() { return I18n.t('achievement.challenges_5.name'); }, get desc() { return I18n.t('achievement.challenges_5.desc'); }, stat: 'challengesClaimed', target: 5 },
+  // --- Tier 3 (późna gra) - dla graczy, którzy ograli komplet powyższych.
+  // Progi wielokrotnie wyższe niż tier 2, żeby dać sens dalszemu, wielo-
+  // planetowemu grindowi (patrz balans previewPrestigeCores - pełne
+  // zmaksowanie ulepszeń Rdzeni to i tak ~60-100 odlotów).
+  { id: 'collector_10000', icon: _kenneyIcon('medal1', '#FFD54F'), get name() { return I18n.t('achievement.collector_10000.name'); }, get desc() { return I18n.t('achievement.collector_10000.desc'); }, stat: 'itemsCollected', target: 10000 },
+  { id: 'feeder_2000', icon: _kenneyIcon('medal2', '#FFA726'), get name() { return I18n.t('achievement.feeder_2000.name'); }, get desc() { return I18n.t('achievement.feeder_2000.desc'); }, stat: 'machinesFed', target: 2000 },
+  { id: 'earn_100000', icon: _kenneyIcon('crown', '#FFCA28'), get name() { return I18n.t('achievement.earn_100000.name'); }, get desc() { return I18n.t('achievement.earn_100000.desc', { icon: ECONOMY_CREDIT_ICON_SVG }); }, stat: 'lifetimeEarned', target: 100000 },
+  { id: 'shopper_50', icon: _kenneyIcon('gear', '#B0BEC5'), get name() { return I18n.t('achievement.shopper_50.name'); }, get desc() { return I18n.t('achievement.shopper_50.desc'); }, stat: 'upgradesBought', target: 50 },
+  { id: 'planets_10', icon: _kenneyIcon('flag', '#B39DDB'), get name() { return I18n.t('achievement.planets_10.name'); }, get desc() { return I18n.t('achievement.planets_10.desc'); }, stat: 'planetsCompleted', target: 10 },
+  { id: 'modules_25', icon: _kenneyIcon('wrench', '#CFD8DC'), get name() { return I18n.t('achievement.modules_25.name'); }, get desc() { return I18n.t('achievement.modules_25.desc'); }, stat: 'shipModulesCompleted', target: 25 },
+  // DAILY_STREAK_CAP_DAYS (economy.js) = 20 - powyżej tego dalsze dni nie
+  // podbijają już nagrody streaka, więc 20 to naturalny "pełny" próg.
+  { id: 'streak_20', icon: _kenneyIcon('fire', '#FF5722'), get name() { return I18n.t('achievement.streak_20.name'); }, get desc() { return I18n.t('achievement.streak_20.desc'); }, stat: 'maxLoginStreak', target: 20 },
+  { id: 'challenges_30', icon: _kenneyIcon('target', '#CE93D8'), get name() { return I18n.t('achievement.challenges_30.name'); }, get desc() { return I18n.t('achievement.challenges_30.desc'); }, stat: 'challengesClaimed', target: 30 },
+  // Jedyny nowy licznik (stats.coresEarned) - patrz komentarz przy nim w
+  // konstruktorze i przy prestige() (rośnie tam obok this.cores).
+  { id: 'cores_100', icon: _kenneyIcon('diamond', '#81D4FA'), get name() { return I18n.t('achievement.cores_100.name'); }, get desc() { return I18n.t('achievement.cores_100.desc'); }, stat: 'coresEarned', target: 100 },
+  // stats.lifetimePlaytimeSeconds istniało już wcześniej (zasila wiersz
+  // "Czas gry łącznie" w getStatsCatalog) - liczony na bieżąco w update(),
+  // ale dotąd BEZ żadnego osiągnięcia na nim opartego, jedyny licznik w
+  // this.stats zupełnie nieużyty przez ACHIEVEMENTS. hourglass - jedyna
+  // ikona z puli, której żadne inne osiągnięcie jeszcze nie zajęło.
+  { id: 'playtime_60', icon: _kenneyIcon('hourglass', '#A5D6A7'), get name() { return I18n.t('achievement.playtime_60.name'); }, get desc() { return I18n.t('achievement.playtime_60.desc'); }, stat: 'lifetimePlaytimeSeconds', target: 3600 },
+  { id: 'playtime_600', icon: _kenneyIcon('hourglass', '#26C6DA'), get name() { return I18n.t('achievement.playtime_600.name'); }, get desc() { return I18n.t('achievement.playtime_600.desc'); }, stat: 'lifetimePlaytimeSeconds', target: 36000 },
+  // stats.skinsCollected (nowy licznik, patrz konstruktor/buySkin) - brush,
+  // ten sam motyw co nagłówek panelu Skinów (SHIRT_ICON_SVG w ui.js).
+  { id: 'skins_4', icon: _kenneyIcon('brush', '#F06292'), get name() { return I18n.t('achievement.skins_4.name'); }, get desc() { return I18n.t('achievement.skins_4.desc'); }, stat: 'skinsCollected', target: 4 },
+  // Wszystkie 7 (patrz PLAYER_SKINS niżej) - włącznie z sezonowym
+  // Meteorytowym, więc realnie wymaga trafienia na Deszcz Meteorytów, nie
+  // tylko zebrania Rdzeni - stąd tier3 (najwyższy próg w tej grupie).
+  { id: 'skins_7', icon: _kenneyIcon('brush', '#BA68C8'), get name() { return I18n.t('achievement.skins_7.name'); }, get desc() { return I18n.t('achievement.skins_7.desc'); }, stat: 'skinsCollected', target: 7 },
+  // --- Dołożone (Tomek: "więcej osiągnięć z realną nagrodą") - dwa nowe
+  // wymiary (itemsSold/maxComboReached, patrz stats w konstruktorze i
+  // sellItem() wyżej), każdy w dwóch progach jak reszta kategorii powyżej.
+  { id: 'trader_200', icon: _kenneyIcon('cart', '#81C784'), get name() { return I18n.t('achievement.trader_200.name'); }, get desc() { return I18n.t('achievement.trader_200.desc'); }, stat: 'itemsSold', target: 200 },
+  { id: 'trader_2000', icon: _kenneyIcon('cart', '#4FC3F7'), get name() { return I18n.t('achievement.trader_2000.name'); }, get desc() { return I18n.t('achievement.trader_2000.desc'); }, stat: 'itemsSold', target: 2000 },
+  { id: 'combo_5', icon: _kenneyIcon('fire', '#FFB74D'), get name() { return I18n.t('achievement.combo_5.name'); }, get desc() { return I18n.t('achievement.combo_5.desc'); }, stat: 'maxComboReached', target: 4 },
+  { id: 'combo_max', icon: _kenneyIcon('fire', '#FF5722'), get name() { return I18n.t('achievement.combo_max.name'); }, get desc() { return I18n.t('achievement.combo_max.desc'); }, stat: 'maxComboReached', target: ECONOMY_COMBO_MAX_STACKS }
 ];
 
 // --- Progresywne odblokowania (walka z "martwo - wszystko dostępne od razu") --
@@ -409,28 +843,42 @@ const ACHIEVEMENTS = [
 // balansowania od zera) - zamienia "wszystko naraz" w sekwencję odkryć z
 // rytmem "aha, otworzyło się coś nowego" co kilka minut.
 //
-// Start: tylko łąka (Strefa A) + Recykler. Reszta otwiera się progami.
+// Start: tylko łąka (Strefa Łąkowa) + Recykler. Reszta otwiera się progami.
+// Strefa A jest zawsze odblokowana (bez progu), więc nie ma tu wpisu jak
+// zone_B/C/D - jej nazwa żyje tylko tam, gdzie faktycznie się pojawia
+// (patrz opis skina 'verde' niżej).
 // Progi celowo niskie na początku (pierwsze odblokowanie szybko, żeby od
 // razu było czuć że "coś się dzieje"), potem rozstawione szerzej.
 //
 // kind: 'machine' (bramka w machines.js) albo 'zone' (bramka spawnu w items.js).
 // zone odblokowuje JEDNOCZEŚNIE spawn surowca I sens wejścia tam (piec).
 const PROGRESSION_UNLOCKS = [
-  { id: 'press_b', kind: 'machine', threshold: 60, name: 'Prasa', desc: 'Przetwarza plastik w produkty' },
-  { id: 'zone_B', kind: 'zone', threshold: 200, name: 'Strefa Bagienna', desc: 'Szkło + dostęp do wraku' },
-  { id: 'furnace_c', kind: 'machine', threshold: 350, name: 'Piec Hutniczy', desc: 'Wytapia stop z metalu i szkła' },
-  { id: 'zone_C', kind: 'zone', threshold: 550, name: 'Strefa Atomowa', desc: 'Metal - najcenniejszy surowiec' },
+  { id: 'press_b', kind: 'machine', threshold: 60, get name() { return I18n.t('unlock.press_b.name'); }, get desc() { return I18n.t('unlock.press_b.desc'); } },
+  { id: 'zone_B', kind: 'zone', threshold: 200, get name() { return I18n.t('unlock.zone_B.name'); }, get desc() { return I18n.t('unlock.zone_B.desc'); } },
+  { id: 'furnace_c', kind: 'machine', threshold: 350, get name() { return I18n.t('unlock.furnace_c.name'); }, get desc() { return I18n.t('unlock.furnace_c.desc'); } },
+  { id: 'zone_C', kind: 'zone', threshold: 550, get name() { return I18n.t('unlock.zone_C.name'); }, get desc() { return I18n.t('unlock.zone_C.desc'); } },
   // Oczyszczalnia - odblokowana najpóźniej (po wszystkich strefach), bo daje
   // najdroższy produkt (kryształ, patrz MARKET_BASE_PRICES). Wypełnia lukę w
   // progresji między ostatnią strefą (550$) a pierwszym modułem statku (800$),
   // dając konkretny nowy cel zamiast tylko mielenia w kółko.
-  { id: 'refinery_b', kind: 'machine', threshold: 750, name: 'Oczyszczalnia', desc: 'Rafinuje szkło w drogie kryształy' },
+  { id: 'refinery_b', kind: 'machine', threshold: 750, get name() { return I18n.t('unlock.refinery_b.name'); }, get desc() { return I18n.t('unlock.refinery_b.desc'); } },
   // Strefa D (Kryształowa Grań) - NAJPÓŹNIEJSZE odblokowanie ze wszystkich.
   // W przeciwieństwie do B/C nie wystarczy próg zarobku - _hasGearForZone('D')
   // w player.js dodatkowo wymaga OBU strojów ochronnych naraz (Filtr +
   // Kombinezon), więc to naturalna "nagroda za pełne wyposażenie" pod koniec
   // przebiegu, nie kolejny przystanek po drodze.
-  { id: 'zone_D', kind: 'zone', threshold: 950, name: 'Kryształowa Grań', desc: 'Odłamki Kryształu - wymaga PEŁNEJ ochrony (Filtr + Kombinezon)' }
+  // BALANS: próg podniesiony z 950 do 1200 - Filtr (250$) + Kombinezon (500$)
+  // to DODATKOWE 750$ ponad totalEarned potrzebne, żeby faktycznie wejść do
+  // strefy, więc sam próg 950 dawał za mało czasu na uzbieranie obu naraz
+  // (progresja liczy totalEarned, nie zapas gotówki). 1200 daje realny bufor.
+  { id: 'zone_D', kind: 'zone', threshold: 1200, get name() { return I18n.t('unlock.zone_D.name'); }, get desc() { return I18n.t('unlock.zone_D.desc'); } },
+  // Szlifiernia Kryształów - kapitalizuje Grań (odblokowaną wyżej) drugim,
+  // wolniejszym zastosowaniem odłamka obok bezpośredniej sprzedaży (ten sam
+  // duch co Oczyszczalnia dla szkła: surowiec ma teraz realny wybór -
+  // szybko i pewnie na targ, albo przez maszynę na coś droższego). Próg
+  // WYŻSZY niż zone_D (1200), bo wymaga, żeby gracz zdążył już nazbierać
+  // odłamków - wypełnia lukę między Granią a 3. modułem statku (1600$).
+  { id: 'crystal_polisher', kind: 'machine', threshold: 1400, get name() { return I18n.t('unlock.crystal_polisher.name'); }, get desc() { return I18n.t('unlock.crystal_polisher.desc'); } }
 ];
 
 // --- Zdolności z modułów statku ---------------------------------------------
@@ -452,11 +900,11 @@ const PROGRESSION_UNLOCKS = [
 // planeta = nowy zepsuty statek), więc perki też znikają. To celowe i zgodne
 // z tematem, inaczej niż PROGRESSION_UNLOCKS (wiedza o świecie = trwała).
 const SHIP_MODULE_PERKS = {
-  life_support: { perk: 'hazard_grace', label: 'Strefy skażone odbierają przedmioty 2x wolniej' },
-  navigation: { perk: 'free_minimap', label: 'Minimapa za darmo' },
-  shields: { perk: 'hazard_immunity', label: 'Pełna odporność na strefy skażone' },
-  engine: { perk: 'speed_boost', label: '+25% prędkości ruchu na stałe' },
-  hyperdrive: { perk: null, label: 'Statek gotowy do odlotu!' }
+  life_support: { perk: 'hazard_grace', get label() { return I18n.t('shipPerk.life_support.label'); } },
+  navigation: { perk: 'free_minimap', get label() { return I18n.t('shipPerk.navigation.label'); } },
+  shields: { perk: 'hazard_immunity', get label() { return I18n.t('shipPerk.shields.label'); } },
+  engine: { perk: 'speed_boost', get label() { return I18n.t('shipPerk.engine.label'); } },
+  hyperdrive: { perk: null, get label() { return I18n.t('shipPerk.hyperdrive.label'); } }
 };
 
 // Które ulepszenia ze sklepu stają się BEZUŻYTECZNE, gdy gracz ma dany perk
@@ -482,6 +930,140 @@ const SHOP_UPGRADES_SUPERSEDED_BY_PERK = {
   toxic_filter: 'hazard_immunity',
   radiation_suit: 'hazard_immunity'
 };
+
+// --- Modyfikatory planety (zawartość długoterminowa) ------------------------
+// Rozwiązuje realny problem pętli prestiżu: PRESTIGE_UPGRADES/SHOP_UPGRADES/
+// PROGRESSION_UNLOCKS są identyczne na KAŻDEJ planecie - po kilku odlotach
+// gracz robi dokładnie to samo od nowa. prestige() (niżej) losuje JEDEN
+// modyfikator z tej puli i aplikuje go do nowego przebiegu - ten sam duch co
+// roguelite'owe "seedy rundy": inny układ mnożników na TYCH SAMYCH systemach
+// (ceny targu, tempo spawnu, tempo maszyn), więc zero nowej mechaniki do
+// zbalansowania od zera.
+//
+// Celowo TYLKO jeden naraz (nie kombinacja kilku) - łatwiej opisać jednym
+// zdaniem w UI i łatwiej zbalansować (brak kombinatorycznych par do
+// przetestowania). Efekty czytane NA BIEŻĄCO przez inne moduły (patrz
+// getPlanetPriceMultiplier/getPlanetSpawnMultiplier/
+// getPlanetMachineSpeedMultiplier niżej) i MNOŻĄ się z odpowiednikami z
+// Rdzeni (core_prices/core_machine_speed), nie zastępują ich - tak jak
+// Silnik statku i Szybsze buty w player.js.
+//
+// Brak modyfikatora na pierwszej planecie (this.activeModifier = null w
+// konstruktorze, rollowane wyłącznie w prestige()) - pierwszy przebieg ma
+// uczyć podstaw bez dodatkowej zmiennej.
+const PLANET_MODIFIERS = [
+  {
+    id: 'bountiful',
+    icon: _kenneyIcon('star', '#C5E1A5'),
+    get name() { return I18n.t('planetMod.bountiful.name'); },
+    get desc() { return I18n.t('planetMod.bountiful.desc'); },
+    spawnMult: 1.4,
+    priceMult: 0.85
+  },
+  {
+    id: 'scarce',
+    icon: _kenneyIcon('diamond', '#D7B98E'),
+    get name() { return I18n.t('planetMod.scarce.name'); },
+    get desc() { return I18n.t('planetMod.scarce.desc'); },
+    spawnMult: 0.7,
+    priceMult: 1.25
+  },
+  {
+    id: 'efficient_factory',
+    icon: _kenneyIcon('gear', '#66BB6A'),
+    get name() { return I18n.t('planetMod.efficient_factory.name'); },
+    get desc() { return I18n.t('planetMod.efficient_factory.desc'); },
+    machineSpeedMult: 0.8
+  },
+  {
+    id: 'rusty_gear',
+    icon: _kenneyIcon('wrench', '#D08A5C'),
+    get name() { return I18n.t('planetMod.rusty_gear.name'); },
+    get desc() { return I18n.t('planetMod.rusty_gear.desc'); },
+    machineSpeedMult: 1.15,
+    spawnMult: 1.25
+  },
+  {
+    id: 'gold_rush',
+    icon: _kenneyIcon('coin', '#FFD54F'),
+    get name() { return I18n.t('planetMod.gold_rush.name'); },
+    get desc() { return I18n.t('planetMod.gold_rush.desc'); },
+    priceMult: 1.2
+  },
+  {
+    id: 'soft_landing',
+    icon: _kenneyIcon('pouch', '#90CAF9'),
+    get name() { return I18n.t('planetMod.soft_landing.name'); },
+    get desc() { return I18n.t('planetMod.soft_landing.desc', { icon: ECONOMY_CREDIT_ICON_SVG }); },
+    cashBonus: 150
+  }
+];
+
+// --- Skiny postaci (kosmetyka za Rdzenie) ------------------------------------
+// Czysto kosmetyczne - ZERO wpływu na rozgrywkę, tylko kolor kombinezonu
+// gracza. Trwałe jak PRESTIGE_UPGRADES (przeżywają prestiż, nigdy nie
+// zerowane) i płatne tą samą walutą - to kolejny sposób na wydanie Rdzeni,
+// obok samych ulepszeń.
+//
+// `tint`/`body` to jedyne pola, które NIE są tu tylko danymi UI - player.js
+// czyta je BEZPOŚREDNIO (window.PLAYER_SKINS, patrz eksport na dole pliku) do
+// zbudowania sprite'a (_bakeSkinTints). Jeden katalog zamiast dwóch kopii
+// (tu + w player.js), żeby cena/nazwa/kolor NIGDY się nie rozjechały -
+// wyjątek od "brak współdzielonych utili" tej samej klasy co odczyt
+// window.economyManager przez inne moduły (to dane, nie funkcja pomocnicza).
+// `tint: null` = bez przebarwienia (surowy sprite ciała). `body: null` =
+// domyślne ciało (assets/player.png/player_walk.png), string (patrz
+// PLAYER_ALIEN_BODY_SRC w player.js) = INNA sylwetka z Kenney "Platformer
+// Art Extended" (Alien sprites - beige/green/pink/yellow), nie tylko
+// przebarwiona kopia tej samej postaci.
+// BUGFIX (Tomek: "skiny to tylko przebarwienia tego samego sprite'a, zero
+// odmiany kształtu"): każdy skin miał TEN SAM sprite, różnił je wyłącznie
+// tint. Cztery z pięciu kolorów paczki (Blue jest już samym domyślnym
+// wyglądem gracza) dostały więc PRAWDZIWIE inne ciało - verde/gold w
+// natywnym kolorze paczki (zero tint, już są zielone/żółte), crimson/
+// crystal/amber przebarwione na wierzchu (paczka nie ma czerwonego ani
+// fioletowego, więc tint dociąga do nazwy). Dwa niskopriorytetowe sloty
+// (amber/meteor) dzielą ciało 'beige' - wciąż odróżnialne tintem, ale to
+// jedyne powielenie, reszta ma unikalną sylwetkę.
+// Nazwy BEZ "Kombinezon" (Tomek: "to nie są kombinezony tylko kolor
+// postaci") - `tint` przebarwia sam sprite gracza (skórę obcego), nie
+// dokłada żadnego ubrania, więc nazwa sugerująca strój była myląca, tym
+// bardziej że w grze istnieje osobny, PRAWDZIWY Kombinezon Radiacyjny
+// (gear, patrz SHOP_UPGRADES) - dwie zupełnie różne rzeczy o niemal tej
+// samej nazwie.
+const PLAYER_SKINS = [
+  { id: 'default', get name() { return I18n.t('skin.default.name'); }, get desc() { return I18n.t('skin.default.desc'); }, tint: null, body: null, cost: 0 },
+  // previewColor: tylko dla skinów BEZ tint (natywny kolor ciała paczki) -
+  // używane jako awaryjny kolor kółka/proceduralnej sylwetki, zanim sprite
+  // się wczyta (patrz ui.js SkinsPanel/_drawProcedural w tym pliku) - dla
+  // skinów Z tint ten sam cel spełnia samo pole tint, previewColor zbędne.
+  { id: 'verde', get name() { return I18n.t('skin.verde.name'); }, get desc() { return I18n.t('skin.verde.desc'); }, tint: null, body: 'green', previewColor: '#5FBF7A', cost: 2 },
+  { id: 'crimson', get name() { return I18n.t('skin.crimson.name'); }, get desc() { return I18n.t('skin.crimson.desc'); }, tint: '#E53935', body: 'pink', cost: 2 },
+  { id: 'amber', get name() { return I18n.t('skin.amber.name'); }, get desc() { return I18n.t('skin.amber.desc'); }, tint: '#FFB74D', body: 'beige', cost: 4 },
+  // Barwy Kryształowej Grani (patrz _bakeCrystalGroundTexture w game.js) -
+  // nagroda-nawiązanie do najtrudniej dostępnej strefy, nie wymaga jednak
+  // faktycznego jej odblokowania (kupowana wyłącznie za Rdzenie, jak reszta).
+  { id: 'crystal', get name() { return I18n.t('skin.crystal.name'); }, get desc() { return I18n.t('skin.crystal.desc'); }, tint: '#B388FF', body: 'pink', cost: 8 },
+  // BUGFIX (Tomek: "żółty jest za mały usuń go"): body:'yellow' (jedyny
+  // skin, który go używał) renderował się ~11% mniejszy niż reszta -
+  // wcześniejsza próba naprawy (pad_top 10px na alien_yellow.png, patrz
+  // historia w commitach) wyrównała POZYCJĘ stóp, ale drawImage() skaluje
+  // CAŁE płótno do jednego stałego rozmiaru docelowego niezależnie od tego,
+  // ile z niego jest faktycznie nieprzezroczyste - dopchane 10px pustego
+  // marginesu zmniejszyło więc UDZIAŁ prawdziwej grafiki w płótnie, czyniąc
+  // narysowaną postać mniejszą, nie tej samej wielkości. Zamiast kolejnej
+  // łatki na tym samym, kruchym assetcie: wraca do domyślnego ciała (tint
+  // zamiast natywnego koloru paczki) - ten sam złoty odcień co dawny
+  // previewColor, teraz jako realny tint zamiast samego kolora zastępczego.
+  { id: 'gold', get name() { return I18n.t('skin.gold.name'); }, get desc() { return I18n.t('skin.gold.desc'); }, tint: '#F5C542', body: null, cost: 15 },
+  // Wydarzenie sezonowe "Deszcz Meteorytów" (events.js) - kupowalny WYŁĄCZNIE
+  // gdy trwa (sobota/niedziela wg zegara urządzenia), ale raz kupiony
+  // zostaje NA STAŁE (unlockedSkins się nie zeruje) - jak każdy inny skin,
+  // po prostu okno zakupu jest ograniczone w czasie. Zostaje na oryginalnym
+  // ciele (body: null) - najrzadziej noszony skin, nie wart dodatkowego
+  // powielania sylwetki.
+  { id: 'meteor', get name() { return I18n.t('skin.meteor.name'); }, get desc() { return I18n.t('skin.meteor.desc'); }, tint: '#FF6E40', body: null, cost: 12, eventOnly: true }
+];
 
 class EconomyManager {
   constructor(game) {
@@ -553,6 +1135,10 @@ class EconomyManager {
     this.prestigeLevels = {}; // trwałe poziomy PRESTIGE_UPGRADES
     this.planetNumber = 1; // licznik "które to podejście" - kosmetyczne/UI
 
+    // Modyfikator BIEŻĄCEJ planety (patrz PLANET_MODIFIERS powyżej) - null na
+    // pierwszej planecie, losowany od nowa przy każdym prestige().
+    this.activeModifier = null;
+
     PRESTIGE_UPGRADES.forEach((u) => {
       this.prestigeLevels[u.id] = 0;
     });
@@ -580,6 +1166,30 @@ class EconomyManager {
     // wprost do JSON).
     this.unlockedIds = new Set();
 
+    // Skiny postaci (patrz PLAYER_SKINS) - TEŻ meta-postęp, NIE zerowane
+    // prestiżem, ten sam powód co unlockedIds wyżej: kosmetyczny wybór
+    // gracza to nie stan pojedynczego przebiegu. 'default' zawsze odblokowany
+    // (jak łąka+recykler w unlockedIds) - nikt nie zaczyna bez działającego
+    // wyglądu postaci.
+    this.selectedSkin = 'default';
+    this.unlockedSkins = new Set(['default']);
+
+    // Dekoracje Terminalu Handlowego (patrz STALL_DECORATIONS) - TEN SAM
+    // powód co unlockedSkins wyżej: kupione raz, meta-postęp, NIE zerowane
+    // prestiżem. Pusty na start (w przeciwieństwie do unlockedSkins - nie ma
+    // odpowiednika "default", stragan zaczyna zupełnie goły).
+    this.decorationsOwned = new Set();
+
+    // Lokalna tablica wyników - TEŻ meta-postęp, NIE zerowana prestiżem
+    // (ten sam powód co unlockedSkins wyżej: przebiegi z CAŁEJ historii
+    // gracza, nie tylko bieżącej planety). Dwie NIEZALEŻNE listy top-N
+    // zamiast jednej wspólnej z sortowaniem w locie - przebieg może być
+    // jednocześnie "wolny, ale bogaty" (trafia tylko do listy zarobku) albo
+    // "szybki, ale ubogi" (trafia tylko do listy czasu), więc każda lista
+    // pilnuje WŁASNEGO topu niezależnie (patrz _recordRun/prestige niżej).
+    this.bestRunsByEarned = [];
+    this.bestRunsByTime = [];
+
     // Liczniki LIFETIME dla osiągnięć (patrz ACHIEVEMENTS) - meta-postęp,
     // NIE zerowane prestiżem (jak unlockedIds/cores), inaczej "zbierz 1000
     // surowców" resetowałoby się przy każdym odlocie. lifetimeEarned to
@@ -595,7 +1205,31 @@ class EconomyManager {
       shipModulesCompleted: 0,
       planetsCompleted: 0,
       challengesClaimed: 0,
-      maxLoginStreak: 0
+      maxLoginStreak: 0,
+      // Odpowiednik lifetimeEarned, tylko dla czasu - totalPlaytimeSeconds
+      // (wyżej) zeruje się przy prestige() (patrz komentarz przy nim), więc
+      // ekran statystyk (getStatsCatalog niżej) potrzebuje osobnego,
+      // NIGDY nie zerowanego licznika łącznego czasu gry.
+      lifetimePlaytimeSeconds: 0,
+      // Odpowiednik lifetimeEarned, tylko dla Rdzeni - this.cores MALEJE przy
+      // wydawaniu (ulepszenia/skiny), więc osiągnięcie "zdobądź łącznie 100
+      // Rdzeni" potrzebuje osobnego licznika, który tylko rośnie (patrz
+      // prestige()).
+      coresEarned: 0,
+      // Start od 1 (nie 0) - 'default' liczy się jako już odblokowany skin
+      // (patrz unlockedSkins niżej), więc licznik musi się z nim zgadzać od
+      // pierwszej klatki, inaczej "odblokuj 4 skiny" wymagałoby w
+      // rzeczywistości kupienia 5 (default + 4), nie 3 dodatkowych.
+      skinsCollected: 1,
+      // Dwa nowe liczniki (Tomek: "więcej osiągnięć z realną nagrodą") -
+      // LIFETIME jak reszta powyżej, rosną WYŁĄCZNIE w sellItem() (ten sam
+      // powód co lifetimeEarned - realna sprzedaż, nie DEBUG/nagrody).
+      itemsSold: 0,
+      // Najwyższy comboStacks (economy.js: sellItem) osiągnięty W
+      // KTÓRYMKOLWIEK przebiegu - NIE zerowany przez prestige() (jak
+      // maxLoginStreak wyżej), więc raz zdobyta wysoka passa sprzedaży
+      // zostaje na zawsze zaliczona, nawet po odlocie.
+      maxComboReached: 0
     };
     // Set id-ków już zdobytych osiągnięć (patrz ACHIEVEMENTS). Serializowany
     // jako tablica (Set nie idzie wprost do JSON), tak jak unlockedIds.
@@ -669,6 +1303,57 @@ class EconomyManager {
   }
 
   /**
+   * Katalog dla ekranu Statystyk (StatsPanel w ui.js) - czysty przegląd
+   * liczników LIFETIME (this.stats + kilka pól spoza niego, patrz niżej),
+   * bez żadnej logiki odblokowań/progresji (to już robią osiągnięcia
+   * wyżej). Ikony: tam gdzie w projekcie już istnieje prawdziwa ikonka
+   * Kenney UŻYWANA GDZIE INDZIEJ w DOKŁADNIE tym samym znaczeniu (moneta =
+   * zapłata, koszyk = sklep, klucz = moduł statku, płomień = combo/streak,
+   * puchar = osiągnięcia, klepsydra = odliczanie), pożyczamy ją (.ui-icon,
+   * ten sam mechanizm maski co Sklep/Menu) zamiast rysować coś nowego -
+   * mniej niespójnych ikon w grze. Reszta zostaje pożyczona z ACHIEVEMENTS
+   * (ten sam koncept, np. "surowce zebrane" - nie ma sensu rysować drugi
+   * raz) albo własna, gdy naprawdę nie ma dobrego odpowiednika w paczkach
+   * (planeta - kenney_planets.zip to surowy generator tekstur, nie ikony;
+   * Rdzenie - to bytowy symbol WALUTY używany wszędzie w HUD/PrestizPanel,
+   * podmiana tylko tutaj rozjechałaby się z resztą gry).
+   */
+  getStatsCatalog() {
+    const achIcon = (id) => {
+      const a = ACHIEVEMENTS.find((x) => x.id === id);
+      return a ? a.icon : '';
+    };
+    // Prawdziwa ikonka Kenney (kółko tła + .ui-icon maska) - patrz komentarz
+    // .ui-shop-item__icon-badge w style.css.
+    const kenneyIcon = (maskClass, color) =>
+      `<span class="ui-shop-item__icon-badge" style="background:${color}26"><span class="ui-icon ui-icon--${maskClass}" style="color:${color}" aria-hidden="true"></span></span>`;
+
+    const planetIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#81D4FA" stroke-width="1.8"><circle cx="12" cy="12" r="7" fill="#81D4FA" fill-opacity="0.2"/><ellipse cx="12" cy="12" rx="10.5" ry="3.4" transform="rotate(-16 12 12)"/></svg>';
+    const coreIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="26" fill="#81D4FA" stroke="none"><path d="M13 2 4 14h6l-1 8 9-12h-6Z"/></svg>';
+
+    const fmtPlaytime = (totalSeconds) => {
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      return h > 0 ? `${h}h ${m}min` : `${m}min`;
+    };
+
+    return [
+      { id: 'planet', icon: planetIcon, label: I18n.t('stats.planet'), value: `#${this.planetNumber}` },
+      { id: 'cores', icon: coreIcon, label: I18n.t('stats.cores'), value: `${this.cores}` },
+      { id: 'lifetimeEarned', icon: kenneyIcon('coin', '#FFD54F'), label: I18n.t('stats.lifetimeEarned'), value: `${this.stats.lifetimeEarned.toLocaleString('pl-PL')}${ECONOMY_CREDIT_ICON_SVG}` },
+      { id: 'itemsCollected', icon: achIcon('collector_1000'), label: I18n.t('stats.itemsCollected'), value: this.stats.itemsCollected.toLocaleString('pl-PL') },
+      { id: 'machinesFed', icon: achIcon('feeder_500'), label: I18n.t('stats.machinesFed'), value: this.stats.machinesFed.toLocaleString('pl-PL') },
+      { id: 'upgradesBought', icon: kenneyIcon('cart', '#FFE082'), label: I18n.t('stats.upgradesBought'), value: this.stats.upgradesBought.toLocaleString('pl-PL') },
+      { id: 'planetsCompleted', icon: achIcon('planets_3'), label: I18n.t('stats.planetsCompleted'), value: this.stats.planetsCompleted.toLocaleString('pl-PL') },
+      { id: 'shipModulesCompleted', icon: kenneyIcon('wrench', '#B0BEC5'), label: I18n.t('stats.shipModulesCompleted'), value: this.stats.shipModulesCompleted.toLocaleString('pl-PL') },
+      { id: 'maxLoginStreak', icon: kenneyIcon('fire', '#FF7043'), label: I18n.t('stats.maxLoginStreak'), value: I18n.t('stats.maxLoginStreak.value', { days: this.stats.maxLoginStreak }) },
+      { id: 'challengesClaimed', icon: achIcon('challenges_5'), label: I18n.t('stats.challengesClaimed'), value: this.stats.challengesClaimed.toLocaleString('pl-PL') },
+      { id: 'achievements', icon: kenneyIcon('trophy', '#FFD54F'), label: I18n.t('stats.achievements'), value: I18n.t('stats.achievements.value', { unlocked: this.unlockedAchievements.size, total: ACHIEVEMENTS.length, bonus: this.getAchievementIncomeBonusPercent() }) },
+      { id: 'playtime', icon: kenneyIcon('hourglass', '#A5D6A7'), label: I18n.t('stats.playtime'), value: fmtPlaytime(this.stats.lifetimePlaytimeSeconds) }
+    ];
+  }
+
+  /**
    * JEDYNY powód, dla którego EconomyManager musi być zarejestrowany w
    * game.registerModule() (main.js) - nalicza totalPlaytimeSeconds, używane
    * przez computeOfflineReward() (Faza 5) do wyliczenia tempa zarobku.
@@ -677,6 +1362,16 @@ class EconomyManager {
    */
   update(delta) {
     this.totalPlaytimeSeconds += delta / 1000;
+    this.stats.lifetimePlaytimeSeconds += delta / 1000;
+    // BUGFIX: playtime_60/playtime_600 (ACHIEVEMENTS) to jedyne osiągnięcia
+    // oparte na liczniku, który rośnie TU (co klatkę), a nie w odpowiedzi na
+    // Bus event - bez tego wywołania próg mógłby zostać przekroczony bez
+    // żadnego wywołania _checkAchievements() w pobliżu (gracz stoi w
+    // miejscu, nic nie zbiera/sprzedaje), więc toast/bonus spóźniałby się aż
+    // do następnej zupełnie niezwiązanej akcji. Tania pętla po ~24 wpisach,
+    // 60x/s - pomijalny koszt (patrz identyczne uzasadnienie przy
+    // _checkAchievements() wyżej).
+    this._checkAchievements();
   }
 
   /**
@@ -692,8 +1387,9 @@ class EconomyManager {
    */
   sellItem(typeId, unitPrice, x, y) {
     const now = Date.now();
+    const comboMax = this._getComboMaxStacks();
     this.comboStacks = (now - this._lastPayoutAt <= ECONOMY_COMBO_WINDOW_MS)
-      ? Math.min(ECONOMY_COMBO_MAX_STACKS, this.comboStacks + 1)
+      ? Math.min(comboMax, this.comboStacks + 1)
       : 0;
     this._lastPayoutAt = now;
 
@@ -715,6 +1411,8 @@ class EconomyManager {
     // (nie _addMoney ogólnie, żeby DEBUG.addMoney/nagrody dnia nie zawyżały
     // "zarobionego łącznie" - achievement "Magnat" ma nagradzać realną grę).
     this.stats.lifetimeEarned += paidOut;
+    this.stats.itemsSold += 1;
+    this.stats.maxComboReached = Math.max(this.stats.maxComboReached, this.comboStacks);
     this._checkAchievements();
 
     const c = this.dailyChallenge;
@@ -728,13 +1426,102 @@ class EconomyManager {
       }
     }
 
-    const comboSuffix = this.comboStacks > 0 ? ` 🔥x${this.comboStacks + 1}` : '';
+    const comboSuffix = this.comboStacks > 0 ? ` x${this.comboStacks + 1}` : '';
+    // Bez symbolu waluty - to czysty canvas (fillText, patrz gamefeel.js),
+    // nie DOM, więc nie da się tu wstawić ECONOMY_CREDIT_ICON_SVG (ui.js) jak w
+    // reszcie gry. Ikona popupu i tak jest zajęta przez 'flame' (combo),
+    // a złoty/pomarańczowy kolor (color niżej) + kontekst (leci w górę z
+    // miejsca sprzedaży) wystarczą, żeby czytać to jako pieniądze.
     Bus.publish(Events.FX_POPUP, {
-      text: `+$${paidOut}${comboSuffix}`,
+      text: `+${paidOut}${comboSuffix}`,
+      // Płomień rysowany PROCEDURALNIE nad popupem (patrz _drawPopupIcon w
+      // gamefeel.js) zamiast dawnego 🔥 wtopionego w text - tylko gdy combo
+      // faktycznie trwa (poziom 0 = zwykła sprzedaż, bez ikony).
+      icon: this.comboStacks > 0 ? 'flame' : null,
       x,
       y,
       duration: 900,
-      color: this.comboStacks >= ECONOMY_COMBO_MAX_STACKS ? '#FF7043' : '#FFD700'
+      color: this.comboStacks >= comboMax ? '#FF7043' : '#FFD700'
+    });
+
+    return paidOut;
+  }
+
+  /**
+   * Sprzedaje jedną sztukę produkcji AUTOMATYCZNIE (core_auto_sell, patrz
+   * PRESTIGE_UPGRADES) - wołane WPROST z machines.js w momencie ukończenia
+   * cyklu, zamiast fizycznego spawnu w świecie. Te same skutki uboczne co
+   * sellItem() (licznik itemsSold/lifetimeEarned, wyzwanie dnia, achievementy
+   * - to wciąż realna sprzedaż, tylko bez gracza przy kasie), ale BEZ combo:
+   * combo nagradza aktywne, szybkie chodzenie do Terminalu, a bierny strumyk
+   * w tle mógłby go bezkarnie nakręcać w nieskończoność.
+   *
+   * unitPrice to JUŻ pomniejszona (przez _getAutoSellEfficiency w
+   * machines.js) cena - ta metoda nie zna ceny bazowej, tylko wypłaca to,
+   * co dostanie.
+   * @returns {number} faktycznie wypłacona kwota (po core_income itd.).
+   */
+  autoSellItem(typeId, unitPrice, x, y) {
+    const paidOut = this._addMoney(unitPrice, x, y);
+    if (paidOut <= 0) return 0;
+
+    this.sellEarnings += paidOut;
+    this.stats.lifetimeEarned += paidOut;
+    this.stats.itemsSold += 1;
+    this._checkAchievements();
+
+    const c = this.dailyChallenge;
+    if (c && !c.claimed) {
+      if (c.type === 'earn') {
+        c.progress = Math.min(c.target, c.progress + paidOut);
+        Bus.publish(Events.DAILY_CHALLENGE_UPDATED, { ...c });
+      } else if (c.type === 'sell') {
+        c.progress = Math.min(c.target, c.progress + 1);
+        Bus.publish(Events.DAILY_CHALLENGE_UPDATED, { ...c });
+      }
+    }
+
+    // Odrębny, przygaszony kolor (nie złoty jak sellItem/collectGoldBonus) -
+    // czytelny sygnał "to automat, nie Ty" dla gracza, który akurat patrzy
+    // na maszyny. Bez ikony (żaden z gamefeel.js _drawPopupIcon nie pasuje
+    // tematycznie), krótszy czas życia - te popupy mogą lecieć z kilku
+    // maszyn naraz, nie powinny zaśmiecać ekranu tak długo jak pojedyncza
+    // sprzedaż gracza.
+    Bus.publish(Events.FX_POPUP, {
+      text: `+${paidOut}`,
+      x,
+      y,
+      duration: 650,
+      color: '#4DB6AC'
+    });
+
+    return paidOut;
+  }
+
+  /**
+   * Wypłaca nagrodę Złotego Bonusu (goldbonus.js woła to w momencie
+   * zebrania) - kwota z realnego tempa zarobku (patrz komentarz przy
+   * GOLD_BONUS_SECONDS_WORTH), przez _addMoney() jak każda inna wypłata
+   * (core_income + bonus osiągnięć wliczone automatycznie). Publikuje
+   * własny FX_POPUP/FX_PARTICLES w miejscu zebrania - ten sam wzorzec co
+   * sellItem() wyżej, tylko złoty kolor i bez sufiksu combo (to nie jest
+   * combo-sprzedaż).
+   * @returns {number} faktycznie wypłacona kwota.
+   */
+  collectGoldBonus(x, y) {
+    const rate = this.totalPlaytimeSeconds > 0 ? this.sellEarnings / this.totalPlaytimeSeconds : 0;
+    const base = Math.max(GOLD_BONUS_MIN_REWARD, Math.round(rate * GOLD_BONUS_SECONDS_WORTH));
+    const paidOut = this._addMoney(base, x, y);
+
+    Bus.publish(Events.GOLD_BONUS_COLLECTED, { reward: paidOut, x, y });
+    Bus.publish(Events.FX_PARTICLES, { x, y, color: '#FFD700', count: 14 });
+    Bus.publish(Events.FX_POPUP, {
+      text: `+${paidOut}`,
+      icon: 'star',
+      x,
+      y,
+      duration: 1100,
+      color: '#FFD700'
     });
 
     return paidOut;
@@ -809,16 +1596,17 @@ class EconomyManager {
    * Jedyne miejsce, w którym gracz faktycznie ZARABIA (w przeciwieństwie do
    * contributeShipMoney, które WYDAJE). Oprócz this.money aktualizuje też
    * totalEarned (podstawa nagrody w Rdzeniach - patrz previewPrestigeCores)
-   * i dolicza trwały mnożnik core_income, jeśli gracz go wykupił - mnożnik
-   * wchodzi PRZED zapisaniem do totalEarned, żeby kolejne przebiegi z
-   * wykupionym Wzmacniaczem szybciej generowały kolejne Rdzenie (celowa
-   * spirala postępu, standard w grach z prestiżem).
+   * i dolicza trwałe mnożniki core_income (jeśli wykupiony) oraz osiągnięć
+   * (patrz _getAchievementIncomeMultiplier) - oba wchodzą PRZED zapisaniem
+   * do totalEarned, żeby kolejne przebiegi z tymi bonusami szybciej
+   * generowały kolejne Rdzenie (celowa spirala postępu, standard w grach
+   * z prestiżem).
    */
   _addMoney(amount, x, y) {
     const base = Math.max(0, Math.round(amount));
     if (base <= 0) return 0;
 
-    const value = Math.round(base * this._getCoreIncomeMultiplier());
+    const value = Math.round(base * this._getCoreIncomeMultiplier() * this._getAchievementIncomeMultiplier());
 
     this.money += value;
     this.totalEarned += value;
@@ -880,6 +1668,26 @@ class EconomyManager {
     return def.getValue(this.prestigeLevels.core_income || 0);
   }
 
+  /** Trwały mnożnik zarobku ze zdobytych osiągnięć (1.0 = brak bonusu, patrz
+   * ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK) - NIGDY nie zerowany prestiżem,
+   * bo unlockedAchievements też nie jest. */
+  _getAchievementIncomeMultiplier() {
+    return 1 + this.unlockedAchievements.size * ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK;
+  }
+
+  /** Aktualny bonus zarobku z osiągnięć jako liczba całkowita procent
+   * (np. 5 = "+5%") - do wyświetlenia w AchievementsPanel/StatsPanel bez
+   * duplikowania formuły w ui.js. */
+  getAchievementIncomeBonusPercent() {
+    return Math.round(this.unlockedAchievements.size * ACHIEVEMENT_INCOME_BONUS_PER_UNLOCK * 100);
+  }
+
+  /** Maks. poziom combo (ECONOMY_COMBO_MAX_STACKS + trwały bonus z
+   * core_combo_master, patrz drugi poziom Rdzeni) - czytane w sellItem(). */
+  _getComboMaxStacks() {
+    return ECONOMY_COMBO_MAX_STACKS + (this.getCoreValue('core_combo_master') || 0);
+  }
+
   /**
    * Wartość dowolnego trwałego ulepszenia (Rdzenie) po id. Publiczne, bo
    * czytają to INNE moduły: machines.js (tempo przetwarzania), market.js
@@ -903,6 +1711,45 @@ class EconomyManager {
   getMarketPriceMultiplier() {
     const v = this.getCoreValue('core_prices');
     return typeof v === 'number' ? v : 1;
+  }
+
+  /** Losuje nowy modyfikator BIEŻĄCEJ planety z PLANET_MODIFIERS - wołane
+   * WYŁĄCZNIE z prestige() niżej. */
+  _rollPlanetModifier() {
+    const def = PLANET_MODIFIERS[Math.floor(Math.random() * PLANET_MODIFIERS.length)];
+    this.activeModifier = { ...def };
+  }
+
+  /** Modyfikator aktywny na bieżącej planecie, albo null (pierwsza planeta,
+   * zanim gracz choć raz poleci dalej) - do wyświetlenia w UI (ui.js). */
+  getActiveModifier() {
+    return this.activeModifier;
+  }
+
+  /** Mnożnik cen targu z modyfikatora planety (1 = brak) - MNOŻY się z
+   * getMarketPriceMultiplier() (Rdzenie), nie zastępuje go - patrz getPrice()
+   * w market.js. */
+  getPlanetPriceMultiplier() {
+    return (this.activeModifier && typeof this.activeModifier.priceMult === 'number')
+      ? this.activeModifier.priceMult
+      : 1;
+  }
+
+  /** Mnożnik tempa spawnu surowców z modyfikatora planety (>1 = częściej) -
+   * patrz ItemManager.update() w items.js. */
+  getPlanetSpawnMultiplier() {
+    return (this.activeModifier && typeof this.activeModifier.spawnMult === 'number')
+      ? this.activeModifier.spawnMult
+      : 1;
+  }
+
+  /** Mnożnik czasu przetwarzania maszyn z modyfikatora planety (<1 =
+   * szybciej) - MNOŻY się z getMachineSpeedMultiplier() (Rdzenie), patrz
+   * _getSpeedMultiplier() w machines.js. */
+  getPlanetMachineSpeedMultiplier() {
+    return (this.activeModifier && typeof this.activeModifier.machineSpeedMult === 'number')
+      ? this.activeModifier.machineSpeedMult
+      : 1;
   }
 
   /**
@@ -956,6 +1803,28 @@ class EconomyManager {
     return Math.round(def.baseCost * Math.pow(def.costScale, level));
   }
 
+  /** Czy węzeł drzewka jest odblokowany (kupowalny)? Korzeń gałęzi (requires:
+   * null) jest odblokowany zawsze - blokada dotyczy TYLKO węzłów z
+   * ustawionym `requires`, i to dopóki poziom rodzica wynosi 0. Świadomie
+   * "co najmniej 1 poziom", nie "rodzic na maksa" - Ochrona/Zbieranie mają
+   * mieszane maxLevel (1 vs 3/5), więc wymaganie pełnego wykupienia rodzica
+   * byłoby niespójne między gałęziami i dużo bardziej restrykcyjne, niż
+   * potrzeba do samego "poczucia budowania buildu".
+   *
+   * BUGFIX (kompatybilność wsteczna): gracz z zapisem SPRZED drzewka mógł
+   * legalnie kupić np. drone/radiation_suit BEZ pickup/toxic_filter - wtedy
+   * `requires` nie istniało. Bez poniższego warunku taki zapis po wczytaniu
+   * pokazywałby własny, opłacony poziom jako "zablokowany" i odcinał dalsze
+   * poziomy (drone ma maxLevel 3) - realna utrata dostępu do czegoś, za co
+   * gracz już zapłacił. "Masz już przynajmniej 1 poziom" = odblokowany,
+   * niezależnie od stanu rodzica. */
+  isUpgradeUnlocked(upgradeId) {
+    const def = SHOP_UPGRADES.find((u) => u.id === upgradeId);
+    if (!def || !def.requires) return true;
+    if (this.hasUpgrade(upgradeId)) return true;
+    return this.hasUpgrade(def.requires);
+  }
+
   getShopCatalog() {
     return SHOP_UPGRADES.map((def) => {
       const level = this.upgradeLevels[def.id] || 0;
@@ -965,6 +1834,8 @@ class EconomyManager {
       // pieniądze, nic nie dając w zamian.
       const fromShip = this.isSupersededByShip(def.id);
       const maxed = level >= def.maxLevel || fromShip;
+      const unlocked = this.isUpgradeUnlocked(def.id);
+      const requiresDef = def.requires ? SHOP_UPGRADES.find((u) => u.id === def.requires) : null;
       return {
         id: def.id,
         icon: def.icon,
@@ -977,7 +1848,14 @@ class EconomyManager {
         // UI rozróżnia "kupione na maksa" od "masz to ze statku" (ui.js) -
         // dla gracza to zupełnie inna informacja.
         fromShip,
-        nextValue: maxed ? def.getValue(level) : def.getValue(level + 1)
+        nextValue: maxed ? def.getValue(level) : def.getValue(level + 1),
+        // Drzewko zależności (patrz komentarz przy SHOP_UPGRADES) - `branch`
+        // grupuje węzły w ShopPanel, `locked`/`requiresName` dają UI gotowy
+        // tekst podpowiedzi ("Wymaga: X") bez własnego wyszukiwania po ID.
+        branch: def.branch || null,
+        requiresId: def.requires || null,
+        requiresName: requiresDef ? requiresDef.name : null,
+        locked: !unlocked
       };
     });
   }
@@ -1101,6 +1979,10 @@ class EconomyManager {
     // więc warunek musi stać TU, przy pobieraniu pieniędzy - nie tylko w
     // warstwie widoku.
     if (this.isSupersededByShip(upgradeId)) return false;
+    // Ten sam powód co wyżej, dla drzewka zależności - ShopPanel wyszarza
+    // zablokowany węzeł, ale buyUpgrade() jest publiczne (DEBUG itd.), więc
+    // realna blokada MUSI stać tutaj.
+    if (!this.isUpgradeUnlocked(upgradeId)) return false;
 
     const cost = this.getUpgradeCost(upgradeId);
     if (!this.canAfford(cost)) return false;
@@ -1125,7 +2007,7 @@ class EconomyManager {
       // BUGFIX: był `${def.icon} Ulepszenie!` - def.icon to teraz SVG (napis
       // do UI w ui.js), a ten popup rysuje się przez ctx.fillText na
       // canvasie, który SVG/HTML po prostu wypisałby jako surowy tekst.
-      text: 'Ulepszenie!',
+      text: I18n.t('economy.popup.upgrade'),
       duration: 1200,
       color: '#7CFC98'
     });
@@ -1190,11 +2072,25 @@ class EconomyManager {
    * Pierwiastek zamiast zależności liniowej: rosnący totalEarned daje coraz
    * mniejszy PRZYROST Rdzeni za każde kolejne 100 zarobione, więc farmienie
    * jednego przebiegu w nieskończoność ma malejący sens, a start kolejnej
-   * planety zawsze się opłaca. Współczynniki NIEZBALANSOWANE/nietestowane -
-   * do podkręcenia po zagraniu, ta sama zasada co reszta liczb w tej grze.
+   * planety zawsze się opłaca.
+   *
+   * BALANS (przegląd ekonomii): dzielnik był 10 - dawało to ~6-10 Rdzeni za
+   * typowy pierwszy odlot (totalEarned ~4800, tyle kosztują wszystkie 5
+   * modułów statku), a zmaksowanie JEDNEGO ulepszenia za Rdzenie kosztuje
+   * od ~140 (Zapasy Startowe, najtańsze) do ~860 (Wzmacniacz Zarobku)
+   * Rdzeni - dawny dzielnik wymagałby dziesiątek-setek odlotów na
+   * jedno ulepszenie. Dzielnik 10 -> 2 (5x) daje ten sam pierwszy odlot
+   * ~30-35 Rdzeni - wciąż długofalowa progresja (pełne zmaksowanie
+   * wszystkich 10 ulepszeń to nadal ~60-100 odlotów), ale każdy
+   * pojedynczy odlot realnie kupuje kilka poziomów, nie ułamek jednego.
+   *
+   * Drugi poziom Rdzeni (core_prestige_boost) mnoży WYNIK pierwiastka, nie
+   * totalEarned pod nim - inaczej rósłby wolniej niż liniowo (sam
+   * pierwiastek), co przeczyłoby opisowi "+10% Rdzeni za poziom".
    */
   previewPrestigeCores() {
-    return Math.max(1, Math.floor(Math.sqrt(this.totalEarned) / 10));
+    const boostMult = this.getCoreValue('core_prestige_boost') || 1;
+    return Math.max(1, Math.floor((Math.sqrt(this.totalEarned) / 2) * boostMult));
   }
 
   getCoreUpgradeCost(upgradeId) {
@@ -1206,21 +2102,27 @@ class EconomyManager {
   }
 
   getCoreShopCatalog() {
-    return PRESTIGE_UPGRADES.map((def) => {
-      const level = this.prestigeLevels[def.id] || 0;
-      const maxed = level >= def.maxLevel;
-      return {
-        id: def.id,
-        icon: def.icon,
-        name: def.name,
-        description: def.description,
-        level,
-        maxLevel: def.maxLevel,
-        cost: maxed ? null : this.getCoreUpgradeCost(def.id),
-        maxed,
-        nextValue: maxed ? def.getValue(level) : def.getValue(level + 1)
-      };
-    });
+    return PRESTIGE_UPGRADES
+      // Drugi poziom (patrz komentarz przy definicjach) jest CELOWO
+      // niewidoczny w katalogu, dopóki gracz nie dotrze do odpowiedniej
+      // planety - nie "zablokowany/zaszarzony" jak w zwykłym sklepie, tylko
+      // w ogóle nieobecny, żeby odblokowanie było niespodzianką.
+      .filter((def) => !def.unlockPlanet || this.planetNumber >= def.unlockPlanet)
+      .map((def) => {
+        const level = this.prestigeLevels[def.id] || 0;
+        const maxed = level >= def.maxLevel;
+        return {
+          id: def.id,
+          icon: def.icon,
+          name: def.name,
+          description: def.description,
+          level,
+          maxLevel: def.maxLevel,
+          cost: maxed ? null : this.getCoreUpgradeCost(def.id),
+          maxed,
+          nextValue: maxed ? def.getValue(level) : def.getValue(level + 1)
+        };
+      });
   }
 
   /** Kupuje poziom trwałego ulepszenia za Rdzenie. Osobny katalog/waluta od
@@ -1230,6 +2132,10 @@ class EconomyManager {
   buyCoreUpgrade(upgradeId) {
     const def = PRESTIGE_UPGRADES.find((u) => u.id === upgradeId);
     if (!def) return false;
+    // Lustrzane zabezpieczenie do filtra w getCoreShopCatalog() - katalog i
+    // tak nie pokazuje tej pozycji przed odblokowaniem, ale metoda broni się
+    // sama, tak samo jak isReadyToPrestige() niżej w prestige().
+    if (def.unlockPlanet && this.planetNumber < def.unlockPlanet) return false;
 
     const level = this.prestigeLevels[upgradeId] || 0;
     if (level >= def.maxLevel) return false;
@@ -1253,12 +2159,115 @@ class EconomyManager {
     Bus.publish(Events.FX_POPUP, {
       // BUGFIX: ten sam powód co przy zwykłym zakupie wyżej - def.icon to
       // teraz SVG, nie da się tego narysować przez ctx.fillText.
-      text: 'Trwałe ulepszenie!',
+      text: I18n.t('economy.popup.coreUpgrade'),
       duration: 1200,
       color: '#81D4FA'
     });
 
     return true;
+  }
+
+  /** Katalog skinów do UI (patrz PLAYER_SKINS) - ten sam kształt danych co
+   * getCoreShopCatalog(), tylko z unlocked/selected zamiast level/maxed.
+   * `available` = false dla eventOnly skinów poza oknem wydarzenia (patrz
+   * events.js: SeasonalEventManager.isActive()) - JUŻ odblokowane zostają
+   * jednak zawsze available (kupiony raz, nie znika z listy do wyboru). */
+  getSkinCatalog() {
+    const eventActive = !!(window.seasonalEventManager && window.seasonalEventManager.isActive());
+    return PLAYER_SKINS.map((def) => ({
+      id: def.id,
+      name: def.name,
+      desc: def.desc,
+      tint: def.tint,
+      body: def.body,
+      previewColor: def.previewColor,
+      cost: def.cost,
+      unlocked: this.unlockedSkins.has(def.id),
+      selected: this.selectedSkin === def.id,
+      eventOnly: !!def.eventOnly,
+      available: !def.eventOnly || eventActive || this.unlockedSkins.has(def.id)
+    }));
+  }
+
+  /** Kupuje i OD RAZU zakłada skin (nikt nie kupuje kosmetyki, żeby jej NIE
+   * nosić - osobne "kup" + "wybierz" byłoby zbędnym dodatkowym klikiem). */
+  buySkin(skinId) {
+    const def = PLAYER_SKINS.find((s) => s.id === skinId);
+    if (!def) return false;
+    if (this.unlockedSkins.has(skinId)) return false;
+    if (def.eventOnly && !(window.seasonalEventManager && window.seasonalEventManager.isActive())) return false;
+    if (this.cores < def.cost) return false;
+
+    this.cores -= def.cost;
+    this.unlockedSkins.add(skinId);
+    this.selectedSkin = skinId;
+    this.stats.skinsCollected++;
+    this._checkAchievements();
+
+    Bus.publish(Events.FX_POPUP, {
+      text: `${def.name} odblokowany!`,
+      duration: 1200,
+      color: '#81D4FA'
+    });
+    return true;
+  }
+
+  /** Zakłada JUŻ odblokowany skin - osobna metoda od buySkin() (ten sam
+   * podział co buyUpgrade() vs zwykłe czytanie upgradeLevels gdzie indziej). */
+  selectSkin(skinId) {
+    if (!this.unlockedSkins.has(skinId)) return false;
+    this.selectedSkin = skinId;
+    return true;
+  }
+
+  /** Katalog dekoracji straganu (patrz STALL_DECORATIONS) - ten sam kształt
+   * danych co getSkinCatalog() wyżej, tylko `owned` zamiast `unlocked`/
+   * `selected` (dekoracje nie mają wyboru "jedna na raz" - WSZYSTKIE
+   * posiadane są widoczne naraz, patrz _drawStallDecorations w market.js). */
+  getDecorationsCatalog() {
+    return STALL_DECORATIONS.map((def) => ({
+      id: def.id,
+      icon: def.icon,
+      name: def.name,
+      description: def.desc,
+      cost: def.cost,
+      owned: this.decorationsOwned.has(def.id)
+    }));
+  }
+
+  /** Czy stragan ma daną dekorację - czytane przez TradingPost.draw()
+   * (market.js) do zdecydowania, co narysować w każdym stałym slocie. */
+  isDecorationOwned(decorationId) {
+    return this.decorationsOwned.has(decorationId);
+  }
+
+  /** Kupuje dekorację NA STAŁE (bez "zakładania" jak przy skinach - dekoracja
+   * po prostu pojawia się w swoim slocie od razu po zakupie). Ten sam wzorzec
+   * co buyUpgrade() (SHOP_UPGRADES), płatne money, nie cores (Tomek: "kupowane
+   * za gotówkę" - w przeciwieństwie do skinów, to bramka Sklepu, nie Rdzeni). */
+  buyDecoration(decorationId) {
+    const def = STALL_DECORATIONS.find((d) => d.id === decorationId);
+    if (!def) return false;
+    if (this.decorationsOwned.has(decorationId)) return false;
+    if (!this.canAfford(def.cost)) return false;
+
+    this.money -= def.cost;
+    this.decorationsOwned.add(decorationId);
+    this._syncMoneyState();
+
+    Bus.publish(Events.FX_POPUP, {
+      text: I18n.t('economy.popup.upgrade'),
+      duration: 1200,
+      color: '#7CFC98'
+    });
+    return true;
+  }
+
+  /** Mnożnik ceny sprzedaży na Terminalu z posiadanych dekoracji (patrz
+   * STALL_DECORATION_PRICE_BONUS_PER_ITEM) - czytany przez MarketManager.
+   * getPrice() (market.js), ten sam hook co seasonalMult tam. */
+  getDecorationPriceBonusMult() {
+    return 1 + this.decorationsOwned.size * STALL_DECORATION_PRICE_BONUS_PER_ITEM;
   }
 
   /**
@@ -1273,11 +2282,68 @@ class EconomyManager {
    * @returns {{coresEarned:number, totalCores:number, planetNumber:number}|null}
    *   null, gdy statek jeszcze nie jest gotowy (nic nie zostaje zresetowane).
    */
+  /**
+   * Wpisuje właśnie ukończony przebieg do lokalnej tablicy wyników (patrz
+   * bestRunsByEarned/bestRunsByTime w konstruktorze) - do KAŻDEJ z dwóch list
+   * niezależnie, tylko jeśli przebieg faktycznie łapie się do topu
+   * LEADERBOARD_MAX_ENTRIES. Zwraca, czy to nowy rekord (pozycja #1) w
+   * którejś liście - ui.js pokazuje na tej podstawie osobny toast.
+   */
+  _recordRun(entry) {
+    const record = { ...entry, ts: Date.now() };
+    return {
+      earned: this._insertIntoLeaderboard(this.bestRunsByEarned, record, (a, b) => b.earned - a.earned),
+      time: this._insertIntoLeaderboard(this.bestRunsByTime, record, (a, b) => a.timeSeconds - b.timeSeconds)
+    };
+  }
+
+  /** Wstawia wpis w odpowiednie miejsce posortowanej listy i przycina do
+   * LEADERBOARD_MAX_ENTRIES. Zwraca true, gdy wpis wylądował na #1 ORAZ
+   * lista miała już wcześniej jakąś zawartość (pierwszy przebieg w historii
+   * trywialnie "wygrywa" pustą listę - to nie jest pobity rekord, tylko
+   * pierwszy punkt danych, więc nie zasługuje na toast "Nowy rekord!"). */
+  _insertIntoLeaderboard(list, entry, compareFn) {
+    const hadPriorEntries = list.length > 0;
+    list.push(entry);
+    list.sort(compareFn);
+    const brokeRecord = hadPriorEntries && list[0] === entry;
+    list.length = Math.min(list.length, LEADERBOARD_MAX_ENTRIES);
+    return brokeRecord;
+  }
+
+  /**
+   * Katalog tablicy wyników dla UI (LeaderboardPanel w ui.js) - ten sam
+   * wzorzec co getStatsCatalog()/getSkinCatalog(): gotowe do wyświetlenia
+   * stringi (kwota z ikoną waluty, czas sformatowany), nie surowe liczby.
+   * @param {'earned'|'time'} mode - którą listę zwrócić.
+   */
+  getLeaderboard(mode) {
+    const list = mode === 'time' ? this.bestRunsByTime : this.bestRunsByEarned;
+    return list.map((entry, i) => ({
+      rank: i + 1,
+      planetNumber: entry.planetNumber,
+      earnedLabel: `${Math.round(entry.earned).toLocaleString('pl-PL')}${ECONOMY_CREDIT_ICON_SVG}`,
+      timeLabel: _formatRunTime(entry.timeSeconds)
+    }));
+  }
+
   prestige() {
     if (!this.isReadyToPrestige()) return null;
 
     const coresEarned = this.previewPrestigeCores();
     this.cores += coresEarned;
+    this.stats.coresEarned += coresEarned;
+
+    // Migawka PRZED resetem niżej - reset zeruje totalEarned/
+    // totalPlaytimeSeconds, a inkrement planetNumber (dalej w tej metodzie)
+    // zmieniłby, KTÓREJ planety ten wpis właściwie dotyczy (ma być numer
+    // planety, którą gracz WŁAŚNIE ukończył, nie tej, na którą dopiero leci).
+    const newRecords = this._recordRun({
+      planetNumber: this.planetNumber,
+      earned: this.totalEarned,
+      timeSeconds: this.totalPlaytimeSeconds,
+      coresEarned
+    });
 
     // --- Reset przebiegu -----------------------------------------------------
     this.money = 0;
@@ -1319,13 +2385,21 @@ class EconomyManager {
       window.stackController.clear(); // plecak NIE leci z Tobą na nową planetę
     }
 
+    // Modyfikator nowej planety (patrz PLANET_MODIFIERS) - losowany TU, przed
+    // ustaleniem gotówki startowej, żeby ewentualny cashBonus wszedł w tę samą
+    // sumę co Zapasy Startowe (jedno przypisanie do this.money, nie dwa
+    // kolejne nadpisujące się nawzajem).
+    this._rollPlanetModifier();
+
     // Zapasy Startowe (core_headstart) - jedyny trwały bonus wchodzący jako
     // gotówka NA START nowego przebiegu, a nie jako pasywny mnożnik przy
     // każdej sprzedaży (to robi core_income, patrz _getCoreIncomeMultiplier).
     const headstartDef = PRESTIGE_UPGRADES.find((u) => u.id === 'core_headstart');
-    if (headstartDef) {
-      this.money = headstartDef.getValue(this.prestigeLevels.core_headstart || 0);
-    }
+    const headstartMoney = headstartDef ? headstartDef.getValue(this.prestigeLevels.core_headstart || 0) : 0;
+    const modifierCash = (this.activeModifier && typeof this.activeModifier.cashBonus === 'number')
+      ? this.activeModifier.cashBonus
+      : 0;
+    this.money = headstartMoney + modifierCash;
 
     this.planetNumber += 1;
 
@@ -1340,7 +2414,13 @@ class EconomyManager {
     }
     Bus.publish(Events.MONEY_COLLECTED, { amount: 0, total: this.money });
 
-    const result = { coresEarned, totalCores: this.cores, planetNumber: this.planetNumber };
+    const result = {
+      coresEarned,
+      totalCores: this.cores,
+      planetNumber: this.planetNumber,
+      modifier: this.activeModifier,
+      newRecords
+    };
     Bus.publish(Events.PRESTIGE_DONE, result);
     return result;
   }
@@ -1382,11 +2462,29 @@ class EconomyManager {
     const today = this._todayDateStr();
     if (this.lastLoginDateStr === today) return null;
 
-    const gap = this.lastLoginDateStr ? this._daysBetween(this.lastLoginDateStr, today) : 1;
+    // BUGFIX: zupełnie nowy gracz (lastLoginDateStr jeszcze puste - pierwsze
+    // uruchomienie w życiu) dostawał TEN SAM dzień-1 bonus streaka co gracz
+    // wracający po przerwie (+55$ zanim jeszcze cokolwiek zrobił w grze).
+    // Gra ma zaczynać się od zera - streak liczy się dopiero od PIERWSZEGO
+    // PRAWDZIWEGO powrotu (jutro), więc dziś tylko zapisujemy datę/streak=1
+    // bez wypłaty i bez toastu.
+    const isFirstEverLogin = !this.lastLoginDateStr;
+    if (isFirstEverLogin) {
+      this.loginStreak = 1;
+      this.lastLoginDateStr = today;
+      return null;
+    }
+
+    const gap = this._daysBetween(this.lastLoginDateStr, today);
     this.loginStreak = gap === 1 ? this.loginStreak + 1 : 1;
     this.lastLoginDateStr = today;
 
-    const baseMoneyReward = DAILY_STREAK_BASE + Math.min(this.loginStreak, DAILY_STREAK_CAP_DAYS) * DAILY_STREAK_PER_DAY;
+    const rawMoneyReward = DAILY_STREAK_BASE + Math.min(this.loginStreak, DAILY_STREAK_CAP_DAYS) * DAILY_STREAK_PER_DAY;
+    // Drugi poziom Rdzeni (core_daily_master) - mnożnik NA nagrodę streaka,
+    // ten sam duch co core_prices na targu, tylko dla innej pętli. Domyślnie
+    // getValue(0) zwraca 1 (patrz definicja), więc bez zakupu nic się nie zmienia.
+    const dailyMult = this.getCoreValue('core_daily_master') || 1;
+    const baseMoneyReward = Math.round(rawMoneyReward * dailyMult);
     const coreBonus = (this.loginStreak % DAILY_STREAK_CORE_INTERVAL === 0) ? 1 : 0;
 
     // BUGFIX: ten sam powód co w sellItem() (patrz komentarz przy
@@ -1407,9 +2505,40 @@ class EconomyManager {
     return result;
   }
 
-  /** Losuje nowe wyzwanie z DAILY_CHALLENGE_TEMPLATES, ostemplowane dzisiejszą datą. */
+  /** true, gdy surowiec szablonu 'collect' faktycznie może się w tej chwili
+   * pojawić w świecie - ta sama bramka co availableTypes w items.js
+   * (_spawnItem), tylko od strony EconomyManager (jedyne dane, jakie tu
+   * mamy - isUnlocked/upgradeLevels). BUGFIX: bez tego filtra wyzwanie typu
+   * "zbierz szkło/metal/papier" potrafiło wylosować się, zanim gracz w
+   * ogóle miał gdzie/z czego ten surowiec zebrać (świeża gra ALBO świeżo
+   * po prestiżu, patrz prestige() zerujące upgradeLevels) - progress
+   * pozostawał na 0 do końca dnia, cel realnie nieosiągalny. */
+  _isChallengeTemplateAvailable(template) {
+    if (template.type !== 'collect') return true;
+    switch (template.material) {
+      case 'glass': return this.isUnlocked('zone_B') && this.isUnlocked('furnace_c');
+      case 'metal': return this.isUnlocked('zone_C') && this.isUnlocked('furnace_c');
+      case 'paper': return (this.upgradeLevels['stage_paper'] || 0) > 0;
+      // Ta sama bramka co availableTypes w items.js (_spawnItem) dla
+      // crystal_shard - próg strefy SAM NIE wystarcza, trzeba też pełnej
+      // ochrony (Filtr + Kombinezon, albo perk hazard_immunity ze statku),
+      // inaczej wyzwanie rolowałoby się, zanim gracz w ogóle mógłby
+      // bezpiecznie wejść do Grani i cokolwiek zebrać.
+      case 'crystal_shard': {
+        const hasFullProtection = (typeof this.hasShipPerk === 'function' && this.hasShipPerk('hazard_immunity'))
+          || (this.hasUpgrade('toxic_filter') && this.hasUpgrade('radiation_suit'));
+        return this.isUnlocked('zone_D') && hasFullProtection;
+      }
+      default: return true; // trash/plastic - zawsze dostępne
+    }
+  }
+
+  /** Losuje nowe wyzwanie z DAILY_CHALLENGE_TEMPLATES (po odfiltrowaniu
+   * szablonów niedostępnych w obecnym stanie gry), ostemplowane dzisiejszą
+   * datą. */
   _generateDailyChallenge() {
-    const template = DAILY_CHALLENGE_TEMPLATES[Math.floor(Math.random() * DAILY_CHALLENGE_TEMPLATES.length)];
+    const pool = DAILY_CHALLENGE_TEMPLATES.filter((t) => this._isChallengeTemplateAvailable(t));
+    const template = pool[Math.floor(Math.random() * pool.length)];
     this.dailyChallenge = {
       dateStr: this._todayDateStr(),
       type: template.type,
@@ -1481,16 +2610,20 @@ class EconomyManager {
    * @returns {{elapsedSeconds:number, reward:number}|null} null, gdy za
    *   krótko offline, za mało realnej gry w tym przebiegu, albo tempo
    *   sprzedaży wynosi 0 (świeży gracz, jeszcze nic nie sprzedał) - nie ma
-   *   na czym oprzeć nagrody, więc lepiej nic nie pokazać niż "+0$".
+   *   na czym oprzeć nagrody, więc lepiej nic nie pokazać niż "+0".
    */
   computeOfflineReward(elapsedMs) {
     const elapsedSeconds = Math.floor((elapsedMs || 0) / 1000);
     if (elapsedSeconds < OFFLINE_MIN_SECONDS) return null;
     if (this.totalPlaytimeSeconds < OFFLINE_MIN_PLAYTIME_SECONDS) return null;
 
+    // Drugi poziom Rdzeni (core_offline_master) dokłada się WPROST do
+    // skuteczności, zamiast osobnego mnożnika - efekt identyczny co
+    // podniesienie samej stałej, tylko trwały i skalowalny z poziomami.
+    const efficiency = OFFLINE_EFFICIENCY + (this.getCoreValue('core_offline_master') || 0);
     const cappedSeconds = Math.min(elapsedSeconds, OFFLINE_MAX_SECONDS);
     const rate = this.sellEarnings / this.totalPlaytimeSeconds;
-    const reward = Math.round(rate * cappedSeconds * OFFLINE_EFFICIENCY);
+    const reward = Math.round(rate * cappedSeconds * efficiency);
     if (reward <= 0) return null;
 
     return { elapsedSeconds: cappedSeconds, reward };
@@ -1572,6 +2705,14 @@ class EconomyManager {
     if (typeof data.planetNumber === 'number') {
       this.planetNumber = data.planetNumber;
     }
+    // Modyfikator planety - zapisywany jako samo id (patrz getSaveData), tu
+    // odtwarzamy pełny obiekt z bieżącej definicji PLANET_MODIFIERS. Zapis
+    // sprzed dodania tej funkcji (albo id, które zniknęło z puli) po prostu
+    // zostaje bez modyfikatora zamiast wywalać się na undefined.
+    if (typeof data.activeModifierId === 'string') {
+      const def = PLANET_MODIFIERS.find((m) => m.id === data.activeModifierId);
+      this.activeModifier = def ? { ...def } : null;
+    }
     if (data.prestigeLevels && typeof data.prestigeLevels === 'object') {
       Object.keys(data.prestigeLevels).forEach((id) => {
         if (this.prestigeLevels[id] !== undefined) {
@@ -1600,6 +2741,34 @@ class EconomyManager {
     }
     if (Array.isArray(data.unlockedIds)) {
       this.unlockedIds = new Set(data.unlockedIds);
+    }
+    // Skiny postaci (meta, trwałe jak unlockedIds) - 'default' zostaje w
+    // Secie nawet gdy brak w zapisie (Set() startuje z nim w konstruktorze,
+    // .add poniżej tylko dokłada resztę), więc stary zapis sprzed tej
+    // funkcji nie zostawia gracza bez ŻADNEGO odblokowanego skina.
+    if (Array.isArray(data.unlockedSkins)) {
+      data.unlockedSkins.forEach((id) => this.unlockedSkins.add(id));
+    }
+    // Dekoracje straganu (meta, trwałe jak unlockedSkins) - ten sam powód/wzorzec.
+    if (Array.isArray(data.decorationsOwned)) {
+      data.decorationsOwned.forEach((id) => this.decorationsOwned.add(id));
+    }
+    if (typeof data.selectedSkin === 'string' && this.unlockedSkins.has(data.selectedSkin)) {
+      this.selectedSkin = data.selectedSkin;
+    }
+    // Lokalna tablica wyników (meta, trwała jak unlockedSkins) - filtr na
+    // kształt wpisu (nie samo Array.isArray) na wypadek uszkodzonego/ręcznie
+    // edytowanego zapisu, .slice na koniec dla zapisów sprzed ewentualnej
+    // zmiany LEADERBOARD_MAX_ENTRIES na mniejszą wartość.
+    if (Array.isArray(data.bestRunsByEarned)) {
+      this.bestRunsByEarned = data.bestRunsByEarned
+        .filter((e) => e && typeof e.earned === 'number' && typeof e.timeSeconds === 'number')
+        .slice(0, LEADERBOARD_MAX_ENTRIES);
+    }
+    if (Array.isArray(data.bestRunsByTime)) {
+      this.bestRunsByTime = data.bestRunsByTime
+        .filter((e) => e && typeof e.earned === 'number' && typeof e.timeSeconds === 'number')
+        .slice(0, LEADERBOARD_MAX_ENTRIES);
     }
     // Osiągnięcia + liczniki lifetime (meta, trwałe jak unlockedIds). Merge
     // per-klucz (nie podmiana całego obiektu), żeby zapis SPRZED dodania
@@ -1643,6 +2812,7 @@ class EconomyManager {
       shipCompletedModules: [...this.shipCompletedModules],
       cores: this.cores,
       planetNumber: this.planetNumber,
+      activeModifierId: this.activeModifier ? this.activeModifier.id : null,
       prestigeLevels: { ...this.prestigeLevels },
       loginStreak: this.loginStreak,
       lastLoginDateStr: this.lastLoginDateStr,
@@ -1651,7 +2821,12 @@ class EconomyManager {
       tutorialDismissed: this.tutorialDismissed,
       unlockedIds: Array.from(this.unlockedIds),
       stats: { ...this.stats },
-      unlockedAchievements: Array.from(this.unlockedAchievements)
+      unlockedAchievements: Array.from(this.unlockedAchievements),
+      selectedSkin: this.selectedSkin,
+      unlockedSkins: Array.from(this.unlockedSkins),
+      decorationsOwned: Array.from(this.decorationsOwned),
+      bestRunsByEarned: this.bestRunsByEarned.map((e) => ({ ...e })),
+      bestRunsByTime: this.bestRunsByTime.map((e) => ({ ...e }))
     };
   }
 
@@ -1668,3 +2843,10 @@ class EconomyManager {
 window.EconomyManager = EconomyManager;
 window.SHOP_UPGRADES = SHOP_UPGRADES;
 window.ACHIEVEMENTS = ACHIEVEMENTS;
+// Czytane wprost przez player.js (_bakeSkinTints) - patrz komentarz przy
+// PLAYER_SKINS wyżej.
+window.PLAYER_SKINS = PLAYER_SKINS;
+// Do porównania w ui.js (_onPrestigeDone) - żeby dało się rozpoznać moment
+// odblokowania drugiego poziomu ulepszeń bez duplikowania liczby "5" w
+// dwóch plikach.
+window.CORE_TIER2_UNLOCK_PLANET = CORE_TIER2_UNLOCK_PLANET;

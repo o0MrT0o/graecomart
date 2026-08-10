@@ -26,12 +26,17 @@
 // Granice stref - MUSZĄ zgadzać się z GAME_ZONE_*/ITEM_ZONE_* w game.js/items.js.
 const AMBIENT_ZONE_C_TOP_RATIO = 0.32;
 const AMBIENT_ZONE_B_RIGHT_RATIO = 0.62;
-// Strefa D (Kryształowa Grań) - SAMODZIELNY róg prawy-górny (patrz identyczne
-// stałe i obszerny komentarz przy GAME_ZONE_D_LEFT_RATIO w game.js).
-const AMBIENT_ZONE_D_LEFT_RATIO = 0.78;
-const AMBIENT_ZONE_D_BOTTOM_RATIO = 0.5;
+// Strefa D (Kryształowa Grań) - NIEZALEŻNY pas na pełnej wysokości, na prawo
+// od "rdzenia" (patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w
+// game.js). AMBIENT_ZONE_CORE_WIDTH to STARA szerokość świata (1400, sprzed
+// poszerzenia pod Grań) - A/B/C nadal rozsiewają cząsteczki względem NIEJ,
+// nie AMBIENT_WORLD_WIDTH, więc szerszy świat ich nie rusza (i pyłki A/opary
+// B nie wyciekają na nowy pas D).
+const AMBIENT_ZONE_CORE_WIDTH = 1400;
 
-const AMBIENT_WORLD_WIDTH = 1400;
+// 1750, było 1400 - patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w
+// game.js (poszerzenie mapy pod NIEZALEŻNY pas Strefy D).
+const AMBIENT_WORLD_WIDTH = 1750;
 const AMBIENT_WORLD_HEIGHT = 2000;
 
 // Ile cząsteczek na biom żyje jednocześnie. Mało - to subtelne tło, nie
@@ -47,18 +52,20 @@ class AmbientManager {
     this._time = 0;
 
     const zc = AMBIENT_WORLD_HEIGHT * AMBIENT_ZONE_C_TOP_RATIO;
-    const zb = AMBIENT_WORLD_WIDTH * AMBIENT_ZONE_B_RIGHT_RATIO;
+    const zb = AMBIENT_ZONE_CORE_WIDTH * AMBIENT_ZONE_B_RIGHT_RATIO;
 
-    // Strefa C (popiół) - cały górny pas.
+    // Strefa C (popiół) - cały górny pas RDZENIA (do AMBIENT_ZONE_CORE_WIDTH,
+    // nie do pełnej AMBIENT_WORLD_WIDTH - inaczej iskry wyciekałyby na pas D).
     for (let i = 0; i < AMBIENT_COUNT_PER_ZONE; i++) {
       this.particles.push(this._spawn('C',
-        Math.random() * AMBIENT_WORLD_WIDTH,
+        Math.random() * AMBIENT_ZONE_CORE_WIDTH,
         Math.random() * zc));
     }
-    // Strefa B (bagno) - prawy-dolny prostokąt (poniżej C, na prawo od granicy B).
+    // Strefa B (bagno) - prawy-dolny prostokąt RDZENIA (poniżej C, na prawo
+    // od granicy B, ale NIE dalej niż AMBIENT_ZONE_CORE_WIDTH).
     for (let i = 0; i < AMBIENT_COUNT_PER_ZONE; i++) {
       this.particles.push(this._spawn('B',
-        zb + Math.random() * (AMBIENT_WORLD_WIDTH - zb),
+        zb + Math.random() * (AMBIENT_ZONE_CORE_WIDTH - zb),
         zc + Math.random() * (AMBIENT_WORLD_HEIGHT - zc)));
     }
     // Strefa A (łąka) - lewy-dolny (poniżej C, na lewo od granicy B).
@@ -67,15 +74,14 @@ class AmbientManager {
         Math.random() * zb,
         zc + Math.random() * (AMBIENT_WORLD_HEIGHT - zc)));
     }
-    // Strefa D (Kryształowa Grań) - SAMODZIELNY róg prawy-górny (sięga niżej
-    // niż pas C, aż do AMBIENT_ZONE_D_BOTTOM_RATIO) - fioletowe iskierki
-    // wypełniają CAŁY ten róg, dodatkowy sygnał "tu jest osobna kraina".
-    const zd = AMBIENT_WORLD_WIDTH * AMBIENT_ZONE_D_LEFT_RATIO;
-    const zdBottom = AMBIENT_WORLD_HEIGHT * AMBIENT_ZONE_D_BOTTOM_RATIO;
+    // Strefa D (Kryształowa Grań) - NIEZALEŻNY pas na pełnej wysokości mapy,
+    // na prawo od rdzenia - fioletowe iskierki wypełniają CAŁY ten pas,
+    // dodatkowy sygnał "tu jest osobna kraina".
+    const zd = AMBIENT_ZONE_CORE_WIDTH;
     for (let i = 0; i < AMBIENT_COUNT_PER_ZONE; i++) {
       this.particles.push(this._spawn('D',
         zd + Math.random() * (AMBIENT_WORLD_WIDTH - zd),
-        Math.random() * zdBottom));
+        Math.random() * AMBIENT_WORLD_HEIGHT));
     }
   }
 
@@ -131,9 +137,8 @@ class AmbientManager {
     this._time += sec;
 
     const zc = AMBIENT_WORLD_HEIGHT * AMBIENT_ZONE_C_TOP_RATIO;
-    const zb = AMBIENT_WORLD_WIDTH * AMBIENT_ZONE_B_RIGHT_RATIO;
-    const zd = AMBIENT_WORLD_WIDTH * AMBIENT_ZONE_D_LEFT_RATIO;
-    const zdBottom = AMBIENT_WORLD_HEIGHT * AMBIENT_ZONE_D_BOTTOM_RATIO;
+    const zb = AMBIENT_ZONE_CORE_WIDTH * AMBIENT_ZONE_B_RIGHT_RATIO;
+    const zd = AMBIENT_ZONE_CORE_WIDTH;
 
     this.particles.forEach((p) => {
       // Delikatne sinusoidalne kołysanie boczne - żeby ruch nie był idealnie
@@ -143,11 +148,13 @@ class AmbientManager {
 
       // Recykling - gdy cząsteczka wypłynie poza swój biom, wraca z
       // przeciwnej strony (zawijanie), żeby pole było zawsze wypełnione, a
-      // liczba cząsteczek stała. Granice liczone per-strefa.
+      // liczba cząsteczek stała. Granice liczone per-strefa. B/C trzymane w
+      // RDZENIU (AMBIENT_ZONE_CORE_WIDTH), NIE pełnej AMBIENT_WORLD_WIDTH -
+      // inaczej opary/iskry wyciekałyby na pas D po recyklingu.
       let minX, maxX, minY, maxY;
-      if (p.zone === 'D') { minX = zd; maxX = AMBIENT_WORLD_WIDTH; minY = 0; maxY = zdBottom; }
+      if (p.zone === 'D') { minX = zd; maxX = AMBIENT_WORLD_WIDTH; minY = 0; maxY = AMBIENT_WORLD_HEIGHT; }
       else if (p.zone === 'C') { minX = 0; maxX = zd; minY = 0; maxY = zc; }
-      else if (p.zone === 'B') { minX = zb; maxX = AMBIENT_WORLD_WIDTH; minY = zc; maxY = AMBIENT_WORLD_HEIGHT; }
+      else if (p.zone === 'B') { minX = zb; maxX = AMBIENT_ZONE_CORE_WIDTH; minY = zc; maxY = AMBIENT_WORLD_HEIGHT; }
       else { minX = 0; maxX = zb; minY = zc; maxY = AMBIENT_WORLD_HEIGHT; }
 
       if (p.x < minX) p.x = maxX;

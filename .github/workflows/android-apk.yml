@@ -1,0 +1,62 @@
+name: Build Android APK
+
+# Buduje NIEPODPISANY (debug) APK do testowania na telefonie - NIE jest to
+# build gotowy pod Google Play (ten wymaga podpisu kluczem deweloperskim,
+# patrz Krok 8 w README-ADS.md). Debug APK Androida podpisuje się sam
+# automatycznie kluczem testowym, więc nie trzeba tu żadnych sekretów.
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      # native-ads.bundle.js + native-notifications.bundle.js +
+      # native-haptics.bundle.js + native-cloudsave.bundle.js +
+      # native-integrity.bundle.js (jedyne pięć plików z importem npm) +
+      # kopia gry do www/ - dokładnie to, co lokalnie robi `npm run sync`
+      # przed `npx cap sync`.
+      - run: npm run build-ads
+      - run: npm run build-notifications
+      - run: npm run build-haptics
+      - run: npm run build-cloudsave
+      - run: npm run build-integrity
+      - run: npm run prepare-www
+
+      # Java 21, nie 17 - @capacitor/android@7 (node_modules/@capacitor/android/
+      # capacitor/build.gradle) ma sourceCompatibility/targetCompatibility
+      # VERSION_21, więc starszy JDK pada na "invalid source release: 21".
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      # Kopiuje www/ do android/app/src/main/assets/public i synchronizuje
+      # pluginy natywne (AdMob) - android/ jest już w repo (`cap add android`
+      # zrobione raz, na stałe), więc tu tylko sync, nie add.
+      - run: npx cap sync android
+
+      - name: Zbuduj debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eco-mart-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

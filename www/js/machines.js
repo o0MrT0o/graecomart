@@ -39,14 +39,20 @@
 // używane są wartości domyślne poniżej.
 const MACHINE_DEFINITIONS = [
   {
+    // Etykieta/wygląd (Faza kosmicznego reskinu): "Recykler" -> "Reaktor
+    // Recyklingowy" - id/acceptsType/outputType/processingDuration/
+    // maxInventory NIETKNIĘTE (czysto wizualna zmiana), patrz bespoke
+    // _drawRecycleMachine w draw() zamiast dawnego assets/machines/recycle.png.
     id: 'recycle_a',
-    label: 'Recykler',
+    get label() { return I18n.t('machine.recycle_a.worldLabel'); },
     xRatio: 0.32,
     yRatio: 0.4,
     color: '#66BB6A',
     acceptsType: ['trash', 'paper'],
     outputType: 'plastic',
-    outputLabel: '♻️',
+    // outputLabel: BYŁO emoji (patrz komentarz przy ITEM_TYPES.label w
+    // items.js - ten sam powód, ta sama inertność fallbacku).
+    outputLabel: '',
     outputColor: '#42A5F5',
     processingDuration: 2000,
     // BALANS: był na domyślnych MACHINE_MAX_INVENTORY=5 (nikt tego świadomie
@@ -60,14 +66,16 @@ const MACHINE_DEFINITIONS = [
     maxInventory: 3
   },
   {
+    // "Prasa" -> "Kompresor Grawitonowy" - ten sam powód co przy recycle_a
+    // wyżej, patrz bespoke _drawPressMachine.
     id: 'press_b',
-    label: 'Prasa',
+    get label() { return I18n.t('machine.press_b.worldLabel'); },
     xRatio: 0.28,
     yRatio: 0.72,
     color: '#FFA726',
     acceptsType: 'plastic',
     outputType: 'product',
-    outputLabel: '🎁',
+    outputLabel: '',
     outputColor: '#AB47BC',
     processingDuration: 3000,
     // BALANS: ten sam powód co przy recyklerze wyżej - drugi stopień
@@ -76,14 +84,17 @@ const MACHINE_DEFINITIONS = [
     maxInventory: 3
   },
   {
+    // "Piec hutniczy" -> "Piec Plazmowy" - ten sam powód co przy recycle_a/
+    // press_b wyżej, patrz bespoke _drawFurnaceMachine (zastępuje dawny
+    // assets/machines/piechutniczy.png + głośny różowy fallback).
     id: 'furnace_c',
-    label: 'Piec hutniczy',
+    get label() { return I18n.t('machine.furnace_c.worldLabel'); },
     xRatio: 0.59,
     yRatio: 0.35,
     color: '#EF5350',
     acceptsType: ['metal', 'glass'],
     outputType: 'alloy',
-    outputLabel: '🧱',
+    outputLabel: '',
     outputColor: '#D4A574',
     processingDuration: 2500,
     maxInventory: 3
@@ -92,24 +103,51 @@ const MACHINE_DEFINITIONS = [
     // Oczyszczalnia (Faza progresji): rafinuje SZKŁO w KRYSZTAŁY - drugie,
     // droższe zastosowanie szkła obok Pieca (metal+szkło->stop). Szkło ma
     // więc teraz realny wybór: tańszy stop szybciej vs droższy kryształ.
-    // Brak własnego PNG - rysuje się procedualnym fallbackiem (gradient +
-    // emoji outputu, patrz draw()), tak jak każda maszyna bez sprite'a.
+    // Brak gotowego PNG w stylu recycle_a/press_b - ma WŁASNĄ bryłę złożoną z
+    // prawdziwego sprite'a Kenney (_drawRefineryMachine w draw()).
     // Umieszczona w Strefie Bagiennej (x>0.62, y>0.32 - tam spawnuje szkło),
     // po przeciwnej stronie niż Piec, żeby nie zlewały się wizualnie.
     // Bramkowana progiem zarobku (PROGRESSION_UNLOCKS 'refinery_b' w
     // economy.js) - id MUSI się zgadzać, inaczej _isMachineUnlocked nie
     // zadziała.
     id: 'refinery_b',
-    label: 'Oczyszczalnia',
+    get label() { return I18n.t('machine.refinery_b.worldLabel'); },
     xRatio: 0.8,
     yRatio: 0.62,
     color: '#7E57C2',
     acceptsType: 'glass',
     outputType: 'crystal',
-    outputLabel: '🔮',
+    outputLabel: '',
     outputColor: '#B388FF',
     processingDuration: 3200,
     maxInventory: 3
+  },
+  {
+    // Szlifiernia Kryształów - jedyna maszyna FIZYCZNIE stojąca w Strefie D
+    // (Kryształowa Grań, patrz GAME_ZONE_CORE_WIDTH w game.js) - xRatio > 1
+    // CELOWO (1.15 * MACHINE_WORLD_WIDTH=1400 = 1610px), bo Grań to teraz
+    // niezależny pas ZA starą szerokością świata, nie wycinek rdzenia jak
+    // reszta maszyn. Odłamek (surowiec bez żadnego przetwarzania, patrz
+    // komentarz przy crystal_shard w market.js) dostaje tu drugie,
+    // wolniejsze zastosowanie obok bezpośredniej sprzedaży - ten sam duch co
+    // Oczyszczalnia dla szkła. Bryła złożona z prawdziwego sprite'a Kenney,
+    // patrz _drawCrystalPolisherMachine.
+    id: 'crystal_polisher',
+    get label() { return I18n.t('machine.crystal_polisher.worldLabel'); },
+    xRatio: 1.15,
+    yRatio: 0.28,
+    color: '#4DD0C8',
+    acceptsType: 'crystal_shard',
+    outputType: 'crystal_gem',
+    outputLabel: '',
+    outputColor: '#E1F5FE',
+    // Najdłuższy cykl w grze (rzadszy niż nawet Oczyszczalnia) - wsad to
+    // odłamek epickiej rzadkości, więc wynik ma być odpowiednio powolny/cenny.
+    processingDuration: 4500,
+    // Mniej niż reszta maszyn (3) - odłamki są rzadkie (Strefa D + pełny
+    // sprzęt), więc wymaganie zebrania 3 naraz byłoby zbyt dużym progiem
+    // wejścia dla pierwszego użycia tej maszyny.
+    maxInventory: 2
   }
 ];
 
@@ -137,6 +175,14 @@ const MACHINE_OUTPUT_SPAWN_OFFSET_Y = 60;
 // Rozstaw px między sztukami, gdy maszyna z ulepszeniem 'yield' wypuszcza
 // więcej niż jedną naraz - bez tego leżałyby idealnie jedna na drugiej.
 const MACHINE_OUTPUT_SPREAD_X = 34;
+// Kapsuła dostawcza auto-załadunku (core_auto_feed) - patrz
+// _drawAutoFeedPods niżej. Efemeryczna (żyje AUTO_FEED_POD_DURATION_MS),
+// CELOWO nie sprite - Tomek: "z wizualizuj ale żeby dron się nie powtarzał
+// z grafikami które wcześniej dodaliśmy" (drone.js ma już swój, stały,
+// krążący Dron Recyklingowy).
+const AUTO_FEED_POD_DURATION_MS = 420;
+const AUTO_FEED_POD_ARC_HEIGHT = 46;
+const AUTO_FEED_POD_SIZE = 10;
 // Jednostka bazowa dla maszyn rysowanych PROCEDURALNIE (bez pliku PNG) -
 // dobrana tak, żeby ich sylwetka zajmowała na ekranie tyle samo co gotowe
 // sprite'y. Zmierzone wprost z assets/machines/*.png: nieprzezroczysty
@@ -173,7 +219,12 @@ class MachineManager {
       // Odmierza subtelne "kłębki pary" podczas przetwarzania (patrz update())
       // - bez tego wielosekundowy pasek postępu był jedynym sygnałem, że coś
       // się dzieje, a reszta maszyny stała wizualnie martwa aż do końca.
-      steamTimer: 0
+      steamTimer: 0,
+      // Timer auto-załadunku (core_auto_feed) - WŁASNY per maszyna, w
+      // przeciwieństwie do this._unloadTimer wyżej (jeden, dzielony,
+      // wyłącznie dla maszyny w zasięgu gracza) - auto-feed działa
+      // niezależnie na WSZYSTKICH maszynach naraz, więc każda liczy sama.
+      autoUnloadTimer: 0
     }));
 
     this._onPlayerMoved = (d) => {
@@ -192,6 +243,10 @@ class MachineManager {
     // draw() używa tego, żeby każda pobliska maszyna mogła niezależnie
     // pokazać, czego potrzebuje.
     this.nearby = [];
+
+    // Kapsuły dostawcze auto-załadunku - efemeryczne, patrz stała
+    // AUTO_FEED_POD_DURATION_MS i _drawAutoFeedPods niżej.
+    this._autoFeedPods = [];
 
     // Piec hutniczy szedł wcześniej OSOBNYM, ręcznym torem ładowania (this.
     // furnaceImg, jedna sztywna ścieżka) - usunięte na rzecz wspólnego
@@ -311,6 +366,65 @@ class MachineManager {
       this._unloadTimer = 0;
     }
 
+    // Auto-załadunek (core_auto_feed, Rdzenie) - Tomek: gra ma automatyzować
+    // pętlę, nie tylko przyspieszać ręczną grę. Działa na WSZYSTKICH
+    // odblokowanych maszynach RÓWNOLEGLE (nie tylko this.inRange), ale
+    // pomija tę, którą gracz akurat ręcznie karmi w tej klatce - stanie przy
+    // maszynie ma zostać wyraźnie najszybszą opcją, automat dostaje
+    // "resztę". Tempo: MACHINE_UNLOAD_INTERVAL_MS / skuteczność, czyli
+    // WOLNIEJ niż ręczne karmienie przy skuteczności <1 (zawsze, patrz
+    // getValue w PRESTIGE_UPGRADES - sufit to 0.72, nigdy 1+).
+    const autoFeedEff = this._getAutoFeedEfficiency();
+    if (autoFeedEff > 0) {
+      const stack = window.stackController;
+      if (stack && !stack.isEmpty()) {
+        this.machines.forEach((m) => {
+          if (this.inRange && m.id === this.inRange.id) return;
+          if (!this._isMachineUnlocked(m) || !this._canFeedMachine(m)) {
+            m.autoUnloadTimer = 0;
+            return;
+          }
+          const idx = stack.findIndex((item) => this._machineAccepts(m, item.typeId));
+          if (idx === -1) {
+            m.autoUnloadTimer = 0;
+            return;
+          }
+
+          m.autoUnloadTimer += delta;
+          const interval = MACHINE_UNLOAD_INTERVAL_MS / autoFeedEff;
+          if (m.autoUnloadTimer < interval) return;
+          m.autoUnloadTimer = 0;
+
+          window.stackController.removeAt(idx);
+          m.inventory++;
+          Bus.publish(Events.MACHINE_RECEIVED, { machineId: m.id });
+          // Mniej cząsteczek niż ręczne karmienie (4) - subtelniejszy,
+          // "ambientowy" sygnał w tle, nie ma przyciągać uwagi tak jak akcja
+          // gracza.
+          Bus.publish(Events.FX_PARTICLES, { x: m.x, y: m.y, color: m.color, count: 2 });
+          // Kapsuła dostawcza gracz -> maszyna (patrz _drawAutoFeedPods) -
+          // startuje z OSTATNIEJ znanej pozycji gracza (this.playerX/Y,
+          // aktualizowane przez PLAYER_MOVED), nie z pozycji maszyny.
+          this._autoFeedPods.push({ x0: this.playerX, y0: this.playerY, x1: m.x, y1: m.y, t: 0, color: m.color });
+
+          if (m.inventory >= m.maxInventory && !m.processing) {
+            m.processing = true;
+            m.processingProgress = 0;
+            m.steamTimer = 0;
+          }
+        });
+      }
+    }
+
+    // Odmierzanie/sprzątanie kapsuł dostawczych - czysto wizualne, więc
+    // osobny, prosty krok zamiast wplatania w pętlę auto-załadunku wyżej
+    // (kapsuła leci NIEZALEŻNIE od tego, czy maszyna w międzyczasie coś
+    // jeszcze zrobi).
+    if (this._autoFeedPods.length > 0) {
+      this._autoFeedPods.forEach((p) => { p.t += delta; });
+      this._autoFeedPods = this._autoFeedPods.filter((p) => p.t < AUTO_FEED_POD_DURATION_MS);
+    }
+
     // Przetwarzanie maszyn.
     this.machines.forEach((m) => {
       if (!m.processing) return;
@@ -358,12 +472,39 @@ class MachineManager {
         duration: MACHINE_OUTPUT_SHAKE_DURATION_MS
       });
 
-      // Przedmiot w świecie spawnujemy TYLKO, jeśli ktokolwiek go faktycznie
-      // przyjmuje - inna maszyna (np. plastik -> prasa) ALBO TradingPost
-      // (np. gotowy produkt -> sprzedaż). Jeśli nikt go nie przyjmuje,
-      // dorzucanie go do świata tylko zapychałoby plecak przedmiotem bez
-      // żadnego dalszego zastosowania.
-      if (window.itemManager && this._hasAnyConsumer(m.outputType)) {
+      // Auto-eksport (core_auto_sell, Rdzenie) - TYLKO dla gotowego produktu
+      // BEZ dalszego odbiorcy-maszyny (_findMachineForType null), czyli
+      // ostatniego ogniwa łańcucha, które i tak trafiłoby prosto do
+      // TradingPost. Półprodukty (np. plastik->prasa) NIGDY się tak nie
+      // sprzedają - musiałyby zniknąć z łańcucha, zamiast popłynąć dalej.
+      // Sprzedaje WPROST przez economyManager.autoSellItem() (cena razy
+      // skuteczność, patrz PRESTIGE_UPGRADES) - żadnego fizycznego itemu w
+      // świecie, więc żadnego noszenia do Terminalu.
+      const autoSellEff = this._getAutoSellEfficiency();
+      const sellsAtTerminal = window.tradingPost
+        && Array.isArray(window.tradingPost.acceptsType)
+        && window.tradingPost.acceptsType.includes(m.outputType);
+      const hasMachineConsumer = !!this._findMachineForType(m.outputType);
+
+      if (autoSellEff > 0 && sellsAtTerminal && !hasMachineConsumer && window.marketManager && window.economyManager) {
+        const count = this._getYield(m.id);
+        const basePrice = window.marketManager.getPrice(m.outputType);
+        for (let i = 0; i < count; i++) {
+          window.economyManager.autoSellItem(
+            m.outputType,
+            Math.round(basePrice * autoSellEff),
+            m.x,
+            m.y - MACHINE_OUTPUT_SPAWN_OFFSET_Y
+          );
+        }
+        Bus.publish(Events.FX_PARTICLES, { x: m.x, y: m.y - MACHINE_OUTPUT_SPAWN_OFFSET_Y, color: '#4DB6AC', count: 4 });
+      } else if (window.itemManager && this._hasAnyConsumer(m.outputType)) {
+        // Przedmiot w świecie spawnujemy TYLKO, jeśli ktokolwiek go faktycznie
+        // przyjmuje - inna maszyna (np. plastik -> prasa) ALBO TradingPost
+        // (np. gotowy produkt -> sprzedaż). Jeśli nikt go nie przyjmuje,
+        // dorzucanie go do świata tylko zapychałoby plecak przedmiotem bez
+        // żadnego dalszego zastosowania.
+        //
         // Ulepszenie 'yield' (MACHINE_UPGRADE_KINDS w economy.js) - z jednego
         // cyklu wypada więcej niż jedna sztuka. Rozrzucamy je lekko na boki,
         // żeby nie wylądowały dokładnie jedna na drugiej i dało się je
@@ -383,8 +524,26 @@ class MachineManager {
     });
   }
 
+  /**
+   * Viewport culling (ten sam wzorzec co items.js/ambient.js/critters.js) -
+   * maszyna poza kadrem (+margines) pomija CAŁY swój draw (obrys zasięgu,
+   * cień, sprite, pasek postępu) - tylko kilka maszyn w grze, ale każda ma
+   * niebagatelny koszt rysowania, a gracz i tak zwykle widzi naraz 1-2 z nich.
+   * Margines pokrywa dropRadius (do 90px) + zapas na płynne wjeżdżanie w
+   * kadr. update() (przetwarzanie/timery) działa zawsze, niezależnie od
+   * widoczności - maszyna ma produkować, nawet gdy gracz na nią nie patrzy.
+   */
   draw(ctxBg, ctx, ctxUI) {
+    const camX = window.game ? window.game.cameraX : 0;
+    const camY = window.game ? window.game.cameraY : 0;
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const margin = 150;
+
     this.machines.forEach((m) => {
+      if (m.x < camX - margin || m.x > camX + viewW + margin) return;
+      if (m.y < camY - margin || m.y > camY + viewH + margin) return;
+
       // Zablokowana maszyna - przygaszona sylwetka z kłódką, zamiast pełnej
       // działającej maszyny. Widoczna (gracz wie że coś tu będzie i po co
       // zarabiać), ale wyraźnie "jeszcze nie". Rysujemy i KOŃCZYMY dla tej
@@ -424,34 +583,38 @@ class MachineManager {
       // za duży efekt. Jedna, kontrolowana elipsa wystarczy.
       ctx.save();
 
-      // --- LOGIKA RYSOWANIA GRAFIKI DLA PIECA HUTNICZEGO ---
-      if (m.id === 'furnace_c') {
-        if (!(spriteKey && window.spriteLoader.draw(ctx, spriteKey, m.x, m.y, spriteSize))) {
-          // Różowy kwadrat informacyjny widoczny TYLKO, gdy żadna z kandydatur
-          // ścieżki (sprites.js: SPRITE_PATH_CANDIDATES.machine_furnace) się
-          // nie wczytała - celowo głośniejszy niż standardowy fallback reszty
-          // maszyn (gradient+żeberka), żeby brak akurat TEGO pliku rzucał się
-          // w oczy, a nie zlewał się z resztą jako "normalnie wygląda".
-          ctx.fillStyle = '#FF00FF';
-          this._traceRoundedRect(ctx, m.x - hw, m.y - hh, m.w, m.h, 10);
-          ctx.fill();
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = 'bold 12px Arial';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('Brak pliku PNG!', m.x, m.y);
-        }
+      // --- LOGIKA RYSOWANIA GRAFIKI DLA REAKTORA RECYKLINGOWEGO ---
+      // Faza kosmicznego reskinu: dawniej assets/machines/recycle.png (sprite
+      // przez generyczną ścieżkę niżej) - teraz bespoke proceduralna bryła w
+      // tym samym stylu co Oczyszczalnia/Szlifiernia, żeby WSZYSTKIE maszyny
+      // wyglądały spójnie "kosmicznie", nie tylko te dwie bez własnego PNG-a.
+      if (m.id === 'recycle_a') {
+        this._drawRecycleMachine(ctx, m, isActive);
+      }
+      // --- LOGIKA RYSOWANIA GRAFIKI DLA KOMPRESORA GRAWITONOWEGO ---
+      else if (m.id === 'press_b') {
+        this._drawPressMachine(ctx, m, isActive);
+      }
+      // --- LOGIKA RYSOWANIA GRAFIKI DLA PIECA PLAZMOWEGO ---
+      // Zastępuje dawny assets/machines/piechutniczy.png ORAZ jego głośny
+      // różowy fallback ("Brak pliku PNG!") - ten drugi stał się martwym
+      // kodem, bo ta maszyna nie próbuje już w ogóle sprite'a.
+      else if (m.id === 'furnace_c') {
+        this._drawFurnaceMachine(ctx, m, isActive);
       }
       // --- LOGIKA RYSOWANIA GRAFIKI DLA OCZYSZCZALNI ---
-      // Brak pliku PNG w projekcie (jak Piec Hutniczy WYŻEJ, ale bez własnej
-      // grafiki źródłowej od Tomka) - w przeciwieństwie do reszty maszyn bez
-      // sprite'a NIE korzysta z generycznego fallbacku niżej (płaski gradient
-      // + "żeberka" + emoji na środku wyglądały jak placeholder obok trzech
-      // prawdziwych sprite'ów - patrz _drawRefineryMachine). Bespoke
-      // proceduralna bryła w TYM SAMYM języku wizualnym co reszta maszyn
-      // (lej/hopper na górze, "okienko" procesu, panel kontrolny, przenośnik).
+      // Bryła złożona z prawdziwego sprite'a Kenney + świecącego rdzenia,
+      // ten sam duch co reszta maszyn reskinu - patrz _drawRefineryMachine.
       else if (m.id === 'refinery_b') {
         this._drawRefineryMachine(ctx, m, isActive);
+      }
+      // --- LOGIKA RYSOWANIA GRAFIKI DLA SZLIFIERNI KRYSZTAŁÓW ---
+      // Ten sam powód co Oczyszczalnia wyżej - brak pliku PNG, więc bespoke
+      // proceduralna bryła zamiast generycznego fallbacku (który obok 3
+      // prawdziwych sprite'ów i Oczyszczalni wyglądałby jak niedokończony
+      // placeholder - patrz komentarz przy _drawRefineryMachine).
+      else if (m.id === 'crystal_polisher') {
+        this._drawCrystalPolisherMachine(ctx, m, isActive);
       }
       // --- LOGIKA DLA POZOSTAŁYCH MASZYN ---
       else if (!(spriteKey && window.spriteLoader.draw(ctx, spriteKey, m.x, m.y, spriteSize))) {
@@ -472,17 +635,26 @@ class MachineManager {
         ctx.fill();
         ctx.stroke();
 
-        // Cienkie "zeberka" wentylacyjne pod emoji - drobny przemyslowy detal,
-        // odrozniajacy korpus maszyny od zwyklego kolorowego prostokata.
+        // Cienkie "zeberka" wentylacyjne pod plakietka wyjscia - drobny
+        // przemyslowy detal, odrozniajacy korpus maszyny od zwyklego
+        // kolorowego prostokata.
         ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
         for (let i = -2; i <= 2; i++) {
           ctx.fillRect(m.x + i * (hw * 0.22) - 2, m.y + hh * 0.32, 3, hh * 0.32);
         }
 
-        ctx.font = '28px Arial';
-        ctx.textBaseline = 'middle';
-        ctx.textAlign = 'center';
-        ctx.fillText(m.outputLabel, m.x, m.y - hh * 0.12);
+        // Plakietka wyjscia - BYLO ctx.fillText(m.outputLabel) z emoji per
+        // maszyne (♻️/🎁/🧱/🔮/✨) - w praktyce nieosiagalne dla recycle_a/
+        // press_b (maja prawdziwe sprite'y w assets/machines/), wiec to
+        // czysto awaryjna sciezka. Neutralny, kolorowy kwadracik (kolor
+        // wyjscia maszyny) zamiast tekstu/emoji.
+        const badgeR = hh * 0.16;
+        ctx.fillStyle = m.outputColor;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.lineWidth = 1.5;
+        this._traceRoundedRect(ctx, m.x - badgeR, m.y - hh * 0.12 - badgeR, badgeR * 2, badgeR * 2, badgeR * 0.4);
+        ctx.fill();
+        ctx.stroke();
       }
       ctx.restore();
 
@@ -524,18 +696,18 @@ class MachineManager {
       if (isActive) {
         statusBold = true;
         if (m.processing) {
-          statusText = 'Przetwarzam…';
+          statusText = I18n.t('machine.status.processing');
           statusColor = '#FF8A80';
         } else if (m.inventory >= m.maxInventory) {
-          statusText = 'Pełna';
+          statusText = I18n.t('machine.status.full');
           statusColor = '#FF8A80';
         } else {
-          statusText = 'Przyjmuje:';
+          statusText = I18n.t('machine.status.accepting');
           statusColor = '#A5D6A7';
           showMaterials = true;
         }
       } else if (isNearby) {
-        statusText = 'Chce:';
+        statusText = I18n.t('machine.status.wants');
         statusColor = 'rgba(255, 255, 255, 0.55)';
         showMaterials = true;
       }
@@ -553,6 +725,105 @@ class MachineManager {
           this._drawOutlinedText(ctx, statusText, m.x, m.y - hh - 20, statusColor);
         }
       }
+    });
+
+    // Kapsuły dostawcze auto-załadunku - NA KOŃCU, po wszystkich maszynach,
+    // żeby zawsze leciały NAD nimi, niezależnie które akurat rysowały się
+    // ostatnie w pętli wyżej.
+    this._drawAutoFeedPods(ctx, camX, camY, viewW, viewH, margin);
+  }
+
+  /**
+   * Kapsuły dostawcze auto-załadunku (core_auto_feed) - Tomek: "zwizualizuj
+   * ale żeby dron się nie powtarzał z grafikami które wcześniej dodaliśmy".
+   * Pierwsza wersja była procedural rombem - Tomek obejrzał 10 kandydatów z
+   * Kenney "Space Shooter Extension" (TA SAMA paczka co Terminal/maszyny/
+   * dekoracje straganu) i wybrał małą rakietkę (Missiles/spaceMissiles_040,
+   * patrz sprites.js: autofeed_pod) - CELOWO nie z rodziny Drona
+   * Recyklingowego (drone.js, "Space Shooter Redux", stały krążący sprite
+   * zbierający surowce ŚWIAT -> plecak) - ta kapsuła leci przeciwnym
+   * kierunkiem (gracz -> maszyna) i żyje tylko AUTO_FEED_POD_DURATION_MS,
+   * nie jest stałym towarzyszem.
+   */
+  _drawAutoFeedPods(ctx, camX, camY, viewW, viewH, margin) {
+    if (this._autoFeedPods.length === 0) return;
+    const img = window.spriteLoader && window.spriteLoader.get('autofeed_pod');
+    const spriteReady = img && img.complete && img.naturalWidth;
+
+    this._autoFeedPods.forEach((p) => {
+      if (p.x1 < camX - margin || p.x1 > camX + viewW + margin) return;
+      if (p.y1 < camY - margin || p.y1 > camY + viewH + margin) return;
+
+      const t = Math.min(1, p.t / AUTO_FEED_POD_DURATION_MS);
+      // Łuk (paraboliczny lob) zamiast prostej linii - czyta się jako
+      // "rzut/transfer", nie ślizganie się po ziemi.
+      const x = p.x0 + (p.x1 - p.x0) * t;
+      const yLinear = p.y0 + (p.y1 - p.y0) * t;
+      const arc = Math.sin(t * Math.PI) * AUTO_FEED_POD_ARC_HEIGHT;
+      const y = yLinear - arc;
+
+      const alpha = Math.min(1, t * 6, (1 - t) * 6);
+      if (alpha <= 0) return;
+
+      // Kierunek lotu = pochodna toru (linia + łuk), nie stały kąt do celu -
+      // na szczycie paraboli rakietka leci niemal poziomo, nie pod tym samym
+      // kątem co przy starcie/lądowaniu. +PI/2, bo sprite ma nos "w górę".
+      const dx = p.x1 - p.x0;
+      const dy = (p.y1 - p.y0) - Math.PI * Math.cos(t * Math.PI) * AUTO_FEED_POD_ARC_HEIGHT;
+      const angle = Math.atan2(dy, dx) + Math.PI / 2;
+
+      ctx.save();
+
+      // Krótki, przygasający ślad ZA rakietką (w stronę p0), w kolorze
+      // DOCELOWEJ maszyny - jedyne miejsce, gdzie ten kolor teraz żyje
+      // (sprite ma własne, stałe barwy), więc dalej widać "do której
+      // maszyny", tylko jako smuga zamiast wypełnienia kształtu.
+      for (let i = 1; i <= 3; i++) {
+        const tt = Math.max(0, t - i * 0.045);
+        const gx = p.x0 + (p.x1 - p.x0) * tt;
+        const gy = p.y0 + (p.y1 - p.y0) * tt - Math.sin(tt * Math.PI) * AUTO_FEED_POD_ARC_HEIGHT;
+        const r = AUTO_FEED_POD_SIZE * (0.42 - i * 0.08);
+        ctx.globalAlpha = alpha * (0.4 - i * 0.09);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(gx, gy, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Poświata NEUTRALNA (biała) - ten sam powód co przy poprzedniej
+      // wersji: kolorowa łuna dla zielonego Reaktora Recyklingowego
+      // (#66BB6A) ginęła na trawie. Biała czyta się na KAŻDYM biomie.
+      ctx.globalAlpha = alpha * 0.75;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, AUTO_FEED_POD_SIZE * 2.4);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, AUTO_FEED_POD_SIZE * 2.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = alpha;
+      if (spriteReady) {
+        const h = AUTO_FEED_POD_SIZE * 2.4;
+        const w = h * (img.naturalWidth / img.naturalHeight);
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      } else {
+        // Sprite jeszcze niewczytany (rzadki stan tuż po starcie gry) -
+        // prosty jasny romb zamiast pustego miejsca, ten sam fallback-duch
+        // co reszta gry (np. _drawAntenna w market.js).
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.moveTo(x, y - AUTO_FEED_POD_SIZE);
+        ctx.lineTo(x + AUTO_FEED_POD_SIZE * 0.7, y);
+        ctx.lineTo(x, y + AUTO_FEED_POD_SIZE);
+        ctx.lineTo(x - AUTO_FEED_POD_SIZE * 0.7, y);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.restore();
     });
   }
 
@@ -600,142 +871,787 @@ class MachineManager {
   }
 
   /**
-   * Oczyszczalnia - bespoke proceduralna bryła (brak pliku PNG w projekcie),
-   * w TYM SAMYM języku wizualnym co trzy prawdziwe sprite'y (Recykler/Prasa/
-   * Piec): lej z surowcem u góry, korpus z gradientem, "okienko" pokazujące
-   * sam proces, panel kontrolny (gauge + lampki), przenośnik z gotowym
-   * produktem z boku. Generyczny fallback reszty maszyn (płaski gradient +
-   * "żeberka" + wycentrowane emoji) obok trzech prawdziwych sprite'ów
-   * wyglądał jak niedokończony placeholder - stąd osobna metoda zamiast
-   * dorzucenia kolejnego warunku do tamtego bloku.
+   * Tonuje jedną z trzech prawdziwych teksturek poświaty z Kenney "Particle
+   * Pack" (assets/effects/fx_glow|fx_flare|fx_spark.png, białe/szare na
+   * przezroczystym tle) na dowolny kolor akcentu - ta sama technika
+   * "source-atop" co tintowanie skinów gracza (player.js
+   * _bakeTintedCanvas), tylko tutaj bez osobnego kroku "spritesReady", bo
+   * spriteLoader.loadAll() kończy się PRZED skonstruowaniem MachineManager
+   * (patrz main.js: startGame() woła się dopiero w .then()) - więc obrazki
+   * są już gotowe przy pierwszym wywołaniu. Wynik cache'owany per
+   * (spriteKey, kolor), żeby nie kompozytować tego samego tinta co klatkę.
    */
-  _drawRefineryMachine(ctx, m, isActive) {
-    // SKALA: trzy prawdziwe sprite'y (recycle/press/piechutniczy.png) zajmują
-    // na ekranie ~120x120 px - zmierzone wprost z nieprzezroczystego obszaru
-    // PNG-ów przeskalowanego przez spriteSize (m.w*1.2). Pierwsza wersja tej
-    // maszyny rysowała korpus na pełne m.w/m.h (200) PLUS lej nad nim i
-    // przenośnik z boku, czyli ~340x310 px - prawie trzykrotnie więcej niż
-    // sąsiedzi. To była GŁÓWNA przyczyna, dla której odstawała, ważniejsza
-    // niż kolory. Wszystko liczymy więc od U (jednostki), nie od m.w.
+  _getTintedFx(spriteKey, hexColor) {
+    this._fxTintCache = this._fxTintCache || {};
+    const cacheKey = `${spriteKey}|${hexColor}`;
+    if (this._fxTintCache[cacheKey]) return this._fxTintCache[cacheKey];
+    const img = window.spriteLoader && window.spriteLoader.get(spriteKey);
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const size = img.naturalWidth;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const tctx = canvas.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    tctx.globalCompositeOperation = 'source-atop';
+    tctx.fillStyle = hexColor;
+    tctx.fillRect(0, 0, size, size);
+    this._fxTintCache[cacheKey] = canvas;
+    return canvas;
+  }
+
+  /**
+   * Przekolorowuje PRAWDZIWY sprite Kenney (assets/machines/sci_panel.png -
+   * korpus "Sci-Fi RTS/Space Shooter Extension", i sci_core.png - świecący
+   * rdzeń) na kolor akcentu maszyny, obracając odcień (hue) piksel po
+   * pikselu w HSL - zamiast rysować korpus/rdzeń ręcznie jak w poprzedniej
+   * wersji reskinu, TERAZ to prawdziwa grafika z paczki, tylko przefarbowana
+   * na zielono/fioletowo/czerwono dla każdej maszyny. Piksele o niskiej
+   * saturacji (rama, cień) są celowo POMIJANE (zostają neutralnie szare) -
+   * inaczej obrót odcienia farbowałby też metalową ramkę na dziwny odcień
+   * zamiast tylko właściwej, nasyconej powierzchni. Nie użyto ctx.filter
+   * (prostsze, ale barwi WSZYSTKO łącznie z ramką) - ta ręczna wersja była
+   * zweryfikowana wizualnie (patrz historia sesji) i cache'owana per
+   * (spriteKey, hueDeg, satMult, minSat), bo liczy się raz na maszynę, nie
+   * co klatkę.
+   *
+   * minSat MUSI być dobrany per sprite, nie jedna stała dla obu: metalowa
+   * rama sci_panel.png (tło ekranu, saturacja ~0.08-0.16) powinna się
+   * przefarbować RAZEM z resztą korpusu (niski próg), ale metalowy PIERŚCIEŃ
+   * wokół sci_core.png ma PRAWIE tę samą saturację (~0.16) co żywy
+   * pomarańczowy środek (~0.85) - niski próg farbował więc też pierścień na
+   * dziwny róż/fiolet zamiast zostawić go neutralnie szarym. Stąd wywołania
+   * dla rdzenia (patrz _drawRecycleMachine/_drawPressMachine/
+   * _drawFurnaceMachine) proszą o wyższy próg (~0.4), który łapie już tylko
+   * nasycony środek.
+   *
+   * overlayTint (opcjonalny [kolor, alpha]) - "klepsydra" Kompresora
+   * (sci_press.png) jest PRAWIE idealnie szara (saturacja bliska 0), więc
+   * obrót odcienia nie ma czego chwycić - d===0 dla piksela r=g=b oznacza
+   * matematycznie NIEOKREŚLONY odcień, żaden próg tego nie naprawi. Zamiast
+   * tego dokładamy jeden przebieg 'source-atop' (TA SAMA technika co
+   * _getTintedFx/player.js _bakeTintedCanvas - restrykcyjnie tylko tam,
+   * gdzie już jest jakaś alpha, więc przezroczyste tło NIE dostaje koloru)
+   * przy alpha<1, żeby oryginalne cieniowanie częściowo prześwitywało spod
+   * tinta zamiast robić się płaskim jednolitym kolorem.
+   */
+  _getRecoloredSprite(spriteKey, hueDeg, satMult, minSat = 0.08, overlayTint = null) {
+    this._fxRecolorCache = this._fxRecolorCache || {};
+    const cacheKey = `${spriteKey}|${hueDeg}|${satMult}|${minSat}|${overlayTint ? overlayTint.join(',') : ''}`;
+    if (this._fxRecolorCache[cacheKey]) return this._fxRecolorCache[cacheKey];
+    const img = window.spriteLoader && window.spriteLoader.get(spriteKey);
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const tctx = canvas.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    const imageData = tctx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+    const hueShift = hueDeg / 360;
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3];
+      if (a === 0) continue;
+      const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const l = (max + min) / 2;
+      const d = max - min;
+      if (d === 0) continue;
+      let s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (s < minSat) continue;
+      let h2;
+      if (max === r) h2 = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h2 = ((b - r) / d + 2) / 6;
+      else h2 = ((r - g) / d + 4) / 6;
+      h2 = (h2 + hueShift) % 1;
+      if (h2 < 0) h2 += 1;
+      s = Math.min(1, s * satMult);
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      const hue2rgb = (t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      data[i] = Math.round(hue2rgb(h2 + 1 / 3) * 255);
+      data[i + 1] = Math.round(hue2rgb(h2) * 255);
+      data[i + 2] = Math.round(hue2rgb(h2 - 1 / 3) * 255);
+    }
+    tctx.putImageData(imageData, 0, 0);
+    if (overlayTint) {
+      const [color, alpha] = overlayTint;
+      tctx.globalCompositeOperation = 'source-atop';
+      tctx.globalAlpha = alpha;
+      tctx.fillStyle = color;
+      tctx.fillRect(0, 0, w, h);
+      tctx.globalAlpha = 1;
+      tctx.globalCompositeOperation = 'source-over';
+    }
+    this._fxRecolorCache[cacheKey] = canvas;
+    return canvas;
+  }
+
+  /**
+   * Wspólny motyw "kosmicznej poświaty" pod maszyną - prawdziwa, miękka
+   * teksturka blasku (fx_glow, Kenney Particle Pack CC0) tonowana na kolor
+   * akcentu maszyny, zamiast ręcznie rysowanego radialnego gradientu. Jeden
+   * z niewielu wspólnych helperów w tym pliku (obok _lighten/
+   * _traceRoundedRect) - każda z trzech maszyn niżej (Reaktor/Kompresor/
+   * Piec Plazmowy) woła go z innym kolorem/promieniem. Fallback na dawny
+   * ręczny gradient, gdyby plik z jakiegoś powodu się nie wczytał.
+   */
+  _drawCosmicGlow(ctx, cx, cy, r, hexColor, alpha) {
+    const tinted = this._getTintedFx('fx_glow', hexColor);
+    ctx.save();
+    if (tinted) {
+      ctx.globalAlpha = alpha * 2.2;
+      ctx.drawImage(tinted, cx - r, cy - r, r * 2, r * 2);
+    } else {
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      grad.addColorStop(0, `${hexColor}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`);
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Wspólny motyw "orbitującego pierścienia" (jak spłaszczony pierścień
+   * planety) - cienka przerywana elipsa wokół korpusu maszyny, z kreskami
+   * "płynącymi" po obwodzie (animacja przez lineDashOffset, nie przez
+   * ctx.rotate - taniej liczyć, a efekt "orbitowania" wychodzi ten sam).
+   * rx/ry kontrolują rozmiar/spłaszczenie (pochylenie pierścienia), speed
+   * jak szybko kreski płyną, dash długość pojedynczej kreski.
+   */
+  _drawCosmicRing(ctx, cx, cy, rx, ry, color, speed, dash) {
+    const now = performance.now();
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, ry / rx);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.4;
+    ctx.setLineDash([dash, dash * 0.9]);
+    ctx.lineDashOffset = -(now * speed);
+    ctx.beginPath();
+    ctx.arc(0, 0, rx, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Dwie jasne "iskry" krążące po obwodzie pierścienia - prawdziwa
+    // teksturka rozbłysku (fx_flare, Kenney Particle Pack) tonowana na
+    // kolor pierścienia, zamiast rysowanego ręcznie kółka - sama przerywana
+    // linia czytała się zbyt statycznie z daleka, to daje wyraźny, świecący
+    // sygnał "coś tu orbituje", nawet gdy gracz nie stoi tuż obok maszyny.
+    const orbitAngle = now * speed * 90;
+    const flare = this._getTintedFx('fx_flare', color);
+    const flareSize = rx * 0.34;
+    ctx.globalAlpha = 0.95;
+    [orbitAngle, orbitAngle + Math.PI].forEach((a) => {
+      const fx = Math.cos(a) * rx, fy = Math.sin(a) * rx;
+      if (flare) {
+        ctx.drawImage(flare, fx - flareSize / 2, fy - flareSize / 2, flareSize, flareSize);
+      } else {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(fx, fy, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
+   * Wspólny "połysk szkła" na okrągłych iluminatorach trzech maszyn niżej -
+   * cienki, jasny półksiężyc w górnym-lewym rogu okna, jakby światło odbijało
+   * się od wypukłej szyby. Rysowany NA WIERZCHU zawartości okna (po ctx.
+   * restore() z clipu), więc nie przeszkadza animacji w środku.
+   */
+  _drawGlassHighlight(ctx, cx, cy, r) {
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = r * 0.22;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.72, Math.PI * 1.05, Math.PI * 1.55);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /**
+   * Reaktor Recyklingowy (dawniej Recykler, assets/machines/recycle.png) -
+   * pierwsza z trzech maszyn "Fazy kosmicznego reskinu, wersja 2". Zamiast
+   * składania własnego korpusu z prymitywów (poprzednia wersja - hopper/
+   * korpus/okienko rysowane ręcznie), bryła to teraz CAŁA, gotowa stacja
+   * kosmiczna z Kenney "Space Shooter Extension" (spaceStation_017,
+   * assets/machines/sci_module.png, CC0) - moduł satelitarny z panelami
+   * "słonecznymi" (przefarbowanymi tu na zielono) i centralnym hubem, na
+   * który nakładany jest świecący rdzeń (sci_core.png). Własny, stożkowaty
+   * czubek modułu pełni rolę leja - osobny, rysowany ręcznie hopper nie jest
+   * już potrzebny. Poświata + orbitujący pierścień (_drawCosmicGlow/
+   * _drawCosmicRing) to wspólny akcent łączący wszystkie maszyny reskinu.
+   */
+  _drawRecycleMachine(ctx, m, isActive) {
     const U = MACHINE_PROC_UNIT;
     const cx = m.x;
     const cy = m.y;
     const now = performance.now();
 
-    // Paleta: przygaszona, bez czerni. PNG-i NIE mają twardych, ciemnych
-    // konturów ani nasyconych kolorów - mają płaskie plamy z delikatnym
-    // cieniowaniem. Poprzednia wersja miała jaskrawy fiolet + wyraźny ciemny
-    // obrys, przez co czytała się jak naklejka obok tamtych.
-    const body = isActive ? this._lighten('#8E6BC4', MACHINE_LIGHTEN_AMOUNT) : '#8E6BC4';
-    const bodyDark = this._lighten(body, -34);
-    const metal = '#8A94A6';
-    const metalDark = '#6C7585';
+    const hull = isActive ? this._lighten('#4B5563', MACHINE_LIGHTEN_AMOUNT) : '#4B5563';
+    const hullDark = this._lighten(hull, -34);
+    const accent = '#66BB6A';
+    const accentGlow = '#A8FF9E';
 
-    // --- Lej u góry (ten sam trapez co u sąsiadów) ---
-    const hopW = U * 0.62, hopNeck = U * 0.24;
-    const hopTop = cy - U * 0.62, hopBot = cy - U * 0.34;
-    ctx.fillStyle = metal;
-    ctx.beginPath();
-    ctx.moveTo(cx - hopW / 2, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx - hopNeck / 2, hopBot);
-    ctx.closePath();
-    ctx.fill();
-    // Cieniowany bok leja - lekka bryłowatość, tak jak w PNG-ach.
-    ctx.fillStyle = metalDark;
-    ctx.beginPath();
-    ctx.moveTo(cx + hopW * 0.16, hopTop);
-    ctx.lineTo(cx + hopW / 2, hopTop);
-    ctx.lineTo(cx + hopNeck / 2, hopBot);
-    ctx.lineTo(cx + hopNeck * 0.1, hopBot);
-    ctx.closePath();
-    ctx.fill();
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.28);
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.66, U * 0.2, 'rgba(168, 255, 158, 0.55)', 0.0007, 6);
 
-    // Szkło czekające na wsyp - wystaje z leja, jak butelki u Recyklera.
-    ['#8ED8E8', '#C3EAF2'].forEach((col, i) => {
-      ctx.fillStyle = col;
-      const gx = cx + (i === 0 ? -U * 0.14 : U * 0.1);
-      const gy = hopTop - U * 0.03;
-      ctx.beginPath();
-      ctx.moveTo(gx, gy - U * 0.09);
-      ctx.lineTo(gx + U * 0.05, gy + U * 0.03);
-      ctx.lineTo(gx - U * 0.05, gy + U * 0.03);
-      ctx.closePath();
-      ctx.fill();
-    });
-
-    // --- Korpus: zaokrąglony prostokąt, jaśniejsza lewa / ciemniejsza prawa
-    // strona (to samo proste cieniowanie co w PNG-ach, zamiast gradientu). ---
-    const bw = U * 0.78, bh = U * 0.72;
-    const bx = cx - bw / 2, by = cy - U * 0.34;
-    ctx.fillStyle = body;
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.fill();
-    ctx.save();
-    this._traceRoundedRect(ctx, bx, by, bw, bh, U * 0.07);
-    ctx.clip();
-    ctx.fillStyle = bodyDark;
-    ctx.fillRect(bx + bw * 0.62, by, bw * 0.38, bh);
-    ctx.restore();
-
-    // --- Okienko procesu: bulgocząca kadź. Mniejsze i wtopione w korpus,
-    // nie dominujące jak wcześniej. ---
-    const ww = bw * 0.5, wh = bh * 0.42;
-    const wx = cx - ww / 2 - bw * 0.06, wy = by + bh * 0.16;
-    ctx.fillStyle = '#3B2E57';
-    this._traceRoundedRect(ctx, wx - 2, wy - 2, ww + 4, wh + 4, 4);
-    ctx.fill();
-    ctx.save();
-    this._traceRoundedRect(ctx, wx, wy, ww, wh, 3);
-    ctx.clip();
-    ctx.fillStyle = '#B9A0DE';
-    ctx.fillRect(wx, wy, ww, wh);
-    for (let i = 0; i < 3; i++) {
-      const t = ((now * (0.0004 + i * 0.00008) + i * 0.4) % 1);
-      ctx.globalAlpha = 0.5 * (1 - t);
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(wx + ww * (0.25 + i * 0.25), wy + wh * (1 - t), 1.6, 0, Math.PI * 2);
+    // --- Moduł: PRAWDZIWA bryła Kenney (sci_module.png, proporcje źródła
+    // 344x577) przefarbowana na zielono, przeskalowana tak, by całość mieściła
+    // się w tej samej "działce" co reszta maszyn (~U wysokości). satMult
+    // obniżony z 1.7 (było najwyższe z całej piątki) na 1.3 - sprite MA
+    // własne metaliczne cieniowanie (sprawdzone wprost - powiększony
+    // podgląd), więc wysoki satMult tylko spłaszczał je w "neonowy plastik",
+    // jak wcześniej przy Kompresorze. ---
+    const modH = U * 1.25;
+    const modW = modH * (344 / 577);
+    const modTop = cy - U * 0.7;
+    const modLeft = cx - modW / 2;
+    const moduleSprite = this._getRecoloredSprite('machine_sci_module', -69, 1.3);
+    if (moduleSprite) {
+      ctx.drawImage(moduleSprite, modLeft, modTop, modW, modH);
+    } else {
+      ctx.fillStyle = hull;
+      this._traceRoundedRect(ctx, modLeft, modTop, modW, modH, U * 0.1);
       ctx.fill();
     }
-    ctx.globalAlpha = 1;
+
+    // Poświata u stożkowatej "stopy" modułu, tam gdzie łączy się z ziemią -
+    // ten sam "światło pod ciemnym korpusem" trik co świecące szczeliny
+    // wentylacyjne Pieca / emitery Kompresora, spójny język całej rodziny.
+    const footY = modTop + modH - U * 0.02;
+    const footPulse = 0.5 + 0.3 * Math.abs(Math.sin(now * 0.0032));
+    const footGlow = ctx.createRadialGradient(cx, footY, 0, cx, footY, U * 0.32);
+    footGlow.addColorStop(0, `rgba(168, 255, 158, ${0.5 * footPulse})`);
+    footGlow.addColorStop(1, 'rgba(168, 255, 158, 0)');
+    ctx.fillStyle = footGlow;
+    ctx.beginPath();
+    ctx.arc(cx, footY, U * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+
+    // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana na zielono,
+    // osadzona na hubie modułu (tam, gdzie łączą się panele "słoneczne") -
+    // z delikatnym "oddychaniem" skalą, żeby było widać że maszyna żyje.
+    // Własna poświata za kulą (dotąd brakowało - rdzeń był płaskim płaskim
+    // kółkiem bez życia, ten sam brak co dawniej przy Piecu). ---
+    const hubCx = cx, hubCy = modTop + modH * 0.335;
+    const breath = 1 + 0.05 * Math.sin(now * 0.004);
+    const coreR = modW * 0.27 * breath;
+
+    const coreGlow = ctx.createRadialGradient(hubCx, hubCy, 0, hubCx, hubCy, coreR * 2.1);
+    coreGlow.addColorStop(0, accentGlow);
+    coreGlow.addColorStop(1, 'rgba(168, 255, 158, 0)');
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath();
+    ctx.arc(hubCx, hubCy, coreR * 2.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    const coreSprite = this._getRecoloredSprite('machine_sci_core', 106, 1.25, 0.4);
+    if (coreSprite) {
+      ctx.drawImage(coreSprite, hubCx - coreR, hubCy - coreR, coreR * 2, coreR * 2);
+    } else {
+      ctx.fillStyle = accentGlow;
+      ctx.beginPath();
+      ctx.arc(hubCx, hubCy, coreR * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Okruchy śmieci wciągane spiralnie w rdzeń (rozkład materii) - kilka
+    // realnych iskierek (fx_flare) zamiast rysowanych ręcznie kwadracików.
+    const flareBit = this._getTintedFx('fx_flare', accentGlow);
+    if (flareBit) {
+      for (let i = 0; i < 3; i++) {
+        const t = ((now * 0.0006 + i * 0.3) % 1);
+        const a = t * Math.PI * 6 + i;
+        const r = coreR * (1 - t) * 1.3;
+        const bitSize = coreR * (0.15 + 0.25 * t);
+        ctx.globalAlpha = 0.85 * (0.3 + 0.7 * t);
+        ctx.drawImage(flareBit, hubCx + Math.cos(a) * r - bitSize / 2, hubCy + Math.sin(a) * r - bitSize / 2, bitSize, bitSize);
+      }
+      ctx.globalAlpha = 1;
+    }
+    this._drawGlassHighlight(ctx, hubCx, hubCy, coreR);
+  }
+
+  /**
+   * Kompresor Grawitonowy (dawniej Prasa, assets/machines/press.png) - druga
+   * z trzech maszyn "Fazy kosmicznego reskinu, wersja 2". Bryła to prawdziwa
+   * "klepsydra" z Kenney "Space Shooter Extension" (spaceStation_012,
+   * assets/machines/sci_press.png, CC0) - dwie płyty zbiegające się ku
+   * wspólnemu punktowi w środku, więc kształt SAM w sobie czyta się jako
+   * "kompresja".
+   *
+   * PRZEBUDOWANE (Tomek: "usprawnij o wiele jego wygląd bo słabo wygląda") -
+   * porównanie z resztą maszyn pokazało DWIE realne przyczyny: (1) to
+   * najmniejsza bryła z całej piątki (pressW był U*1.05, podczas gdy
+   * refinery/furnace/recycler mają 1.15-1.25) oraz (2) sci_press.png to
+   * NAJPŁASZSZY sprite w paczce - dwa jednotonowe szare trapezoidy bez
+   * naturalnego cieniowania, jakie mają dome/capsule/grinder reszty maszyn
+   * (sprawdzone wprost - powiększony podgląd pliku), więc satMult=1.7
+   * (najwyższy ze wszystkich pięciu) tylko podkręcał tę płaskość w stronę
+   * "neonowego plastiku" zamiast metalu. Naprawione: (1) większa bryła +
+   * postument (ten sam wzorzec co _drawFurnaceMachine, wcześniej Kompresor
+   * jako JEDYNY z pięciu "unosił się" bez podstawy), (2) niższy satMult
+   * (1.25, zgodnie z resztą) + WŁASNE rysowane rim-lighty na krawędziach
+   * klepsydry (fejkowe cieniowanie tam, gdzie sprite go nie ma), (3) rdzeń
+   * dostał wirujące, WCIĄGANE DO ŚRODKA iskry (spirala malejącego promienia,
+   * ten sam trik co spiralne okruchy Reaktora, tylko odwrócony kierunek -
+   * "grawiton" powinien WCIĄGAĆ, nie tylko świecić) zamiast martwego
+   * okresowego błysku między emiterami widocznego tylko ~35% czasu.
+   */
+  _drawPressMachine(ctx, m, isActive) {
+    const U = MACHINE_PROC_UNIT;
+    const cx = m.x;
+    const cy = m.y;
+    const now = performance.now();
+
+    const hull = isActive ? this._lighten('#4B5563', MACHINE_LIGHTEN_AMOUNT) : '#4B5563';
+    const hullDark = this._lighten(hull, -34);
+    const accent = '#AB47BC';
+    const accentGlow = '#E1BEE7';
+
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 1.05, accent, 0.3);
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.72, U * 0.22, 'rgba(225, 190, 231, 0.55)', -0.0005, 6);
+
+    // --- Klepsydra: PRAWDZIWA bryła Kenney (sci_press.png), teraz w tej
+    // samej skali co reszta maszyn (było wyraźnie najmniejsze z pięciu) i z
+    // łagodniejszym satMult (1.25 zamiast 1.7 - mniej "neonowego plastiku",
+    // bliżej metalicznego tonu refinery/furnace). ---
+    const pressW = U * 1.2;
+    const pressH = pressW * (88 / 96);
+    const pressTop = cy - pressH / 2 - U * 0.05;
+    const pressLeft = cx - pressW / 2;
+    const pressSprite = this._getRecoloredSprite('machine_sci_press', 100, 1.25, 0.08, [accent, 0.5]);
+    if (pressSprite) {
+      ctx.drawImage(pressSprite, pressLeft, pressTop, pressW, pressH);
+    } else {
+      ctx.fillStyle = hull;
+      this._traceRoundedRect(ctx, pressLeft, pressTop, pressW, pressH, U * 0.1);
+      ctx.fill();
+    }
+
+    // Rim-lighty na skośnych krawędziach klepsydry - sci_press.png jest
+    // płaskim jednotonowym szarym kształtem BEZ własnego cieniowania (w
+    // przeciwieństwie do dome/capsule/grinder reszty maszyn), więc bez tego
+    // czytał się jako naklejka, nie bryła. Cztery krótkie, jasne kreski
+    // wzdłuż zbiegających się do środka krawędzi obu płyt, w kolorze akcentu.
+    ctx.save();
+    ctx.globalAlpha = isActive ? 0.55 : 0.4;
+    ctx.strokeStyle = accentGlow;
+    ctx.lineWidth = Math.max(1, U * 0.012);
+    ctx.lineCap = 'round';
+    const rimInset = pressW * 0.06;
+    const rimMidY = pressTop + pressH * 0.5;
+    [-1, 1].forEach((side) => {
+      const outerX = cx + side * (pressW / 2 - rimInset);
+      const innerX = cx + side * (pressW * 0.14);
+      ctx.beginPath();
+      ctx.moveTo(outerX, pressTop + pressH * 0.1);
+      ctx.lineTo(innerX, rimMidY);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(innerX, rimMidY);
+      ctx.lineTo(outerX, pressTop + pressH * 0.9);
+      ctx.stroke();
+    });
     ctx.restore();
 
-    // --- Panel z kolorowymi kwadracikami - dokładnie ten detal, który mają
-    // wszystkie trzy PNG-owe maszyny (u nich po prawej stronie korpusu). ---
-    const px0 = bx + bw * 0.72, py0 = by + bh * 0.2, ps = U * 0.055;
-    [['#E8574B', 0], ['#F2C14E', 1], ['#63C267', 2]].forEach(([col, i]) => {
-      ctx.fillStyle = col;
-      ctx.fillRect(px0, py0 + i * ps * 1.7, ps, ps);
-    });
-
-    // --- Przenośnik po prawej (jak u sąsiadów) + gotowy kryształ. ---
-    const beltY = cy + U * 0.2, beltX = cx + bw * 0.42, beltW = U * 0.34, beltH = U * 0.1;
-    ctx.fillStyle = metal;
-    this._traceRoundedRect(ctx, beltX, beltY - beltH / 2, beltW, beltH, beltH / 2);
+    // Postument pod klepsydrą - JEDYNA z pięciu maszyn, która dotąd
+    // "unosiła się" bez podstawy (furnace/recycler/refinery/crystal_polisher
+    // wszystkie stoją na czymś). Ten sam wzorzec co _drawFurnaceMachine.
+    const pedW = pressW * 0.5, pedH = U * 0.15;
+    ctx.fillStyle = hullDark;
+    this._traceRoundedRect(ctx, cx - pedW / 2, pressTop + pressH - U * 0.03, pedW, pedH, U * 0.03);
     ctx.fill();
-    ctx.fillStyle = metalDark;
-    [beltX + beltH * 0.5, beltX + beltW - beltH * 0.5].forEach((rx) => {
+
+    // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana na fioletowo,
+    // ściskana rytmicznie w pionie (skala Y) w punkcie zbiegu płyt - motyw
+    // "kompresji polem grawitacyjnym" przeniesiony na animację skali
+    // prawdziwej grafiki. ---
+    const winCx = cx, winCy = pressTop + pressH * 0.5;
+    const squeeze = 0.8 + 0.2 * Math.abs(Math.sin(now * 0.0025));
+    const winR = pressW * 0.24;
+    const coreSprite = this._getRecoloredSprite('machine_sci_core', 275, 1.25, 0.4);
+    if (coreSprite) {
+      ctx.save();
+      ctx.translate(winCx, winCy);
+      ctx.scale(1, squeeze);
+      ctx.drawImage(coreSprite, -winR, -winR, winR * 2, winR * 2);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = accentGlow;
       ctx.beginPath();
-      ctx.arc(rx, beltY, beltH * 0.3, 0, Math.PI * 2);
+      ctx.arc(winCx, winCy, winR * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Iskry WCIĄGANE grawitacyjnie do rdzenia (promień malejący z czasem w
+    // pętli, nie stały orbit jak u Reaktora/Pieca) - "grawiton" ma coś
+    // POCHŁANIAĆ, nie tylko świecić. Ciągłe (nie warunkowe jak dawny błysk
+    // widoczny ~35% czasu), więc maszyna zawsze czyta się jako aktywna.
+    const inflowSpark = this._getTintedFx('fx_flare', accentGlow);
+    if (inflowSpark) {
+      for (let i = 0; i < 4; i++) {
+        const t = ((now * 0.0009 + i * 0.25) % 1);
+        const a = i * (Math.PI / 2) + now * 0.0015;
+        const r = winR * 1.9 * (1 - t);
+        const bitSize = winR * 0.32 * t;
+        ctx.globalAlpha = 0.85 * t;
+        ctx.drawImage(inflowSpark, winCx + Math.cos(a) * r - bitSize / 2, winCy + Math.sin(a) * r * 0.7 - bitSize / 2, bitSize, bitSize);
+      }
+      ctx.globalAlpha = 1;
+    }
+    this._drawGlassHighlight(ctx, winCx, winCy, winR);
+
+    // --- Dwa emitery nad klepsydrą, teraz z własną poświatą (nie płaskie
+    // kropki) + STAŁE, delikatne pole energii między nimi (zamiast dawnego
+    // warunkowego błysku) - czyta się jako źródło pola napędzającego
+    // kompresję, nie migający defekt. ---
+    const emY = pressTop - U * 0.02;
+    const emL = cx - pressW * 0.3, emR = cx + pressW * 0.3;
+    [emL, emR].forEach((ex) => {
+      const eGrad = ctx.createRadialGradient(ex, emY, 0, ex, emY, U * 0.09);
+      eGrad.addColorStop(0, accentGlow);
+      eGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = eGrad;
+      ctx.beginPath();
+      ctx.arc(ex, emY, U * 0.09, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = hullDark;
+      ctx.beginPath();
+      ctx.arc(ex, emY, U * 0.045, 0, Math.PI * 2);
       ctx.fill();
     });
-    ctx.fillStyle = '#C9A6F0';
-    const kx = beltX + beltW * 0.55, ky = beltY - beltH * 0.75;
+    const spark = this._getTintedFx('fx_spark', accentGlow);
+    const fieldPulse = 0.35 + 0.25 * Math.abs(Math.sin(now * 0.004));
+    ctx.globalAlpha = fieldPulse;
+    if (spark) {
+      const sparkW = emR - emL, sparkH = sparkW * 0.7;
+      ctx.drawImage(spark, emL, emY - sparkH / 2, sparkW, sparkH);
+    } else {
+      ctx.strokeStyle = accentGlow;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(emL, emY);
+      ctx.quadraticCurveTo(cx, emY - U * 0.06 * Math.sin(now * 0.05), emR, emY);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Piec Plazmowy (dawniej Piec hutniczy, assets/machines/piechutniczy.png) -
+   * trzecia z maszyn "Fazy kosmicznego reskinu, wersja 2". Bryła to
+   * prawdziwa kopuła/pod z Kenney "Space Shooter Extension"
+   * (spaceStation_029, assets/machines/sci_dome.png, CC0) - jedyna z pięciu
+   * z NATURALNYM cieniowaniem już w samym sprite (szklana półkula z
+   * highlightem), więc w przeciwieństwie do Kompresora nie potrzebowała
+   * własnych rim-lightów.
+   *
+   * WZBOGACONE (Tomek: "teraz piec plazmowy", ta sama runda co Kompresor) -
+   * rdzeń był płaskim czerwonym kółkiem BEZ własnej poświaty (w
+   * przeciwieństwie do Kompresora po przeróbce), a dwie orbitujące iskierki
+   * to za mało jak na "piec" - żadnego wrażenia gorąca. Dodane: (1) miękka
+   * poświata pod rdzeniem (ten sam trik co świecące emitery Kompresora),
+   * (2) żarzące się iskry WZNOSZĄCE SIĘ z komory (nie orbitujące w kółko -
+   * "unoszący się żar", dużo bardziej "piecowy" motyw niż orbit), (3)
+   * postument dostał dwie świecące szczeliny wentylacyjne (spójne z
+   * poświatą emiterów Kompresora - ten sam język wizualny w całej rodzinie
+   * maszyn), (4) większy rdzeń (było domeW*0.19, teraz *0.23).
+   */
+  _drawFurnaceMachine(ctx, m, isActive) {
+    const U = MACHINE_PROC_UNIT;
+    const cx = m.x;
+    const cy = m.y;
+    const now = performance.now();
+
+    const hull = isActive ? this._lighten('#4B3A3E', MACHINE_LIGHTEN_AMOUNT) : '#4B3A3E';
+    const hullDark = this._lighten(hull, -34);
+    const accent = '#EF5350';
+    const accentGlow = '#FFAB91';
+
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 1.05, accent, 0.32);
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.72, U * 0.24, 'rgba(255, 171, 145, 0.55)', 0.0006, 7);
+
+    // --- Kopuła: PRAWDZIWA bryła Kenney (sci_dome.png) - jej naturalny
+    // srebrny odcień zostaje (dome nie potrzebuje przefarbowania, kontrastuje
+    // ładnie z pomarańczem rdzenia w środku), osadzona na postumencie. ---
+    const domeW = U * 1.15;
+    const domeH = domeW * (116 / 248);
+    const domeTop = cy - domeH / 2 - U * 0.08;
+    const domeLeft = cx - domeW / 2;
+    const domeSprite = window.spriteLoader && window.spriteLoader.get('machine_sci_dome');
+    if (domeSprite && domeSprite.complete && domeSprite.naturalWidth) {
+      ctx.drawImage(domeSprite, domeLeft, domeTop, domeW, domeH);
+    } else {
+      ctx.fillStyle = hull;
+      this._traceRoundedRect(ctx, domeLeft, domeTop, domeW, domeH, U * 0.1);
+      ctx.fill();
+    }
+
+    // Postument pod kopułą, teraz z dwiema świecącymi szczelinami
+    // wentylacyjnymi (ten sam "poświata pod ciemnym korpusem" trik co
+    // emitery Kompresora - spójny język całej rodziny maszyn).
+    const pedW = domeW * 0.55, pedH = U * 0.16;
+    const pedY = domeTop + domeH - U * 0.04;
+    ctx.fillStyle = hullDark;
+    this._traceRoundedRect(ctx, cx - pedW / 2, pedY, pedW, pedH, U * 0.03);
+    ctx.fill();
+    const ventPulse = 0.55 + 0.35 * Math.abs(Math.sin(now * 0.004 + 1.2));
+    ctx.save();
+    ctx.globalAlpha = ventPulse;
+    ctx.fillStyle = accentGlow;
+    [-1, 1].forEach((side) => {
+      const vx = cx + side * pedW * 0.28;
+      this._traceRoundedRect(ctx, vx - U * 0.04, pedY + pedH * 0.3, U * 0.08, pedH * 0.4, U * 0.015);
+      ctx.fill();
+    });
+    ctx.restore();
+
+    // --- Rdzeń: PRAWDZIWY sprite Kenney (sci_core.png) - jego natywny
+    // pomarańcz leży już blisko akcentu pieca, więc obrót odcienia jest
+    // subtelny - pulsujący promień (mini-słońce) widoczny w "ustach" kopuły,
+    // z własną poświatą (dotąd brakowało - rdzeń był płaskim kółkiem). ---
+    const winCx = cx, winCy = domeTop + domeH * 0.82;
+    const pulse2 = 1 + 0.08 * Math.sin(now * 0.005);
+    const winR = domeW * 0.23 * pulse2;
+
+    const coreGlow = ctx.createRadialGradient(winCx, winCy, 0, winCx, winCy, winR * 2.1);
+    coreGlow.addColorStop(0, accentGlow);
+    coreGlow.addColorStop(1, 'rgba(255, 171, 145, 0)');
+    ctx.fillStyle = coreGlow;
     ctx.beginPath();
-    ctx.moveTo(kx, ky - U * 0.07);
-    ctx.lineTo(kx + U * 0.045, ky);
-    ctx.lineTo(kx, ky + U * 0.05);
-    ctx.lineTo(kx - U * 0.045, ky);
-    ctx.closePath();
+    ctx.arc(winCx, winCy, winR * 2.1, 0, Math.PI * 2);
     ctx.fill();
 
-    // --- Nóżki - PNG-i stoją na krótkich podporach, nie na samym korpusie. ---
-    ctx.fillStyle = metalDark;
-    [-bw * 0.3, bw * 0.22].forEach((dx) => {
-      ctx.fillRect(cx + dx, by + bh, U * 0.08, U * 0.06);
-    });
+    const coreSprite = this._getRecoloredSprite('machine_sci_core', -16, 1.1, 0.4);
+    if (coreSprite) {
+      ctx.drawImage(coreSprite, winCx - winR, winCy - winR, winR * 2, winR * 2);
+    } else {
+      ctx.fillStyle = accentGlow;
+      ctx.beginPath();
+      ctx.arc(winCx, winCy, winR * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Żar UNOSZĄCY SIĘ z komory (nie orbitujący w kółko jak dawniej) - drift
+    // do góry z lekkim bocznym chybotem, kurczy się i gaśnie pod sam szczyt
+    // kopuły, potem wraca na dół pętlą. Dużo bardziej "piecowy" motyw niż
+    // orbit - to ma czytać się jak żar wydostający się z komory plazmy.
+    const ember = this._getTintedFx('fx_flare', '#FFE0B2');
+    if (ember) {
+      for (let i = 0; i < 3; i++) {
+        const t = ((now * 0.0004 + i * 0.33) % 1);
+        const ex = winCx + Math.sin(now * 0.0022 + i * 2) * winR * 0.5;
+        const ey = winCy - t * domeH * 1.1;
+        const emberSize = winR * 0.4 * (1 - t * 0.6);
+        ctx.globalAlpha = 0.85 * (1 - t);
+        ctx.drawImage(ember, ex - emberSize / 2, ey - emberSize / 2, emberSize, emberSize);
+      }
+      ctx.globalAlpha = 1;
+    }
+    this._drawGlassHighlight(ctx, winCx, winCy, winR);
+  }
+
+  /**
+   * Oczyszczalnia - CZWARTA maszyna "Fazy kosmicznego reskinu, wersja 2"
+   * (po Reaktorze/Kompresorze/Piecu). Bryła to teraz prawdziwa kapsuła z
+   * Kenney "Space Shooter Extension" (spaceStation_001,
+   * assets/machines/sci_capsule.png, CC0) - podłużny moduł z jasnym paskiem
+   * "okna" na całej długości, przefarbowany na fioletowo (overlay - kapsuła
+   * jest prawie pozbawiona saturacji, jak klepsydra Kompresora, więc hue-
+   * rotate sam nie wystarczy). Rdzeń (sci_core.png) osadzony na środku paska.
+   */
+  _drawRefineryMachine(ctx, m, isActive) {
+    const U = MACHINE_PROC_UNIT;
+    const cx = m.x;
+    const cy = m.y;
+    const now = performance.now();
+
+    const hull = isActive ? this._lighten('#4B4359', MACHINE_LIGHTEN_AMOUNT) : '#4B4359';
+    const hullDark = this._lighten(hull, -34);
+    const accent = '#8E6BC4';
+    const accentGlow = '#D5C4F0';
+
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.28);
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.66, U * 0.2, 'rgba(213, 196, 240, 0.55)', 0.00055, 6);
+
+    // --- Kapsuła: PRAWDZIWA bryła Kenney (sci_capsule.png) przefarbowana na
+    // fioletowo overlayem (jak klepsydra Kompresora - prawie bez saturacji).
+    // satMult obniżony 1.5->1.3, spójnie z resztą przerobionej piątki. ---
+    const capW = U * 1.2;
+    const capH = capW * (72 / 168);
+    const capTop = cy - capH / 2;
+    const capLeft = cx - capW / 2;
+    const capsuleSprite = this._getRecoloredSprite('machine_sci_capsule', -69, 1.3, 0.08, [accent, 0.55]);
+    if (capsuleSprite) {
+      ctx.drawImage(capsuleSprite, capLeft, capTop, capW, capH);
+    } else {
+      ctx.fillStyle = hull;
+      this._traceRoundedRect(ctx, capLeft, capTop, capW, capH, U * 0.08);
+      ctx.fill();
+    }
+
+    // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana na fioletowo,
+    // osadzona na środku paska "okna" kapsuły - z "oddychaniem" skalą.
+    // Własna poświata za kulą (dotąd brakowało - rdzeń był płaskim, martwym
+    // kółkiem, ten sam brak co dawniej przy Piecu/Reaktorze) i niższy
+    // satMult (1.25->1.05) - głęboki fiolet przy wysokim satMult gubił
+    // własne jasne/ciemne cieniowanie sprite'a, więc czytał się jak jedna
+    // płaska plama zamiast kuli. ---
+    const winCx = cx, winCy = capTop + capH * 0.5;
+    const breath = 1 + 0.05 * Math.sin(now * 0.0035);
+    const winR = capH * 0.68 * breath;
+
+    const coreGlow = ctx.createRadialGradient(winCx, winCy, 0, winCx, winCy, winR * 2.1);
+    coreGlow.addColorStop(0, accentGlow);
+    coreGlow.addColorStop(1, 'rgba(213, 196, 240, 0)');
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath();
+    ctx.arc(winCx, winCy, winR * 2.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    const coreSprite = this._getRecoloredSprite('machine_sci_core', 250, 1.05, 0.4);
+    if (coreSprite) {
+      ctx.drawImage(coreSprite, winCx - winR, winCy - winR, winR * 2, winR * 2);
+    } else {
+      ctx.fillStyle = accentGlow;
+      ctx.beginPath();
+      ctx.arc(winCx, winCy, winR * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Oczyszczające bąbelki UNOSZĄCE SIĘ przez okno kapsuły (motyw filtracji/
+    // "przepływu" - inny kierunek/kinematyka niż żar Pieca czy wciągane
+    // okruchy Reaktora, żeby każda maszyna miała swój własny język ruchu).
+    // Drift w górę z bocznym dryfem, przygasają blisko górnej krawędzi okna.
+    const bubble = this._getTintedFx('fx_flare', accentGlow);
+    if (bubble) {
+      for (let i = 0; i < 3; i++) {
+        const t = ((now * 0.00035 + i * 0.34) % 1);
+        const bx = winCx + Math.sin(now * 0.0015 + i * 2.4) * winR * 0.55;
+        const by = winCy + winR * 0.9 - t * winR * 1.8;
+        const bSize = winR * 0.22 * (1 - t * 0.3);
+        ctx.globalAlpha = 0.7 * Math.sin(t * Math.PI);
+        ctx.drawImage(bubble, bx - bSize / 2, by - bSize / 2, bSize, bSize);
+      }
+      ctx.globalAlpha = 1;
+    }
+    this._drawGlassHighlight(ctx, winCx, winCy, winR);
+  }
+
+  /**
+   * Szlifiernia Kryształów - PIĄTA i ostatnia maszyna "Fazy kosmicznego
+   * reskinu, wersja 2". Bryła to prawdziwy stożek zbiegający się w oszlifowany
+   * ośmiokątny klejnot z Kenney "Space Shooter Extension" (spaceStation_028,
+   * assets/machines/sci_grinder.png, CC0) - naturalnie fasetowany kształt
+   * pasuje tematycznie do kryształu BEZ ŻADNEJ edycji. OBRÓCONY -90° (patrz
+   * niżej) - pionowo, szeroką podstawą u dołu i klejnotem u góry, żeby nie
+   * czytał się jak duplikat poziomej kapsuły Oczyszczalni. Stożek zostaje
+   * neutralnie metalowy (saturacja=0, hue-rotate nie ma czego chwycić), ale
+   * klejnot dostaje turkusowy tint przez osobny, PRZYCIĘTY (clipowany) drugi
+   * drawImage - jedyny sposób pomalować TYLKO fragment sprite'a, skoro
+   * _getRecoloredSprite działa na całym obrazku naraz.
+   */
+  _drawCrystalPolisherMachine(ctx, m, isActive) {
+    const U = MACHINE_PROC_UNIT;
+    const cx = m.x;
+    const cy = m.y;
+    const now = performance.now();
+
+    const hull = isActive ? this._lighten('#39514F', MACHINE_LIGHTEN_AMOUNT) : '#39514F';
+    const hullDark = this._lighten(hull, -34);
+    const accent = '#4DD0C8';
+    const accentGlow = '#E1F5FE';
+
+    this._drawCosmicGlow(ctx, cx, cy - U * 0.05, U * 0.95, accent, 0.3);
+    this._drawCosmicRing(ctx, cx, cy - U * 0.02, U * 0.68, U * 0.22, 'rgba(225, 245, 254, 0.55)', 0.00065, 7);
+
+    // --- Szlifierka: PRAWDZIWA bryła Kenney (sci_grinder.png), OBRÓCONA
+    // -90° - w oryginale to poziomy stożek zbiegający w klejnot PO PRAWEJ
+    // (patrz komentarz w _getRecoloredSprite), ale poziomo za bardzo
+    // przypominał kapsułę Oczyszczalni obok. Pionowo (szeroka podstawa u
+    // dołu, klejnot na czubku u góry) czyta się jak zamontowany, szlifowany
+    // kryształ - inna sylwetka niż reszta maszyn, więc łatwiej odróżnić na
+    // pierwszy rzut oka. Stożek zostaje metalowy (saturacja=0), tylko
+    // klejnot (ostatnie ~38% oryginalnej DŁUGOŚCI, czyli teraz górna część)
+    // dostaje turkusowy tint przez osobny, przycięty (clip) drugi drawImage. ---
+    const grindLen = U * 1.1;
+    const grindThick = grindLen * (89 / 164);
+    const rock = Math.sin(now * 0.003) * 0.025;
+    const grinderNative = window.spriteLoader && window.spriteLoader.get('machine_sci_grinder');
+    const grinderTinted = this._getRecoloredSprite('machine_sci_grinder', 150, 1.4, 0.08, [accent, 0.6]);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-Math.PI / 2 + rock);
+    if (grinderNative && grinderNative.complete && grinderNative.naturalWidth) {
+      ctx.drawImage(grinderNative, -grindLen / 2, -grindThick / 2, grindLen, grindThick);
+      if (grinderTinted) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(grindLen * 0.12, -grindThick / 2, grindLen * 0.38, grindThick);
+        ctx.clip();
+        ctx.drawImage(grinderTinted, -grindLen / 2, -grindThick / 2, grindLen, grindThick);
+        ctx.restore();
+      }
+    } else {
+      ctx.fillStyle = hull;
+      this._traceRoundedRect(ctx, -grindLen / 2, -grindThick / 2, grindLen, grindThick, U * 0.06);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // --- Rdzeń: świecąca kula (sci_core.png) przefarbowana turkusowo,
+    // osadzona na klejnocie (teraz u GÓRY po obrocie) - iskrzy, jakby
+    // właśnie się szlifował. Własna poświata za kulą, dla spójności z resztą
+    // przerobionej piątki (dotąd jedyny akcent świetlny tutaj to rozlana
+    // ogólna poświata maszyny, nie punktowy blask samego klejnotu). ---
+    const winCx = cx, winCy = cy - grindLen * 0.32;
+    const pulse = 1 + 0.07 * Math.sin(now * 0.006);
+    const winR = grindThick * 0.34 * pulse;
+
+    const coreGlow = ctx.createRadialGradient(winCx, winCy, 0, winCx, winCy, winR * 2.1);
+    coreGlow.addColorStop(0, accentGlow);
+    coreGlow.addColorStop(1, 'rgba(225, 245, 254, 0)');
+    ctx.fillStyle = coreGlow;
+    ctx.beginPath();
+    ctx.arc(winCx, winCy, winR * 2.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    const coreSprite = this._getRecoloredSprite('machine_sci_core', 163, 1.2, 0.4);
+    if (coreSprite) {
+      ctx.drawImage(coreSprite, winCx - winR, winCy - winR, winR * 2, winR * 2);
+    } else {
+      ctx.fillStyle = accentGlow;
+      ctx.beginPath();
+      ctx.arc(winCx, winCy, winR * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const sparkle = this._getTintedFx('fx_flare', '#FFFFFF');
+    if (sparkle) {
+      const s = winR * 0.7 * (0.5 + 0.5 * Math.sin(now * 0.008));
+      ctx.globalAlpha = 0.8;
+      ctx.drawImage(sparkle, winCx - s / 2, winCy - s / 2, s, s);
+      ctx.globalAlpha = 1;
+    }
+    this._drawGlassHighlight(ctx, winCx, winCy, winR);
   }
 
   /**
@@ -806,7 +1722,12 @@ class MachineManager {
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'alphabetic';
-        this._drawOutlinedText(ctx, `🔒 za ${Math.ceil(next.remaining)}$`, m.x, m.y - hh - 8, '#FFD54F');
+        // Bez prefiksu 🔒 (kłódka już narysowana proceduralnie tuż nad tym
+        // tekstem, patrz wyżej) i bez symbolu waluty - to czysty canvas
+        // fillText, nie DOM, więc nie da się tu wstawić CREDIT_ICON_SVG
+        // (ui.js) jak w reszcie gry; złoty kolor + kontekst (mała podpowiedź
+        // "ile brakuje" nad zablokowaną maszyną) wystarczą bez symbolu.
+        this._drawOutlinedText(ctx, I18n.t('machine.lockedCost', { amount: Math.ceil(next.remaining) }), m.x, m.y - hh - 8, '#FFD54F');
       }
     }
   }
@@ -831,10 +1752,15 @@ class MachineManager {
     const global = typeof eco.getMachineSpeedMultiplier === 'function'
       ? eco.getMachineSpeedMultiplier()
       : 1;
+    // Modyfikator planety (patrz PLANET_MODIFIERS w economy.js) - MNOŻY się z
+    // global/perMachine wyżej/niżej, nie zastępuje ich.
+    const planet = typeof eco.getPlanetMachineSpeedMultiplier === 'function'
+      ? eco.getPlanetMachineSpeedMultiplier()
+      : 1;
     const perMachine = (machineId && typeof eco.getMachineUpgradeValue === 'function')
       ? eco.getMachineUpgradeValue(machineId, 'speed')
       : 1;
-    return global * perMachine;
+    return global * planet * perMachine;
   }
 
   /** Ile sztuk wypada z JEDNEGO cyklu tej maszyny (ulepszenie 'yield'). */
@@ -842,6 +1768,26 @@ class MachineManager {
     const eco = window.economyManager;
     if (!eco || typeof eco.getMachineUpgradeValue !== 'function') return 1;
     return Math.max(1, Math.round(eco.getMachineUpgradeValue(machineId, 'yield')));
+  }
+
+  /** Skuteczność auto-załadunku (core_auto_feed, Rdzenie) - 0 = brak
+   * ulepszenia (mechanizm całkiem wyłączony), do 0.72 na maksie. Ten sam
+   * odczyt "na bieżąco" co _getSpeedMultiplier - działa natychmiast po
+   * zakupie, przetrwa prestiż (Rdzenie nie są zerowane). */
+  _getAutoFeedEfficiency() {
+    const eco = window.economyManager;
+    if (!eco || typeof eco.getCoreValue !== 'function') return 0;
+    const v = eco.getCoreValue('core_auto_feed');
+    return typeof v === 'number' ? v : 0;
+  }
+
+  /** Skuteczność auto-eksportu (core_auto_sell, Rdzenie) - mnożnik ceny przy
+   * automatycznej sprzedaży, patrz gałąź autoSellEff w update(). */
+  _getAutoSellEfficiency() {
+    const eco = window.economyManager;
+    if (!eco || typeof eco.getCoreValue !== 'function') return 0;
+    const v = eco.getCoreValue('core_auto_sell');
+    return typeof v === 'number' ? v : 0;
   }
 
   _lighten(hex, amount) {

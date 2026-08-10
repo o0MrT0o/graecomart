@@ -9,33 +9,179 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- JEDEN canvas, nie trzy - patrz obszerny komentarz przy CANVAS_IDS w
+         game.js. Wszystkie warstwy (tło/gameplay/UI) rysują się na tym samym
+         elemencie, w kolejności = z-order (kolejne rysowanie nadpisuje
+         poprzednie), tak jak dawniej robiła to kolejność trzech osobnych
+         canvasów - id zostaje 'layer-gameplay', bo player.js wiesza na nim
+         nasłuchy dotyku/myszy. -->
     <div id="game-container">
-        <canvas id="layer-background"></canvas>
         <canvas id="layer-gameplay"></canvas>
-        <canvas id="layer-ui"></canvas>
     </div>
 
     <!-- Ekran ładowania - w HTML/CSS od razu, WIDOCZNY zanim jakikolwiek JS
          zdąży się wykonać (żadnego migotania pustego/niedoładowanego
          tła+dekoracji na starcie). main.js chowa go dopiero, gdy wszystkie
          tekstury/sprite'y są gotowe (patrz Game.assetsReady/
-         PlayerController.spritesReady). -->
+         PlayerController.spritesReady) - i to z zapasem: minimalny czas
+         wyświetlania + kilka klatek "osiadania" PO gotowości assetów, żeby
+         jednorazowe pieczenie tła świata (Game._bakeWorldBackground) zdążyło
+         się skończyć POD ekranem, zamiast być widoczne jako zacięcie zaraz
+         po jego zniknięciu (patrz LOADING_SCREEN_MIN_MS w main.js). -->
     <div id="loading-screen">
+        <!-- Unoszące się drobinki (pyłek/zarodniki) - ten sam pomysł co migoczące
+             gwiazdki w ceremonii prestiżu (.ui-prestige-ceremony__stars), tylko
+             w duchu łąki zamiast kosmosu: kilka kafli tła z radial-gradientami,
+             dryfujące w górę i gasnące w pętli. Pierwsze dziecko #loading-screen,
+             więc maluje się POD resztą bez jawnego z-index (ten sam trik). -->
+        <div class="loading-screen__particles" aria-hidden="true"></div>
+        <!-- Planety w tle (Tomek: "dodaj planety") - te same assety co ceremonia
+             prestiżu (assets/planets/), tylko małe i przycięte przy krawędziach
+             ekranu (odległe tło), nie jedna wielka na środku jak tam - to nie
+             MOMENT lotu, tylko tło powitalnego ekranu. Każda kręci się osobnym,
+             bardzo wolnym tempem (patrz style.css) dla lekkiej głębi paralaksy. -->
+        <div class="loading-screen__planet loading-screen__planet--a" aria-hidden="true">
+            <img src="assets/planets/planet00.png" alt="" width="480" height="480">
+        </div>
+        <div class="loading-screen__planet loading-screen__planet--b" aria-hidden="true">
+            <img src="assets/planets/planet07.png" alt="" width="480" height="480">
+        </div>
+        <div class="loading-screen__planet loading-screen__planet--c" aria-hidden="true">
+            <img src="assets/planets/planet08.png" alt="" width="480" height="480">
+        </div>
         <div class="loading-screen__content">
-            <div class="loading-screen__spinner"></div>
-            <div class="loading-screen__text">Ładowanie…</div>
+            <div class="loading-screen__badge-wrap">
+                <div class="loading-screen__badge-glow" aria-hidden="true"></div>
+                <!-- BYŁ płaski, jednokolorowy assets/ui/mascot_badge.png (Tomek:
+                     "ta postać wygląda jak gówno, jeden kolor") - zastąpiony
+                     PRAWDZIWYM sprite'em gracza (alien_green_walk.png, ten sam
+                     assets/player/ co w grze, domyślny skin) z cieniowaniem i
+                     twarzą. Dwie klatki chodu (patrz PLAYER_ALIEN_WALK_FRAME_COUNT
+                     w player.js) jako DWIE nałożone warstwy o STAŁYM
+                     background-position, przełączane opacity (patrz
+                     .loading-screen__badge-frame w style.css) - postać PODSKAKUJE
+                     w miejscu zamiast tylko biernie kołysać się jak poprzednio.
+                     BUGFIX: pierwsza wersja animowała background-position samego
+                     tła krokowo (steps()) - w Chromium dawało to sporadyczny,
+                     powtarzalny artefakt (przez ułamek klatki widać było OBIE
+                     klatki spritesheetu naraz, "podwójna" sylwetka), gdy działo
+                     się to RÓWNOCZEŚNIE z animacją transform (bob) na tym samym
+                     elemencie. Dwie osobne, STATYCZNE warstwy przełączane samym
+                     opacity (zero animowania background-position) nie mają tego
+                     problemu - potwierdzone zrzutami z wielu klatek w rzędzie. -->
+                <div class="loading-screen__badge" aria-hidden="true">
+                    <div class="loading-screen__badge-frame loading-screen__badge-frame--a"></div>
+                    <div class="loading-screen__badge-frame loading-screen__badge-frame--b"></div>
+                </div>
+            </div>
+            <div class="loading-screen__title">Eco Mart</div>
+            <div class="loading-screen__bar">
+                <div class="loading-screen__bar-fill" id="loading-bar-fill"></div>
+            </div>
+            <div class="loading-screen__tip" id="loading-tip">Sadzimy trawę…</div>
         </div>
     </div>
+    <!-- Czysto kosmetyczny (pasek + rotujące podpowiedzi) - CELOWO inline i
+         PRZED resztą JS, żeby działał od razu, zero zależności od Bus/reszty
+         gry. Prawdziwe ukrycie ekranu (main.js/hideLoadingScreenWhenReady)
+         nie czeka na ten skrypt - jeśli coś tu pójdzie nie tak, ekran i tak
+         zniknie normalnie, tylko bez animacji paska. -->
+    <script>
+    (function () {
+        // Ten sam klucz/domyślna wartość co I18N_STORAGE_KEY/I18N_DEFAULT_LANG
+        // w i18n.js (który tu jeszcze NIE jest załadowany, patrz komentarz
+        // wyżej "zero zależności od Bus/reszty gry") - localStorage jest
+        // jednak dostępny synchronicznie od razu, więc podpowiedzi mogą
+        // odczytać zapisany język BEZ czekania na resztę gry. Duplikat stałej
+        // (nie import) - ta sama konwencja projektu co reszta plików
+        // ("brak współdzielonych utili").
+        var lang = 'pl';
+        try {
+            var saved = localStorage.getItem('ecomart_lang');
+            if (saved === 'pl' || saved === 'en') lang = saved;
+        } catch (e) {
+            // localStorage niedostępny (np. tryb prywatny) - zostajemy przy 'pl'.
+        }
+        var tipsByLang = {
+            pl: [
+                'Sadzimy trawę…',
+                'Ustawiamy maszyny…',
+                'Rozkładamy stragan…',
+                'Pakujemy plecak…',
+                'Szykujemy statek…'
+            ],
+            en: [
+                'Planting grass…',
+                'Setting up machines…',
+                'Unpacking the stall…',
+                'Packing the backpack…',
+                'Prepping the ship…'
+            ]
+        };
+        var tips = tipsByLang[lang];
+        var tipEl = document.getElementById('loading-tip');
+        if (tipEl) {
+            // Nadpisuje polski tekst zaszyty wprost w HTML (pierwszy render,
+            // zanim ten skrypt zdąży się wykonać) - dla gracza z lang='en' bez
+            // tego migałby ułamek sekundy polski tekst przed podmianą.
+            tipEl.textContent = tips[0];
+            // Przenikanie zamiast twardego podskoku tekstu - CSS transition na
+            // opacity (patrz .loading-screen__tip w style.css), skrypt tylko
+            // ją wyzwala: schowaj -> podmień tekst PO zakończeniu zanikania ->
+            // pokaż. 220ms = czas trwania samej transition (musi się zgadzać).
+            var tipIndex = 0;
+            setInterval(function () {
+                tipEl.style.opacity = '0';
+                setTimeout(function () {
+                    tipIndex = (tipIndex + 1) % tips.length;
+                    tipEl.textContent = tips[tipIndex];
+                    tipEl.style.opacity = '1';
+                }, 220);
+            }, 1300);
+        }
+        // Pasek rośnie "na oko" do 92% - prawdziwy postęp wczytywania
+        // assetów nie jest tu (jeszcze) znany, main.js dociąga go do 100%
+        // tuż przed schowaniem ekranu. Spowalniające tempo (ease-out ręcznie)
+        // sprawia, że pasek NIGDY nie wygląda na utknięty w miejscu, nawet
+        // przy dłuższym ładowaniu.
+        var fillEl = document.getElementById('loading-bar-fill');
+        if (fillEl) {
+            var pct = 0;
+            window.__loadingBarGrowInterval = setInterval(function () {
+                pct = Math.min(92, pct + (92 - pct) * 0.06 + 0.4);
+                fillEl.style.width = pct + '%';
+            }, 90);
+        }
+    })();
+    </script>
 
     <!-- KOLEJNOŚĆ WAŻNA — nie zmieniaj -->
     <script src="js/eventbus.js"></script>
+    <!-- Przełącznik języka (window.I18n.t()) - zaraz po eventbus.js, przed
+         KAŻDYM plikiem, który buduje tekst UI, żeby I18n było gotowe zanim
+         cokolwiek go użyje. -->
+    <script src="js/i18n.js"></script>
     <script src="js/audio.js"></script>
-    <!-- Bundlowany osobno (esbuild) - JEDYNY plik w projekcie z importem
-         npm (@capacitor-community/admob). Nieobecny/nieszkodliwy podczas
-         zwykłego testowania w przeglądarce (Live Server) - patrz README-ADS.md.
-         Musi ładować się PRZED ads.js, który sprawdza czy window.NativeAds istnieje. -->
+    <!-- Bundlowane osobno (esbuild) - jedyne pięć plików w projekcie z importem
+         npm (@capacitor-community/admob, @capacitor/local-notifications,
+         @capacitor/haptics, capacitor-google-game-services,
+         @capacitor-community/play-integrity). Nieobecne/nieszkodliwe podczas
+         zwykłego testowania w przeglądarce (Live Server) - patrz README-ADS.md/
+         README-CLOUDSAVE.md/README-INTEGRITY.md. Muszą ładować się PRZED
+         ads.js/offline-reminder.js/haptics.js/cloudsave.js/integrity.js, które
+         sprawdzają czy window.NativeAds/window.NativeNotifications/
+         window.NativeHaptics/window.NativeCloudSave/window.NativeIntegrity
+         istnieją. -->
     <script src="js/native-ads.bundle.js"></script>
     <script src="js/ads.js"></script>
+    <script src="js/native-notifications.bundle.js"></script>
+    <script src="js/offline-reminder.js"></script>
+    <script src="js/native-haptics.bundle.js"></script>
+    <script src="js/haptics.js"></script>
+    <script src="js/native-cloudsave.bundle.js"></script>
+    <script src="js/cloudsave.js"></script>
+    <script src="js/native-integrity.bundle.js"></script>
+    <script src="js/integrity.js"></script>
     <script src="js/save.js"></script>
     <script src="js/economy.js"></script>
     <script src="js/sprites.js"></script>
@@ -46,6 +192,18 @@
          ambient.js, przed game.js bo main.js rejestruje CrittersManager. -->
     <script src="js/critters.js"></script>
     <script src="js/items.js"></script>
+    <!-- Dron Recyklingowy (SHOP_UPGRADES: 'drone') - czyta window.itemManager/
+         stackController/playerController/economyManager WYŁĄCZNIE w metodach
+         (nie przy parsowaniu), więc dokładna pozycja w tej liście nie ma
+         znaczenia - tutaj, blisko items.js/critters.js, z którymi dzieli
+         najwięcej logiki. -->
+    <script src="js/drone.js"></script>
+    <!-- Wydarzenie sezonowe (Deszcz Meteorytów) - przed goldbonus.js, bo ten
+         czyta window.seasonalEventManager.isActive() (częstszy spawn). -->
+    <script src="js/events.js"></script>
+    <!-- Złoty Bonus (rzadki, zanikający pickup) - przed minimap.js, bo ten
+         czyta window.goldBonusManager.active (kropka na radarze). -->
+    <script src="js/goldbonus.js"></script>
     <!-- Minimapa (ulepszenie, dawniej Kompas Surowców) - po items.js, bo
          czyta window.itemManager.items i ItemRenderer.getTypeMeta(). -->
     <script src="js/minimap.js"></script>

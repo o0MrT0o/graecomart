@@ -1,11 +1,12 @@
 /**
  * native-ads-src.js
  * ------------------------------------------------------------------------
- * JEDYNY plik w tym projekcie pisany jako ES module z importem npm - reszta
- * gry to czysty JS przez <script> (patrz eventbus.js i cała reszta). Ten
- * plik NIE jest ładowany bezpośrednio - buduje się go esbuildem (patrz
- * README-ADS.md, krok 4) w js/native-ads.bundle.js, który DOPIERO jest
- * zwykłym <script> w index.html.
+ * Jeden z dwóch plików w tym projekcie pisanych jako ES module z importem
+ * npm (drugi to native-notifications-src.js) - reszta gry to czysty JS
+ * przez <script> (patrz eventbus.js i cała reszta). Ten plik NIE jest
+ * ładowany bezpośrednio - buduje się go esbuildem (patrz README-ADS.md,
+ * krok 4) w js/native-ads.bundle.js, który DOPIERO jest zwykłym <script>
+ * w index.html.
  *
  * Powód całego tego rozdzielenia: @capacitor-community/admob (jak
  * praktycznie każdy plugin npm dla nowoczesnego Capacitora) wymaga importu

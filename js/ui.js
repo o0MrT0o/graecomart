@@ -11,12 +11,130 @@
 
 const UI_BREAKPOINT_NARROW = 640;
 
-// Ikony HUD - SVG, nie emoji. BUGFIX spójności: saldo/stos zostały na
-// emoji (💰/📦) przez cały czas, gdy reszta gry świadomie z nich rezygnowała
-// (ikony sklepu, etykiety maszyn, moduły statku, wyzwanie dnia, odkrycia) -
-// HUD dosłownie pokazywał obok siebie dwa różne języki wizualne.
-const MONEY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="9.5" fill="#FFCA28"/><circle cx="12" cy="12" r="9.5" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="1.2"/><circle cx="12" cy="12" r="6.8" fill="none" stroke="rgba(0,0,0,0.18)" stroke-width="1"/><path d="M12 6.6v10.8" stroke="#6D4C0F" stroke-width="1.5" stroke-linecap="round"/><path d="M14.6 9.2Q14.6 7.6 12 7.6Q9.4 7.6 9.4 9.5Q9.4 11 12 11.6Q14.6 12.2 14.6 13.9Q14.6 16 12 16Q9.4 16 9.4 14.4" fill="none" stroke="#6D4C0F" stroke-width="1.6" stroke-linecap="round"/></svg>';
-const STACK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#A5D6A7" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3 21 7.5 12 12 3 7.5Z" fill="rgba(165,214,167,0.25)"/><path d="M3 12 12 16.5 21 12"/><path d="M3 16.5 12 21 21 16.5"/></svg>';
+// Ikony HUD - Tomek: "ogarnij ikonę kasy i samą kasę... ikonę plecaka
+// też" - dawny hand-drawn kolorowy pieniążek (kółka+łuk "$") i konturowy
+// "diament" jako plecak nie pasowały już do reszty gry po przejściu na
+// prawdziwe assety Kenney. MONEY_ICON_SVG teraz woreczek z monetami
+// ("pouch", Kenney Board Game Icons) przez ten sam mechanizm .ui-icon co
+// ikony paneli (CSS mask + kolor z kontekstu - tu wymuszony na złoty przez
+// .ui-money__icon .ui-icon w style.css, żeby zostać przy ustalonym
+// kojarzeniu "pieniądze = złoto"). STACK_ICON_SVG to teraz prawdziwy
+// sprite plecaka (Kenney Generic Items, assets/ui/backpack.png) w
+// NATYWNYCH kolorach (zielony) zamiast maski - to osobna, kolorowa
+// ilustracja jak sprite'y maszyn/statku, nie jednokolorowa sylwetka.
+const MONEY_ICON_SVG = '<span class="ui-icon ui-icon--pouch" aria-hidden="true"></span>';
+const STACK_ICON_SVG = '<img class="ui-backpack-icon" src="assets/ui/backpack.png" alt="" aria-hidden="true">';
+
+// --- Biblioteka ikon UI (SVG, nie emoji) -------------------------------------
+// Reszta emoji w UI (nawigacja/panele/toasty/ustawienia) - ten sam powód co
+// MONEY_ICON_SVG/STACK_ICON_SVG wyżej, viewBox 24x24, proste kreski.
+// Grupowane tutaj zamiast rozrzucone przy każdym miejscu użycia -
+// część z nich (np. CORE_ICON_SVG, CLOSE_ICON_SVG) pojawia się dziesiątki
+// razy w tym pliku, więc jedna stała + wstawienie w template stringu jest
+// jedynym sensownym podejściem.
+// Sklep/Menu/Statek (fab) + Wpłać/Leć dalej (accent) - pierwsza wersja tych
+// ikon (dawno temu) to ręcznie rysowane SOLIDNE sylwetki fill="currentColor"
+// (nie cienkie kreski) - dobrane celowo pod grube, płaskocieniowane
+// przyciski Kenney (style.css .ui-btn), okienka/otwory (rakieta, tryb,
+// moneta) wycięte fill-rule="evenodd", żeby ikona wyglądała poprawnie na
+// KAŻDYM tle przycisku bez osobnej wersji na kontekst.
+// CART/GEAR/PAY PODMIENIONE (razem z resztą tej fali - Tomek: "wszystkie
+// ikony w sklepie i w menu niech będą zgodne z resztą z gry") na prawdziwe
+// sylwetki Kenney - ten sam .ui-icon (maska CSS + currentColor) mechanizm,
+// który już utrzymywał dopasowanie koloru do tła przycisku (fab/accent) w
+// poprzedniej, ręcznie rysowanej wersji, więc zero regresji w dopasowaniu
+// barw, tylko realny asset zamiast narysowanego od zera kształtu. PAY (był
+// "$" wycięty evenodd) na zwykłą monetę (coin.png) - ostatni MIEJSCA symbol
+// dolara w kodzie, reszta dawno zastąpiona sześciokątnym "czipem"
+// (CREDIT_ICON_SVG). ROCKET zostaje custom SVG - żadna z dostępnych paczek
+// Kenney nie miała prostej, jednokolorowej sylwetki rakiety pasującej do
+// tej samej maski/rozmiaru co reszta (tylko szczegółowe, kolorowe bryły
+// statków, nie sylwetki-ikony).
+const CART_ICON_SVG = '<span class="ui-icon ui-icon--cart" aria-hidden="true"></span>';
+const ROCKET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path fill-rule="evenodd" d="M12 2c3.5 2.8 4.6 7.3 3 12.2H9C7.4 9.3 8.5 4.8 12 2ZM13.7 9A1.7 1.7 0 1 1 10.3 9A1.7 1.7 0 1 1 13.7 9Z"/><path d="M9 14.5 6.4 17.8 7.4 18.4 9.8 15.7Z"/><path d="M15 14.5 17.6 17.8 16.6 18.4 14.2 15.7Z"/><path d="M10 15v4.3l2 1.7 2-1.7V15Z"/></svg>';
+const GEAR_ICON_SVG = '<span class="ui-icon ui-icon--gear" aria-hidden="true"></span>';
+const PAY_ICON_SVG = '<span class="ui-icon ui-icon--coin" aria-hidden="true"></span>';
+// TROPHY/WRENCH/UNLOCK/SPEAKER/RECYCLE_RESET/INFO (niżej) - PODMIENIONE z
+// ręcznie rysowanych SVG na prawdziwe sylwetki z Kenney "Game Icons" (CC0),
+// ta sama paczka co przyciski (style.css .ui-btn/.ui-icon). Technika: CSS
+// mask (patrz .ui-icon w style.css) zamiast fill="currentColor" na <svg> -
+// PNG-sylwetka jako maska na tle background-color:currentColor, więc nadal
+// automatycznie dopasowuje kolor do kontekstu (biały tytuł panelu,
+// przyciemniony tekst wiersza Menu). Same stałe (span zamiast svg) -
+// WSZYSTKIE miejsca wołające ${TROPHY_ICON_SVG} itd. zostają bez zmian.
+const TROPHY_ICON_SVG = '<span class="ui-icon ui-icon--trophy" aria-hidden="true"></span>';
+const CLOSE_ICON_SVG = '<span class="ui-icon ui-icon--cross" aria-hidden="true"></span>';
+const CHECK_ICON_SVG = '<span class="ui-icon ui-icon--checkmark" aria-hidden="true"></span>';
+// Symbol waluty Rdzeni (Rdzenie/Cores) - zastępuje ⚡ używane dotąd JAKO
+// TEKST wewnątrz wielu stringów ("⚡${cost}") - wstawiany bezpośrednio w
+// template literały (wszystkie miejsca użycia i tak trafiają do innerHTML,
+// nie textContent).
+const CORE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" fill="#81D4FA" stroke="none"><path d="M13 2 4 14h6l-1 8 9-12h-6Z"/></svg>';
+// Symbol głównej waluty (pieniądze) - Tomek: "zamieńmy dolar na coś
+// bardziej pasującego do gry... sci-fi/kosmici". Zastępuje "$" używane
+// dotąd JAKO TEKST wewnątrz dziesiątek stringów w całej grze ("180$",
+// "+50$", "za 200$" itd.) - sześciokątny "czip energetyczny" z wydrążonym
+// świecącym rdzeniem pośrodku (fill-rule evenodd), złoty jak reszta
+// oznaczeń pieniędzy (--ui-gold), ten sam duch co CORE_ICON_SVG wyżej
+// (osobna waluta, inny kształt/kolor - błyskawica dla Rdzeni, sześciokąt
+// dla pieniędzy). WSTAWIANY JAKO SUFIKS (`${amount}${CREDIT_ICON_SVG}`),
+// nie prefiks jak CORE_ICON_SVG - dokładnie tam, gdzie dotąd stało "$".
+const CREDIT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px" fill="#FFD54F" stroke="none"><path fill-rule="evenodd" d="M21 12 16.5 19.79 7.5 19.79 3 12 7.5 4.21 16.5 4.21Z M14.2 12A2.2 2.2 0 1 1 9.8 12A2.2 2.2 0 1 1 14.2 12Z"/></svg>';
+// Ikona wiersza "Język" (SettingsPanel._buildLanguageRow) - żaden z
+// wypakowanych paczek Kenney (game-icons/board-game-icons/generic-items) nie
+// ma glifu globusa/języka (patrz audyt przy dodawaniu i18n.js), więc custom
+// SVG w tym samym duchu co CORE/CREDIT wyżej: okrąg + elipsa "południka" +
+// dwie linie "równoleżników" - klasyczny, rozpoznawalny kształt globusa bez
+// potrzeby nowego assetu.
+const LANGUAGE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px" fill="none" stroke="#4DD0E1" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5"/><path d="M4 9.5h16M4 14.5h16"/></svg>';
+// Ikona wiersza "Chmura" (SettingsPanel._buildCloudSaveRow) - ten sam powód
+// custom SVG co LANGUAGE_ICON_SVG wyżej (żadna wypakowana paczka Kenney nie
+// ma glifu chmury/synchronizacji). Klasyczny kontur chmury.
+const CLOUD_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px" fill="#81D4FA" stroke="none"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A5.5 5.5 0 0 1 17.2 8.1 4 4 0 0 1 17 16H7Z"/></svg>';
+// Ikona wiersza "Integralność" (SettingsPanel._buildIntegrityRow) - ten sam
+// powód custom SVG co CLOUD/LANGUAGE wyżej. Klasyczna tarcza (Play Integrity
+// broni apkę przed modyfikacją/podrobieniem, tarcza to od razu czytelny
+// skrót tej idei, bez potrzeby nowego assetu z paczek Kenney).
+const SHIELD_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px" fill="#A5D6A7" stroke="none"><path d="M12 2 4 5v6c0 5 3.4 8.6 8 11 4.6-2.4 8-6 8-11V5l-8-3Z"/></svg>';
+// LOCK PODMIENIONY (był ten sam cienki, ręcznie rysowany kłódkowy kontur co
+// reszta tej fali - patrz komentarz przy CART/GEAR/PAY wyżej) - dodany
+// niedawno (kłódka "za mało kasy"), ale od razu na docelowej ikonie
+// (locked.png), więc CAŁA historia zmiany tu nieaktualna, brak osobnego
+// komentarza "przed/po".
+const LOCK_ICON_SVG = '<span class="ui-icon ui-icon--locked" aria-hidden="true"></span>';
+const UNLOCK_ICON_SVG = '<span class="ui-icon ui-icon--unlocked" aria-hidden="true"></span>';
+const SPEAKER_ICON_SVG = '<span class="ui-icon ui-icon--audio-on" aria-hidden="true"></span>';
+// CHART/BOOK/SPARKLE/PARTY/FLAME/SHIRT (niżej) - ta sama fala co CART/GEAR/
+// PAY/LOCK wyżej: prawdziwe sylwetki Kenney zamiast ręcznie rysowanych
+// SVG. Stały kolor akcentu KAŻDEGO z nich (dawniej stroke/fill="#hex" w
+// samym SVG) przeniesiony na inline style="color:#hex" na spanie - .ui-icon
+// czyta currentColor z KONTEKSTU (patrz komentarz przy TROPHY_ICON_SVG),
+// więc bez tego wszystkie przejęłyby kolor otaczającego tekstu i straciłyby
+// swój rozpoznawalny odcień (fioletowa gwiazdka, pomarańczowy płomień itd).
+// PLANET zostaje custom SVG - kenney_planets.zip to surowe "części"
+// (światła/szumy/tekstury) do procedualnego składania planet w tle, nie
+// gotowe, proste ikonki pod maskę UI.
+const CHART_ICON_SVG = '<span class="ui-icon ui-icon--chart" aria-hidden="true" style="color:#90CAF9"></span>';
+const BOOK_ICON_SVG = '<span class="ui-icon ui-icon--book" aria-hidden="true" style="color:#CE93D8"></span>';
+const RECYCLE_RESET_ICON_SVG = '<span class="ui-icon ui-icon--reset" aria-hidden="true"></span>';
+const EXPORT_ICON_SVG = '<span class="ui-icon ui-icon--export" aria-hidden="true" style="color:#81D4FA"></span>';
+const IMPORT_ICON_SVG = '<span class="ui-icon ui-icon--import" aria-hidden="true" style="color:#81D4FA"></span>';
+const INFO_ICON_SVG = '<span class="ui-icon ui-icon--information" aria-hidden="true"></span>';
+const SPARKLE_ICON_SVG = '<span class="ui-icon ui-icon--star" aria-hidden="true" style="color:#CE93D8"></span>';
+const PARTY_ICON_SVG = '<span class="ui-icon ui-icon--award" aria-hidden="true" style="color:#FFD54F"></span>';
+const WRENCH_ICON_SVG = '<span class="ui-icon ui-icon--wrench" aria-hidden="true"></span>';
+const PLANET_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B39DDB" stroke-width="1.8"><circle cx="11" cy="12" r="6" fill="#B39DDB" fill-opacity="0.25"/><ellipse cx="11" cy="12" rx="10" ry="3.2" transform="rotate(-18 11 12)"/></svg>';
+const FLAME_ICON_SVG = '<span class="ui-icon ui-icon--fire" aria-hidden="true" style="color:#FF7043"></span>';
+const SHIRT_ICON_SVG = '<span class="ui-icon ui-icon--brush" aria-hidden="true" style="color:#90CAF9"></span>';
+// Dekoracje straganu (economy.js STALL_DECORATIONS) - flaga, bo jedna z
+// samych dekoracji dosłownie NIĄ jest, i bo ogólnie czyta się jako
+// "oznacz/upiększ swoje miejsce", ten sam duch przypisania kształtu do
+// znaczenia co SHIRT_ICON_SVG wyżej (pędzel -> kosmetyka postaci).
+const DECOR_ICON_SVG = '<span class="ui-icon ui-icon--flag" aria-hidden="true" style="color:#81C784"></span>';
+// Tytuł LeaderboardPanel (medal, nie trophy/chart - te dwa już zajęte przez
+// Osiągnięcia/Statystyki, patrz TROPHY_ICON_SVG/CHART_ICON_SVG wyżej -
+// inny motyw, żeby trzy panele w Menu dało się odróżnić na pierwszy rzut oka).
+const MEDAL_ICON_SVG = '<span class="ui-icon ui-icon--medal1" aria-hidden="true" style="color:#FFD54F"></span>';
 
 // --- Bazowy komponent -------------------------------------------------------
 
@@ -49,19 +167,42 @@ class UIComponent {
 // --- Przycisk ---------------------------------------------------------------
 
 class UIButton extends UIComponent {
-  constructor({ label, icon, variant = 'primary', onClick, disabled = false, title = '' }) {
+  // sound - klucz w AudioManager (audio.js) grany PRZED onClick. Domyślnie
+  // 'ui_click' (zwykłe tapnięcie) - jedyny wyjątek to przycisk Dźwięk w Menu
+  // (SettingsPanel._buildSoundRow), który dostaje 'ui_switch' (osobny,
+  // wyraźnie "przełączający" dźwięk z Kenney UI Pack - ten sam pack co
+  // tekstury przycisków, patrz style.css .ui-btn) - w końcu to jedyny
+  // przycisk w grze, który faktycznie działa jak fizyczny przełącznik
+  // (włącz/wyłącz), nie jednorazowa akcja.
+  // denied - WYGLĄDA jak disabled (ta sama klasa CSS .ui-btn--disabled), ale
+  // W ODRÓŻNIENIU od disabled NIE ustawia natywnego <button disabled> -
+  // przeglądarka w ogóle nie emituje eventu 'click' na natywnie wyłączonym
+  // przycisku, więc "za mało pieniędzy/Rdzeni" (Tomek: "dźwięki UI/error
+  // feedback") potrzebuje przycisku, który DALEJ reaguje na tap, tylko zamiast
+  // onClick gra dźwięk odmowy (audio.js 'error') i nic nie robi. disabled
+  // zostaje bez zmian dla przypadków prawdziwie nieinteraktywnych (reszta gry).
+  constructor({ label, icon, variant = 'primary', onClick, disabled = false, denied = false, title = '', sound = 'ui_click' }) {
     super();
     this.label = label;
     this.icon = icon;
     this.variant = variant;
     this.onClick = onClick;
     this.disabled = disabled;
+    this.denied = denied;
     this.title = title;
+    this.sound = sound;
     this._handler = (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (this.denied) {
+        if (window.audioManager) window.audioManager.play('error');
+        // Krótki, ostry impuls jako fizyczne "nie" - patrz haptics.js
+        // (Tomek: "haptics"), obok już istniejącego dźwięku odmowy.
+        if (window.hapticsManager) window.hapticsManager.denied();
+        return;
+      }
       if (!this.disabled && typeof this.onClick === 'function') {
-        if (window.audioManager) window.audioManager.play('ui_click');
+        if (window.audioManager) window.audioManager.play(this.sound);
         this.onClick(e);
       }
     };
@@ -75,6 +216,7 @@ class UIButton extends UIComponent {
     this.el.innerHTML = `${this.icon ? `<span class="ui-btn__icon">${this.icon}</span>` : ''}<span class="ui-btn__label">${this.label}</span>`;
     this.el.addEventListener('click', this._handler);
     this.setDisabled(this.disabled);
+    if (this.denied) this.el.classList.add('ui-btn--disabled');
     return this.el;
   }
 
@@ -92,7 +234,12 @@ class UIButton extends UIComponent {
     this.label = label;
     if (this.el) {
       const labelEl = this.el.querySelector('.ui-btn__label');
-      if (labelEl) labelEl.textContent = label;
+      // innerHTML (nie textContent) - etykiety podmieniane w locie mogą
+      // zawierać CREDIT_ICON_SVG (np. OfflineRewardModal._watchAdAndClaim
+      // przywraca "x2 (+X[ikona])" po nieudanej reklamie) - oba wołające
+      // miejsca w projekcie przekazują tylko wewnętrzne, bezpieczne teksty,
+      // nigdy dane od użytkownika.
+      if (labelEl) labelEl.innerHTML = label;
     }
   }
 
@@ -125,7 +272,7 @@ class UIPanel extends UIComponent {
     header.className = 'ui-panel__header';
     header.innerHTML = `
       <span class="ui-panel__title">${this.icon ? `<span class="ui-panel__icon">${this.icon}</span>` : ''}${this.title || ''}</span>
-      ${this.collapsible ? '<button type="button" class="ui-panel__toggle" aria-label="Zwiń/rozwiń">▾</button>' : ''}
+      ${this.collapsible ? `<button type="button" class="ui-panel__toggle" aria-label="${I18n.t('ui.collapse.toggle')}">▾</button>` : ''}
     `;
 
     this.bodyEl = document.createElement('div');
@@ -174,7 +321,7 @@ class MoneyDisplay extends UIComponent {
     this.el.innerHTML = `
       <span class="ui-money__icon" aria-hidden="true">${MONEY_ICON_SVG}</span>
       <div class="ui-money__content">
-        <span class="ui-money__value">$0</span>
+        <span class="ui-money__value">0</span>
       </div>
     `;
     this.valueEl = this.el.querySelector('.ui-money__value');
@@ -212,7 +359,12 @@ class MoneyDisplay extends UIComponent {
 
   _updateText() {
     if (this.valueEl) {
-      this.valueEl.textContent = `$${Math.floor(this.displayValue).toLocaleString('pl-PL')}`;
+      // Tomek: "ikona kasy w lewym górnym rogu niech wyświetla ikonę tej
+      // śruby też" - CREDIT_ICON_SVG (ta sama, którą reszta gry wstawia jako
+      // sufiks po kwocie, patrz definicja wyżej) dołączona obok liczby, tak
+      // samo jak w Sklepie/Menu. innerHTML (nie textContent), bo
+      // CREDIT_ICON_SVG to znaczniki SVG do wyrenderowania, nie tekst.
+      this.valueEl.innerHTML = `${Math.floor(this.displayValue).toLocaleString('pl-PL')}${CREDIT_ICON_SVG}`;
     }
   }
 
@@ -312,10 +464,13 @@ class ChallengeDisplay extends UIComponent {
     // Krótszy tekst niż w starej, grubej pigułce - slim pasek ma jedną linię
     // z ellipsis, więc "Zbierz 20x Śmieci (3/20)" musi się zmieścić bez
     // osobnej etykiety "Wyzwanie dnia" (ikonka schowka ją zastępuje).
-    this.textEl.textContent = challenge.claimed
-      ? 'Wyzwanie odebrane ✓'
+    // innerHTML (nie textContent) - CHECK_ICON_SVG w gałęzi "odebrane"
+    // wymaga renderowania jako znaczniki, nie surowy tekst. Pozostałe dwie
+    // gałęzie to i tak zwykły, bezpieczny (deweloperski) tekst.
+    this.textEl.innerHTML = challenge.claimed
+      ? I18n.t('ui.challenge.claimed', { icon: CHECK_ICON_SVG })
       : claimable
-        ? `Odbierz +${challenge.reward}$!`
+        ? I18n.t('ui.challenge.claim', { amount: challenge.reward, icon: CREDIT_ICON_SVG })
         : `${challenge.label} (${challenge.progress}/${challenge.target})`;
 
     if (this.fillEl) {
@@ -325,14 +480,16 @@ class ChallengeDisplay extends UIComponent {
   }
 }
 
-// Ikona kompasu/celu dla paska "co dalej" - SVG, spójnie z resztą UI.
-const NEXT_UNLOCK_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#FFD54F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+// Ikona "czas/postęp do celu" dla paska "co dalej" - był zegar (ręcznie
+// rysowany), teraz klepsydra (Kenney Board Game Icons) - ta sama fala
+// ujednolicenia co CART/GEAR/CLOSE/CHECK/LOCK wyżej.
+const NEXT_UNLOCK_ICON_SVG = '<span class="ui-icon ui-icon--hourglass" aria-hidden="true" style="color:#FFD54F"></span>';
 
 /**
  * Pasek "co dalej" - pokazuje postęp łącznego zarobku do NASTĘPNEGO
  * progresywnego odblokowania (nowej strefy/maszyny). Bezpośrednia
  * odpowiedź na "martwo, nie wiem po co gram" - gracz zawsze widzi
- * konkretny, bliski cel ("jeszcze 140$ do Pieca") zamiast grać w próżnię.
+ * konkretny, bliski cel ("jeszcze 140 do Pieca") zamiast grać w próżnię.
  * Reużywa klasy .ui-stack* (jak ChallengeDisplay) - zero nowego CSS.
  * Chowa się całkiem, gdy wszystko odblokowane (nie ma już "co dalej").
  */
@@ -367,7 +524,11 @@ class UnlockProgressDisplay extends UIComponent {
 
     const pct = next.threshold > 0 ? Math.min(100, (next.current / next.threshold) * 100) : 0;
     if (this.textEl) {
-      this.textEl.textContent = `${next.name} — jeszcze ${Math.ceil(next.remaining)}$`;
+      // innerHTML (nie textContent) - CREDIT_ICON_SVG wymaga renderowania
+      // jako znacznik, nie surowy tekst (ten sam powód co ChallengeDisplay
+      // wyżej). next.name to wewnętrzna nazwa strefy/maszyny, nie dane
+      // użytkownika, więc bezpieczne do wstawienia bez sanityzacji.
+      this.textEl.innerHTML = I18n.t('ui.nextUnlock.text', { name: next.name, amount: Math.ceil(next.remaining), icon: CREDIT_ICON_SVG });
     }
     if (this.fillEl) {
       this.fillEl.style.width = `${pct}%`;
@@ -408,12 +569,12 @@ class ShopPanel {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Sklep');
+    sheet.setAttribute('aria-label', I18n.t('shop.title'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">🛒</span> Sklep</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij sklep">✕</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${CART_ICON_SVG}</span> ${I18n.t('shop.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('shop.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -454,17 +615,27 @@ class ShopPanel {
     const catalog = this.economyManager.getShopCatalog();
     const money = this.economyManager.getMoney();
 
-    // Dwie sekcje: powtarzalne ulepszenia statystyk (maxLevel > 1) vs
-    // jednorazowe odblokowania - licencje na surowce ORAZ sprzęt ochronny
-    // do stref (maxLevel === 1) - to naprawdę dwie różne kategorie decyzji,
-    // więc rozdzielenie ich niesie informację, a nie tylko dekoruje listę.
-    // Kryterium to maxLevel, nie prefiks id - toxic_filter/radiation_suit
-    // nie zaczynają się od "stage_", ale są tą samą kategorią co licencje.
-    const upgrades = catalog.filter((item) => item.maxLevel > 1);
-    const licenses = catalog.filter((item) => item.maxLevel === 1);
+    // Drzewko zależności (Tomek: "Drzewko ulepszeń zamiast płaskiej listy -
+    // daje poczucie budowania buildu") - dwie gałęzie z prawdziwym
+    // `requires` między węzłami (patrz SHOP_UPGRADES w economy.js),
+    // renderowane jako pionowy łańcuch połączony linią (_buildTreeSection).
+    // Kolejność w `catalog` już odpowiada kolejności w drzewie (economy.js
+    // deklaruje węzły korzeń->liść), więc wystarczy samo filtrowanie po
+    // branch - bez dodatkowego sortowania.
+    const collectionTree = catalog.filter((item) => item.branch === 'collection');
+    const protectionTree = catalog.filter((item) => item.branch === 'protection');
 
-    // Trzecia sekcja: ulepszenia KONKRETNYCH maszyn (patrz
-    // MACHINE_UPGRADE_KINDS w economy.js). Osobno od dwóch powyżej, bo to
+    // Reszta (branch === null) zostaje płaską listą jak dawniej - to
+    // pojedyncze węzły bez żadnej realnej zależności w grze, więc rysowanie
+    // ich jako "drzewka" byłoby fikcją. Podział na dwie sekcje wg maxLevel
+    // (jak przed drzewkiem) niesie wciąż tę samą informację: powtarzalne
+    // ulepszenia statystyk vs jednorazowe odblokowania.
+    const standalone = catalog.filter((item) => !item.branch);
+    const upgrades = standalone.filter((item) => item.maxLevel > 1);
+    const licenses = standalone.filter((item) => item.maxLevel === 1);
+
+    // Kolejna sekcja: ulepszenia KONKRETNYCH maszyn (patrz
+    // MACHINE_UPGRADE_KINDS w economy.js). Osobno od powyższych, bo to
     // inna kategoria decyzji - nie "co mam", tylko "którą maszynę rozwijam".
     // getMachineUpgradeCatalog() zwraca tylko ODBLOKOWANE maszyny, więc na
     // starcie to jedna pozycja, a nie ściana ośmiu.
@@ -473,10 +644,12 @@ class ShopPanel {
       : [];
 
     this.bodyEl.innerHTML = '';
-    if (upgrades.length > 0) this.bodyEl.appendChild(this._buildSection('Ulepszenia', upgrades, money));
-    if (licenses.length > 0) this.bodyEl.appendChild(this._buildSection('Licencje i sprzęt', licenses, money));
+    if (collectionTree.length > 0) this.bodyEl.appendChild(this._buildTreeSection(I18n.t('shop.section.collection'), collectionTree, money));
+    if (protectionTree.length > 0) this.bodyEl.appendChild(this._buildTreeSection(I18n.t('shop.section.protection'), protectionTree, money));
+    if (upgrades.length > 0) this.bodyEl.appendChild(this._buildSection(I18n.t('shop.section.upgrades'), upgrades, money));
+    if (licenses.length > 0) this.bodyEl.appendChild(this._buildSection(I18n.t('shop.section.licenses'), licenses, money));
     if (machineUpgrades.length > 0) {
-      this.bodyEl.appendChild(this._buildSection('Maszyny', machineUpgrades, money));
+      this.bodyEl.appendChild(this._buildSection(I18n.t('shop.section.machines'), machineUpgrades, money));
     }
   }
 
@@ -497,12 +670,50 @@ class ShopPanel {
     return section;
   }
 
+  /** Jak _buildSection, ale węzły łączy pionowa linia (.ui-shop-tree__connector)
+   * zamiast zwykłego odstępu - realny wizualny "build path", nie tylko
+   * pogrupowana lista. Linia między węzłem i a i-1 jest podświetlona
+   * (--active), gdy węzeł i jest ODBLOKOWANY (czyli rodzic i-1 ma już co
+   * najmniej 1 poziom) - gracz widzi na pierwszy rzut oka, dokąd doszedł. */
+  _buildTreeSection(title, items, money) {
+    const section = document.createElement('div');
+    section.className = 'ui-shop-section';
+
+    const heading = document.createElement('h3');
+    heading.className = 'ui-shop-section__title';
+    heading.textContent = title;
+    section.appendChild(heading);
+
+    const tree = document.createElement('div');
+    tree.className = 'ui-shop-tree';
+    items.forEach((item, i) => {
+      if (i > 0) {
+        const connector = document.createElement('div');
+        connector.className = 'ui-shop-tree__connector';
+        if (!item.locked || item.maxed) connector.classList.add('ui-shop-tree__connector--active');
+        tree.appendChild(connector);
+      }
+      tree.appendChild(this._buildRow(item, money));
+    });
+    section.appendChild(tree);
+
+    return section;
+  }
+
   _buildRow(item, money) {
     const row = document.createElement('article');
     row.className = 'ui-shop-item';
     if (item.maxed) row.classList.add('ui-shop-item--maxed');
+    // Węzeł drzewka, którego rodzic jeszcze nie jest kupiony (patrz
+    // isUpgradeUnlocked w economy.js) - wyszarzony, bez przycisku kupna,
+    // pokazuje TYLKO czego wymaga (patrz kolumna akcji niżej). WYJĄTEK:
+    // `maxed` (w tym "masz to już z modułu statku") ma pierwszeństwo -
+    // toxic_filter/radiation_suit mogą być dane przez perk hazard_immunity
+    // ZANIM gracz kupi headlamp/toxic_filter w drzewku, więc "zablokowane"
+    // byłoby tu po prostu fałszywe.
+    if (item.locked && !item.maxed) row.classList.add('ui-shop-item--locked');
 
-    const canBuy = !item.maxed && item.cost !== null && money >= item.cost;
+    const canBuy = !item.locked && !item.maxed && item.cost !== null && money >= item.cost;
     if (canBuy) row.classList.add('ui-shop-item--afford');
 
     const progressHtml = item.maxLevel > 1
@@ -516,7 +727,7 @@ class ShopPanel {
     // suchy "MAX" (gracz nigdy tego nie kupił, więc "MAX" byłby mylący) i
     // zamiast po cichu sprzedawać duplikat, jak działo się wcześniej.
     const descText = item.fromShip
-      ? 'Masz to już dzięki modułowi statku'
+      ? I18n.t('ui.gearAlreadyOwned')
       : item.description;
 
     row.innerHTML = `
@@ -533,14 +744,29 @@ class ShopPanel {
     if (item.maxed) {
       const badge = document.createElement('span');
       badge.className = 'ui-shop-item__maxed';
-      badge.textContent = item.fromShip ? '🚀 ZE STATKU' : 'MAX';
+      // innerHTML (nie textContent) - jedyny sposób, żeby ROCKET_ICON_SVG
+      // wyrenderował się jako ikona, a nie jako surowy tekst znaczników.
+      badge.innerHTML = item.fromShip ? `${ROCKET_ICON_SVG} ${I18n.t('ui.badge.fromShip')}` : I18n.t('ui.badge.max');
       actionEl.appendChild(badge);
+    } else if (item.locked) {
+      // Węzeł drzewka bez spełnionego `requires` - zamiast ceny/przycisku
+      // pokazujemy WPROST czego brakuje, żeby gracz nie zgadywał, czemu
+      // "Kup" zniknęło. Sprawdzane PO `maxed` wyżej - patrz komentarz przy
+      // dodawaniu klasy --locked, ten sam powód (hazard_immunity).
+      const hint = document.createElement('span');
+      hint.className = 'ui-shop-item__requires';
+      hint.innerHTML = `${LOCK_ICON_SVG} ${I18n.t('ui.requires.label', { name: item.requiresName })}`;
+      actionEl.appendChild(hint);
     } else {
+      // Kłódka PRZED ceną, TYLKO gdy nie stać (denied) - dźwięk odmowy
+      // (UIButton `denied`, patrz audio.js 'error') mówi "nie" dopiero PO
+      // kliknięciu; kłódka daje ten sam sygnał OD RAZU, bez tapnięcia.
+      const costLabel = canBuy ? `${item.cost}${CREDIT_ICON_SVG}` : `${LOCK_ICON_SVG} ${item.cost}${CREDIT_ICON_SVG}`;
       const btn = new UIButton({
-        label: `$${item.cost}`,
+        label: costLabel,
         variant: canBuy ? 'accent' : 'ghost',
-        disabled: !canBuy,
-        title: canBuy ? 'Kup ulepszenie' : 'Za mało pieniędzy',
+        denied: !canBuy,
+        title: canBuy ? I18n.t('ui.buyUpgrade.title') : I18n.t('ui.notEnoughMoney.title'),
         onClick: () => {
           // Ulepszenia maszyn mają WŁASNĄ metodę zakupu (kupuje się je per
           // maszyna, patrz buyMachineUpgrade w economy.js) - rozpoznajemy je
@@ -557,7 +783,9 @@ class ShopPanel {
       actionEl.appendChild(btn.mount());
     }
 
-    row.dataset.tooltip = `${item.name}: ${item.description}`;
+    row.dataset.tooltip = (item.locked && !item.maxed)
+      ? `${item.name}: ${I18n.t('ui.requires.label', { name: item.requiresName })}`
+      : `${item.name}: ${item.description}`;
     return row;
   }
 
@@ -593,7 +821,7 @@ class ShopPanel {
 // Ikony SVG zamiast emoji - ten sam duch co reszta nowych elementów UI w tej
 // turze (żaden nowy motyw emoji, skoro reszta gry świadomie z nich rezygnuje).
 const OFFLINE_MOON_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#FFD54F"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/></svg>';
-const OFFLINE_PLAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="#81D4FA"><path d="M8 5v14l11-7z"/></svg>';
+const OFFLINE_PLAY_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 
 /**
  * Modal powitalny "byłeś offline X" (Faza 5). Reużywa te same klasy CSS co
@@ -636,12 +864,12 @@ class OfflineRewardModal {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Witaj z powrotem');
+    sheet.setAttribute('aria-label', I18n.t('ui.offline.title'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">${OFFLINE_MOON_ICON_SVG}</span> Witaj z powrotem</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij">✕</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${OFFLINE_MOON_ICON_SVG}</span> ${I18n.t('ui.offline.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('ui.offline.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -690,28 +918,28 @@ class OfflineRewardModal {
     if (this._claimed) {
       card.innerHTML = `
         <div class="ui-shop-item__info">
-          <span class="ui-shop-item__name">Odebrano ✓</span>
-          <span class="ui-shop-item__desc">Miłej gry!</span>
+          <span class="ui-shop-item__name">${I18n.t('ui.offline.claimedName', { icon: CHECK_ICON_SVG })}</span>
+          <span class="ui-shop-item__desc">${I18n.t('ui.offline.claimedDesc')}</span>
         </div>
       `;
     } else {
       card.innerHTML = `
         <div class="ui-shop-item__info">
-          <span class="ui-shop-item__name">Byłeś offline ${this._formatDuration(this.data.elapsedSeconds)}</span>
-          <span class="ui-shop-item__desc">Twoja ekonomia pracowała w tle. Zarobek: <strong style="color:#FFD700">+${this.data.reward}$</strong></span>
+          <span class="ui-shop-item__name">${I18n.t('ui.offline.awayFor', { duration: this._formatDuration(this.data.elapsedSeconds) })}</span>
+          <span class="ui-shop-item__desc">${I18n.t('ui.offlineReward.desc', { amount: `<strong style="color:#FFD700">+${this.data.reward}${CREDIT_ICON_SVG}</strong>` })}</span>
         </div>
       `;
       const actions = document.createElement('div');
       actions.style.cssText = 'display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;';
 
       const claimBtn = new UIButton({
-        label: `Odbierz +${this.data.reward}$`,
+        label: I18n.t('ui.offlineReward.claim', { amount: this.data.reward, icon: CREDIT_ICON_SVG }),
         variant: 'accent',
         onClick: () => this._claim(false)
       });
       this._adBtn = new UIButton({
         icon: OFFLINE_PLAY_ICON_SVG,
-        label: `x2 (+${this.data.reward * 2}$)`,
+        label: I18n.t('ui.offline.doubleLabel', { amount: this.data.reward * 2, icon: CREDIT_ICON_SVG }),
         variant: 'ghost',
         onClick: () => this._watchAdAndClaim()
       });
@@ -757,7 +985,7 @@ class OfflineRewardModal {
     const btn = this._adBtn;
     if (btn) {
       btn.setDisabled(true);
-      btn.setLabel('Ładowanie…');
+      btn.setLabel(I18n.t('ui.loading'));
     }
     window.adManager.showRewarded((gotReward) => {
       if (gotReward) {
@@ -768,7 +996,7 @@ class OfflineRewardModal {
       // - przywracamy przycisk do normalnego stanu, zeby gracz mogl sprobowac ponownie.
       if (btn) {
         btn.setDisabled(false);
-        btn.setLabel(`x2 (+${this.data.reward * 2}$)`);
+        btn.setLabel(I18n.t('ui.offline.doubleLabel', { amount: this.data.reward * 2, icon: CREDIT_ICON_SVG }));
       }
     });
   }
@@ -810,12 +1038,12 @@ class PrestigePanel {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Statek');
+    sheet.setAttribute('aria-label', I18n.t('nav.ship'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">🚀</span> Statek</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij">✕</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${ROCKET_ICON_SVG}</span> ${I18n.t('nav.ship')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('ui.offline.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -853,11 +1081,13 @@ class PrestigePanel {
     if (!this.bodyEl || !this.economyManager) return;
 
     this.bodyEl.innerHTML = '';
+    const modifierCard = this._buildModifierCard();
+    if (modifierCard) this.bodyEl.appendChild(modifierCard);
     this.bodyEl.appendChild(this._buildPrestigeCard());
 
     const catalog = this.economyManager.getCoreShopCatalog();
     if (catalog.length > 0) {
-      const title = `⚡ Trwałe ulepszenia — masz ${this.economyManager.cores}`;
+      const title = I18n.t('ui.prestige.title', { icon: CORE_ICON_SVG, cores: this.economyManager.cores });
       this.bodyEl.appendChild(this._buildSection(title, catalog));
     }
   }
@@ -885,22 +1115,21 @@ class PrestigePanel {
       const preview = eco.previewPrestigeCores();
       card.innerHTML = `
         <div class="ui-shop-item__info">
-          <span class="ui-shop-item__name">🌌 Gotowy do odlotu!</span>
-          <span class="ui-shop-item__desc">Odlot resetuje bieżący przebieg (pieniądze, ulepszenia, plecak, postęp statku) w zamian za ⚡ ${preview} Rdzeni na zawsze.</span>
+          <span class="ui-shop-item__name">${I18n.t('ui.prestige.ready.name', { icon: PLANET_ICON_SVG })}</span>
+          <span class="ui-shop-item__desc">${I18n.t('ui.prestige.ready.desc', { icon: CORE_ICON_SVG, cores: preview })}</span>
         </div>
       `;
       const actionWrap = document.createElement('div');
       actionWrap.style.marginTop = '10px';
       const btn = new UIButton({
-        label: `🚀 Leć dalej (+⚡${preview})`,
+        icon: ROCKET_ICON_SVG,
+        label: I18n.t('ui.prestige.launch', { cores: preview }),
         variant: 'accent',
         onClick: () => {
           // Nieodwracalne i niszczy bieżący postęp - potwierdzenie zamiast
           // pozwalać jednemu przypadkowemu tapnięciu skasować cały przebieg
           // (to samo ryzyko, o które Tom pytał przy pozycji statku).
-          const ok = window.confirm(
-            `Na pewno lecisz dalej? Stracisz bieżący przebieg (pieniądze, ulepszenia, plecak) w zamian za ⚡ ${eco.previewPrestigeCores()} Rdzeni.`
-          );
+          const ok = window.confirm(I18n.t('ui.prestige.confirm', { cores: eco.previewPrestigeCores() }));
           if (!ok) return;
           const result = eco.prestige();
           if (result && typeof this.onAction === 'function') this.onAction('prestige', result);
@@ -911,12 +1140,41 @@ class PrestigePanel {
     } else {
       card.innerHTML = `
         <div class="ui-shop-item__info">
-          <span class="ui-shop-item__name">🛠️ Statek w naprawie</span>
-          <span class="ui-shop-item__desc">Ukończ wszystkie moduły, żeby odlecieć na nową planetę. Postęp: ${completed}/${total}.</span>
+          <span class="ui-shop-item__name">${WRENCH_ICON_SVG} ${I18n.t('ui.prestige.shipRepair')}</span>
+          <span class="ui-shop-item__desc">${I18n.t('ui.prestige.notReady.desc', { done: completed, total })}</span>
         </div>
       `;
     }
 
+    wrap.appendChild(card);
+    return wrap;
+  }
+
+  /**
+   * Karta aktywnego modyfikatora BIEŻĄCEJ planety (patrz PLANET_MODIFIERS w
+   * economy.js) - null na pierwszej planecie (zanim gracz choć raz poleci
+   * dalej), więc refresh() wtedy pomija tę kartę zamiast pokazywać pustkę.
+   * Czysto informacyjna (bez przycisku) - modyfikator losuje się sam w
+   * prestige(), gracz go tylko widzi.
+   */
+  _buildModifierCard() {
+    const mod = this.economyManager.getActiveModifier
+      ? this.economyManager.getActiveModifier()
+      : null;
+    if (!mod) return null;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ui-shop-section';
+
+    const card = document.createElement('div');
+    card.className = 'ui-shop-item';
+    card.style.gridTemplateColumns = '1fr';
+    card.innerHTML = `
+      <div class="ui-shop-item__info">
+        <span class="ui-shop-item__name">${mod.icon} Modyfikator planety: ${mod.name}</span>
+        <span class="ui-shop-item__desc">${mod.desc}</span>
+      </div>
+    `;
     wrap.appendChild(card);
     return wrap;
   }
@@ -927,7 +1185,11 @@ class PrestigePanel {
 
     const heading = document.createElement('h3');
     heading.className = 'ui-shop-section__title';
-    heading.textContent = title;
+    // innerHTML (nie textContent, w przeciwieństwie do ShopPanel/SettingsPanel
+    // ._buildSection) - jedyny wołający (refresh() wyżej) osadza tu
+    // CORE_ICON_SVG w środku stringu, więc surowy tekst pokazałby znaczniki
+    // zamiast ikony. Bezpieczne - jedyny caller to stały, deweloperski string.
+    heading.innerHTML = title;
     section.appendChild(heading);
 
     const list = document.createElement('div');
@@ -970,14 +1232,16 @@ class PrestigePanel {
     if (item.maxed) {
       const badge = document.createElement('span');
       badge.className = 'ui-shop-item__maxed';
-      badge.textContent = 'MAX';
+      badge.textContent = I18n.t('ui.badge.max');
       actionEl.appendChild(badge);
     } else {
+      // Kłódka gdy nie stać - patrz identyczny komentarz w ShopPanel._buildRow.
+      const costLabel = canBuy ? `${CORE_ICON_SVG}${item.cost}` : `${LOCK_ICON_SVG} ${CORE_ICON_SVG}${item.cost}`;
       const btn = new UIButton({
-        label: `⚡${item.cost}`,
+        label: costLabel,
         variant: canBuy ? 'accent' : 'ghost',
-        disabled: !canBuy,
-        title: canBuy ? 'Kup trwałe ulepszenie' : 'Za mało Rdzeni',
+        denied: !canBuy,
+        title: canBuy ? I18n.t('ui.buyCoreUpgrade.title') : I18n.t('ui.notEnoughCores.title'),
         onClick: () => {
           if (this.economyManager.buyCoreUpgrade(item.id)) {
             this.refresh();
@@ -1016,13 +1280,31 @@ class PrestigePanel {
 // wszystkie inne duplikowane wartości w projekcie.
 const SETTINGS_APP_VERSION = '1.0.0';
 
+// Ile ms "ceremonia" prestiżu zostaje na ekranie zanim sama zniknie (patrz
+// UIManager._playPrestigeCeremony) - gracz może ją też ściąć wcześniej
+// dotknięciem gdziekolwiek na overlayu.
+const PRESTIGE_CEREMONY_DURATION_MS = 3800;
+// Tomek: "daj jakąś fajną grafikę planety, mamy paczki przecież użyć tego" -
+// 10 gotowych, w pełni wyrenderowanych kul (Kenney Planets, CC0) zamiast
+// samego tekstu/ikonki. Wybierana DETERMINISTYCZNIE z numeru planety
+// (planetNumber % 10), więc ta sama planeta w numeracji zawsze wygląda tak
+// samo między przebiegami, a kolejne odloty w jednym przebiegu widzą inny
+// obrazek (naturalna wizualna odmiana bez losowości do zapamiętania w save).
+const PRESTIGE_CEREMONY_PLANET_COUNT = 10;
+
 class SettingsPanel {
-  /** onChange - wołane po KAŻDEJ akcji w panelu (na razie tylko dźwięk), żeby
-   * UIManager mógł zsynchronizować ikonę osobnego przycisku Wycisz w fabRow
-   * bez tego, żeby SettingsPanel musiał znać UIManager wprost. */
-  constructor(onChange, onOpenAchievements) {
+  /** onChange - wołane po KAŻDEJ akcji w panelu (na razie tylko dźwięk) -
+   * zostaje jako ogólny hak na przyszłość, choć obecnie żaden wywołujący go
+   * nie potrzebuje (dawniej synchronizował ikonę osobnego przycisku Wycisz
+   * w fabRow - ten przycisk usunięty, patrz komentarz w UIManager._render:
+   * dźwięk włącza/wyłącza się TYLKO stąd, z Menu, nie z ekranu gry). */
+  constructor(onChange, onOpenAchievements, onOpenSkins, onOpenDecorations, onOpenStats, onOpenLeaderboard) {
     this.onChange = onChange;
     this.onOpenAchievements = onOpenAchievements;
+    this.onOpenSkins = onOpenSkins;
+    this.onOpenDecorations = onOpenDecorations;
+    this.onOpenStats = onOpenStats;
+    this.onOpenLeaderboard = onOpenLeaderboard;
     this.el = null;
     this.bodyEl = null;
     this.isOpen = false;
@@ -1030,6 +1312,23 @@ class SettingsPanel {
     this._onKeyDown = (e) => {
       if (e.key === 'Escape' && this.isOpen) this.close();
     };
+
+    // Logowanie/synchronizacja w chmurze (cloudsave.js) jest ASYNCHRONICZNA
+    // (round-trip do Google) - w przeciwieństwie do reszty wierszy w tym
+    // panelu (Dźwięk itp., rozstrzygane od razu) panel musi się odświeżyć
+    // SAM, gdy wynik dotrze, jeśli akurat jest otwarty w tym momencie.
+    this._onCloudSaveStateChanged = () => {
+      if (this.isOpen) this.refresh();
+    };
+    Bus.subscribe(Events.CLOUD_SAVE_STATE_CHANGED, this._onCloudSaveStateChanged);
+
+    // Sprawdzenie integralności (integrity.js) jest RÓWNIEŻ asynchroniczne
+    // (round-trip przez plugin + własny backend) - ten sam powód/wzorzec co
+    // _onCloudSaveStateChanged wyżej.
+    this._onIntegrityStateChanged = () => {
+      if (this.isOpen) this.refresh();
+    };
+    Bus.subscribe(Events.INTEGRITY_STATE_CHANGED, this._onIntegrityStateChanged);
   }
 
   mount(parent) {
@@ -1050,12 +1349,12 @@ class SettingsPanel {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Menu');
+    sheet.setAttribute('aria-label', I18n.t('settings.title'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">⚙️</span> Menu</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij menu">✕</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${GEAR_ICON_SVG}</span> ${I18n.t('settings.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('settings.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -1092,10 +1391,10 @@ class SettingsPanel {
   refresh() {
     if (!this.bodyEl) return;
     this.bodyEl.innerHTML = '';
-    this.bodyEl.appendChild(this._buildSection('Postęp', [this._buildAchievementsRow()]));
-    this.bodyEl.appendChild(this._buildSection('Preferencje', [this._buildSoundRow(), this._buildTutorialRow()]));
-    this.bodyEl.appendChild(this._buildSection('Dane', [this._buildResetRow()]));
-    this.bodyEl.appendChild(this._buildSection('O grze', [this._buildAboutRow()]));
+    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.progress'), [this._buildAchievementsRow(), this._buildSkinsRow(), this._buildDecorationsRow(), this._buildStatsRow(), this._buildLeaderboardRow()]));
+    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.preferences'), [this._buildSoundRow(), this._buildMusicVolumeRow(), this._buildLanguageRow(), this._buildTutorialRow()]));
+    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.data'), [this._buildCloudSaveRow(), this._buildIntegrityRow(), this._buildExportRow(), this._buildImportRow(), this._buildResetRow()]));
+    this.bodyEl.appendChild(this._buildSection(I18n.t('settings.section.about'), [this._buildAboutRow()]));
   }
 
   /** Wiersz "Osiągnięcia" - pokazuje ile zdobyto (X/Y) i otwiera osobny
@@ -1105,15 +1404,79 @@ class SettingsPanel {
     const eco = window.economyManager;
     const catalog = (eco && typeof eco.getAchievementsCatalog === 'function') ? eco.getAchievementsCatalog() : [];
     const unlocked = catalog.filter((a) => a.unlocked).length;
+    const bonusPct = (eco && typeof eco.getAchievementIncomeBonusPercent === 'function') ? eco.getAchievementIncomeBonusPercent() : 0;
     const btn = new UIButton({
-      label: 'Pokaż',
+      label: I18n.t('common.show'),
       variant: 'ghost',
       onClick: () => {
         this.close();
         if (typeof this.onOpenAchievements === 'function') this.onOpenAchievements();
       }
     });
-    return this._buildRow('🏆', 'Osiągnięcia', `Zdobyte: ${unlocked}/${catalog.length}`, btn.mount());
+    return this._buildRow(TROPHY_ICON_SVG, I18n.t('settings.achievements.name'), I18n.t('settings.achievements.desc', { unlocked, total: catalog.length, bonus: bonusPct }), btn.mount());
+  }
+
+  /** Wiersz "Skiny" - ten sam wzorzec co Osiągnięcia wyżej, otwiera osobny
+   * panel (SkinsPanel, patrz onOpenSkins w UIManager). */
+  _buildSkinsRow() {
+    const eco = window.economyManager;
+    const catalog = (eco && typeof eco.getSkinCatalog === 'function') ? eco.getSkinCatalog() : [];
+    const unlocked = catalog.filter((s) => s.unlocked).length;
+    const btn = new UIButton({
+      label: I18n.t('common.show'),
+      variant: 'ghost',
+      onClick: () => {
+        this.close();
+        if (typeof this.onOpenSkins === 'function') this.onOpenSkins();
+      }
+    });
+    return this._buildRow(SHIRT_ICON_SVG, I18n.t('settings.skins.name'), I18n.t('settings.skins.desc', { unlocked, total: catalog.length }), btn.mount());
+  }
+
+  /** Wiersz "Dekoracje" - ten sam wzorzec co Skiny wyżej, otwiera osobny
+   * panel (DecorationsPanel, patrz onOpenDecorations w UIManager). */
+  _buildDecorationsRow() {
+    const eco = window.economyManager;
+    const catalog = (eco && typeof eco.getDecorationsCatalog === 'function') ? eco.getDecorationsCatalog() : [];
+    const owned = catalog.filter((d) => d.owned).length;
+    const btn = new UIButton({
+      label: I18n.t('common.show'),
+      variant: 'ghost',
+      onClick: () => {
+        this.close();
+        if (typeof this.onOpenDecorations === 'function') this.onOpenDecorations();
+      }
+    });
+    return this._buildRow(DECOR_ICON_SVG, I18n.t('settings.decorations.name'), I18n.t('settings.decorations.desc', { owned, total: catalog.length }), btn.mount());
+  }
+
+  /** Wiersz "Statystyki" - ten sam wzorzec co Osiągnięcia/Skiny wyżej,
+   * otwiera osobny panel (StatsPanel, patrz onOpenStats w UIManager). */
+  _buildStatsRow() {
+    const btn = new UIButton({
+      label: I18n.t('common.show'),
+      variant: 'ghost',
+      onClick: () => {
+        this.close();
+        if (typeof this.onOpenStats === 'function') this.onOpenStats();
+      }
+    });
+    return this._buildRow(CHART_ICON_SVG, I18n.t('settings.stats.name'), I18n.t('settings.stats.desc'), btn.mount());
+  }
+
+  /** Wiersz "Tablica wyników" - ten sam wzorzec co Osiągnięcia/Skiny/
+   * Statystyki wyżej, otwiera osobny panel (LeaderboardPanel, patrz
+   * onOpenLeaderboard w UIManager). */
+  _buildLeaderboardRow() {
+    const btn = new UIButton({
+      label: I18n.t('common.show'),
+      variant: 'ghost',
+      onClick: () => {
+        this.close();
+        if (typeof this.onOpenLeaderboard === 'function') this.onOpenLeaderboard();
+      }
+    });
+    return this._buildRow(MEDAL_ICON_SVG, I18n.t('settings.leaderboard.name'), I18n.t('settings.leaderboard.desc'), btn.mount());
   }
 
   /** Ten sam trzykolumnowy układ (ikona/opis/akcja) co ShopPanel._buildRow,
@@ -1153,8 +1516,9 @@ class SettingsPanel {
   _buildSoundRow() {
     const muted = !!(window.audioManager && window.audioManager.muted);
     const btn = new UIButton({
-      label: muted ? 'Włącz' : 'Wyłącz',
+      label: muted ? I18n.t('common.on') : I18n.t('common.off'),
       variant: 'ghost',
+      sound: 'ui_switch',
       onClick: () => {
         if (!window.audioManager) return;
         window.audioManager.toggleMute();
@@ -1162,7 +1526,175 @@ class SettingsPanel {
         if (typeof this.onChange === 'function') this.onChange();
       }
     });
-    return this._buildRow('🔊', 'Dźwięk', 'Włącz lub wycisz efekty dźwiękowe gry', btn.mount());
+    return this._buildRow(SPEAKER_ICON_SVG, I18n.t('settings.sound.name'), I18n.t('settings.sound.desc'), btn.mount());
+  }
+
+  /**
+   * Suwak głośności muzyki (Tomek: "przygotuj już suwak głośności i pliki,
+   * a muzykę dodam później") - steruje window.audioManager.musicVolume
+   * (patrz setMusicVolume w audio.js), NIEZALEŻNIE od przełącznika Dźwięk
+   * wyżej (ten wycisza WSZYSTKO - efekty i muzykę razem; ten suwak tylko
+   * WZGLĘDNĄ głośność samej muzyki, gdy nie jest wyciszona). Własny layout
+   * zamiast _buildRow - suwak potrzebuje pełnej szerokości wiersza, nie
+   * wąskiej kolumny __action (patrz .ui-volume-slider w style.css, grid-
+   * column: 1 / -1, dokłada się jako CZWARTY element do tej samej siatki).
+   */
+  _buildMusicVolumeRow() {
+    const audio = window.audioManager;
+    const initial = audio ? Math.round(audio.musicVolume * 100) : 100;
+
+    const row = document.createElement('article');
+    row.className = 'ui-shop-item ui-shop-item--slider';
+    row.innerHTML = `
+      <div class="ui-shop-item__icon" aria-hidden="true">${SPEAKER_ICON_SVG}</div>
+      <div class="ui-shop-item__info">
+        <span class="ui-shop-item__name">${I18n.t('settings.musicVolume.name')}</span>
+        <span class="ui-shop-item__desc">${I18n.t('settings.musicVolume.desc')}</span>
+      </div>
+      <div class="ui-shop-item__action">
+        <span class="ui-volume-row__value">${initial}%</span>
+      </div>
+      <input type="range" class="ui-volume-slider" min="0" max="100" step="5" value="${initial}" aria-label="${I18n.t('settings.musicVolume.label')}">
+    `;
+
+    const valueEl = row.querySelector('.ui-volume-row__value');
+    const slider = row.querySelector('.ui-volume-slider');
+    slider.addEventListener('input', () => {
+      const pct = Number(slider.value);
+      valueEl.textContent = `${pct}%`;
+      if (window.audioManager) window.audioManager.setMusicVolume(pct / 100);
+    });
+    slider.addEventListener('change', () => {
+      if (typeof this.onChange === 'function') this.onChange();
+    });
+
+    return row;
+  }
+
+  /**
+   * Przełącznik języka (Tomek: "zróbmy przełącznik, żeby dało się włączyć
+   * cały język angielski") - ten sam wzorzec co Dźwięk wyżej: jeden
+   * przycisk, którego etykieta to JĘZYK DOCELOWY (nie bieżący), kliknięcie
+   * przełącza na niego. I18n.setLang() sama robi location.reload() (patrz
+   * i18n.js) - reszta panelu i tak nie zdąży się odświeżyć.
+   */
+  _buildLanguageRow() {
+    const current = window.I18n ? window.I18n.lang : 'pl';
+    const other = current === 'pl' ? 'en' : 'pl';
+    const btn = new UIButton({
+      label: I18n.t('settings.language.' + other),
+      variant: 'ghost',
+      sound: 'ui_switch',
+      onClick: () => {
+        if (window.I18n) window.I18n.setLang(other);
+      }
+    });
+    const desc = `${I18n.t('settings.language.desc')} — ${I18n.t('settings.language.' + current)}`;
+    return this._buildRow(LANGUAGE_ICON_SVG, I18n.t('settings.language.name'), desc, btn.mount());
+  }
+
+  /**
+   * Wiersz "Chmura" (Tomek: "cloud save... bez tego zgubiony telefon =
+   * zgubiony postęp mimo eksportu") - trzy stany: niedostępne (zwykła
+   * przeglądarka/build bez pluginu), dostępne-niezalogowane, zalogowane.
+   * Całą logikę (porównanie timestampów, upload/download, rozdzielczość
+   * konfliktu) robi cloudsave.js - ten wiersz tylko odpytuje jego stan i
+   * woła signIn()/syncNow(), a odświeża się sam przez Bus (patrz
+   * _onCloudSaveStateChanged w konstruktorze) gdy async wynik dotrze.
+   */
+  _buildCloudSaveRow() {
+    const csm = window.cloudSaveManager;
+    const available = csm && csm.available();
+
+    if (!available) {
+      const btn = new UIButton({ label: I18n.t('ui.cloudSave.unavailable.button'), variant: 'ghost', disabled: true });
+      return this._buildRow(CLOUD_ICON_SVG, I18n.t('ui.cloudSave.name'), I18n.t('ui.cloudSave.unavailable.desc'), btn.mount());
+    }
+
+    const syncing = csm.status === 'syncing';
+
+    if (!csm.signedIn) {
+      const btn = new UIButton({
+        label: syncing ? I18n.t('ui.cloudSave.syncing.button') : I18n.t('ui.cloudSave.signIn.button'),
+        variant: 'ghost',
+        disabled: syncing,
+        onClick: () => {
+          csm.signIn();
+          this.refresh();
+        }
+      });
+      const desc = csm.status === 'error' ? I18n.t('ui.cloudSave.error.desc') : I18n.t('ui.cloudSave.signedOut.desc');
+      return this._buildRow(CLOUD_ICON_SVG, I18n.t('ui.cloudSave.name'), desc, btn.mount());
+    }
+
+    const syncStatus = syncing
+      ? I18n.t('ui.cloudSave.syncing.button')
+      : csm.lastSyncAt
+        ? this._formatCloudSyncTime(csm.lastSyncAt)
+        : I18n.t('ui.cloudSave.lastSync.never');
+    const desc = I18n.t('ui.cloudSave.signedIn.desc', { player: csm.playerName || '?', syncStatus });
+    const btn = new UIButton({
+      label: syncing ? I18n.t('ui.cloudSave.syncing.button') : I18n.t('ui.cloudSave.sync.button'),
+      variant: 'ghost',
+      disabled: syncing,
+      onClick: () => {
+        csm.syncNow();
+        this.refresh();
+      }
+    });
+    return this._buildRow(CLOUD_ICON_SVG, I18n.t('ui.cloudSave.name'), desc, btn.mount());
+  }
+
+  /** "zsynchronizowano przed chwilą/12min/2h 5min" - ten sam styl co
+   * OfflineRewardModal._formatDuration, tylko zwraca CAŁY przetłumaczony
+   * string (nie samą liczbę), bo wywołujący wyżej wstawia go już gotowy do
+   * ui.cloudSave.signedIn.desc. */
+  _formatCloudSyncTime(ts) {
+    const diffMin = Math.floor((Date.now() - ts) / 60000);
+    if (diffMin < 1) return I18n.t('ui.cloudSave.lastSync.justNow');
+    const h = Math.floor(diffMin / 60);
+    const m = diffMin % 60;
+    const timeStr = h > 0 ? `${h}h ${m}min` : `${m}min`;
+    return I18n.t('ui.cloudSave.lastSync.time', { time: timeStr });
+  }
+
+  /**
+   * Wiersz "Integralność" (Tomek: "bierz się za Play [Integrity]" -> "pełna
+   * integracja") - czysto INFORMACYJNY, w przeciwieństwie do wiersza Chmura
+   * NIE ma akcji, która cokolwiek zmienia w rozgrywce (patrz komentarz u
+   * góry integrity.js o zero-wpływie na rozgrywkę) - przycisk to tylko
+   * ręczne "sprawdź ponownie", przydatne np. po zainstalowaniu apki ze
+   * sklepu na nowo. 'idle' (stan PRZED pierwszym checkNow() z main.js,
+   * teoretycznie widoczny tylko na ułamek klatki) traktowany jak
+   * 'checking' - gracz nie powinien nigdy zobaczyć pustego/dziwnego stanu.
+   */
+  _buildIntegrityRow() {
+    const im = window.integrityManager;
+    const available = im && im.available();
+
+    if (!available) {
+      const btn = new UIButton({ label: I18n.t('ui.integrity.recheck.button'), variant: 'ghost', disabled: true });
+      return this._buildRow(SHIELD_ICON_SVG, I18n.t('ui.integrity.name'), I18n.t('ui.integrity.unavailable.desc'), btn.mount());
+    }
+
+    const checking = im.status === 'checking' || im.status === 'idle';
+    const btn = new UIButton({
+      label: checking ? I18n.t('ui.integrity.checking.button') : I18n.t('ui.integrity.recheck.button'),
+      variant: 'ghost',
+      disabled: checking,
+      onClick: () => {
+        im.checkNow();
+        this.refresh();
+      }
+    });
+
+    let desc;
+    if (checking) desc = I18n.t('ui.integrity.checking.desc');
+    else if (im.status === 'verified') desc = I18n.t('ui.integrity.verified.desc');
+    else if (im.status === 'warning') desc = I18n.t('ui.integrity.warning.desc', { verdict: im.verdictLabel || '?' });
+    else desc = I18n.t('ui.integrity.error.desc');
+
+    return this._buildRow(SHIELD_ICON_SVG, I18n.t('ui.integrity.name'), desc, btn.mount());
   }
 
   /** Uruchamia samouczek od pierwszego kroku - jeśli poprzednia instancja
@@ -1171,7 +1703,7 @@ class SettingsPanel {
    * żeby nie zostały dwie subskrypcje Bus naraz. */
   _buildTutorialRow() {
     const btn = new UIButton({
-      label: 'Pokaż',
+      label: I18n.t('common.show'),
       variant: 'ghost',
       onClick: () => {
         const eco = window.economyManager;
@@ -1186,7 +1718,90 @@ class SettingsPanel {
         this.close();
       }
     });
-    return this._buildRow('📘', 'Samouczek', 'Pokaż od nowa krótkie wprowadzenie do gry', btn.mount());
+    return this._buildRow(BOOK_ICON_SVG, I18n.t('settings.tutorial.name'), I18n.t('settings.tutorial.desc'), btn.mount());
+  }
+
+  /**
+   * Eksportuje bieżący zapis jako pobierany plik .json (Tomek: "eksport/
+   * import zapisu jako plik - backup poza localStorage, buduje zaufanie że
+   * postęp nie zniknie") - czyszczenie danych przeglądarki, zmiana telefonu
+   * czy odinstalowanie apki nie kasuje postępu, jeśli gracz wcześniej
+   * ściągnął ten plik. SaveManager.exportSaveJSON() (save.js) flushuje
+   * świeży stan PRZED odczytem, więc plik zawsze zgadza się z tym, co
+   * gracz widzi na ekranie w chwili kliknięcia.
+   */
+  _buildExportRow() {
+    const btn = new UIButton({
+      label: I18n.t('settings.export.button'),
+      variant: 'ghost',
+      onClick: () => {
+        if (!window.saveManager) return;
+        const json = window.saveManager.exportSaveJSON();
+        if (!json) {
+          window.alert(I18n.t('settings.export.error'));
+          return;
+        }
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `eco-mart-zapis-${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+    });
+    return this._buildRow(EXPORT_ICON_SVG, I18n.t('settings.export.name'), I18n.t('settings.export.desc'), btn.mount());
+  }
+
+  /**
+   * Importuje zapis z pliku wybranego przez gracza - NADPISUJE bieżący
+   * postęp, to samo ryzyko co "Reset postępu" niżej, więc to samo
+   * potwierdzenie (window.confirm) PRZED w ogóle otwarciem okna wyboru
+   * pliku, nie dopiero po. Ukryty <input type="file"> tworzony RAZ i
+   * cache'owany (natywnych file inputów nie da się ostylować pod resztę
+   * UI, stąd zwykły UIButton jako widoczny wyzwalacz, który go "klika"
+   * programowo) - dopiero PO potwierdzeniu, żeby anulowanie w
+   * window.confirm nie otwierało systemowego pickera na darmo.
+   */
+  _buildImportRow() {
+    if (!this._importFileInput) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json,.json';
+      input.style.display = 'none';
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        input.value = ''; // pozwala wybrać TEN SAM plik drugi raz z rzędu
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const ok = window.saveManager && window.saveManager.importSaveJSON(String(reader.result));
+          if (!ok) {
+            window.alert(I18n.t('settings.import.invalid'));
+            return;
+          }
+          location.reload();
+        };
+        reader.onerror = () => window.alert(I18n.t('settings.import.readError'));
+        reader.readAsText(file);
+      });
+      document.body.appendChild(input);
+      this._importFileInput = input;
+    }
+
+    const btn = new UIButton({
+      label: I18n.t('settings.import.button'),
+      variant: 'ghost',
+      onClick: () => {
+        const ok = window.confirm(I18n.t('settings.import.confirm'));
+        if (!ok) return;
+        this._importFileInput.click();
+      }
+    });
+    return this._buildRow(IMPORT_ICON_SVG, I18n.t('settings.import.name'), I18n.t('settings.import.desc'), btn.mount());
   }
 
   /** Ten sam wzorzec potwierdzenia (window.confirm) co nieodwracalny "Leć
@@ -1195,12 +1810,10 @@ class SettingsPanel {
    * bez konsoli. */
   _buildResetRow() {
     const btn = new UIButton({
-      label: 'Resetuj',
+      label: I18n.t('settings.reset.button'),
       variant: 'ghost',
       onClick: () => {
-        const ok = window.confirm(
-          'Na pewno zresetować CAŁY postęp? Ta operacja jest nieodwracalna - stracisz pieniądze, ulepszenia, statek i Rdzenie.'
-        );
+        const ok = window.confirm(I18n.t('settings.reset.confirm'));
         if (!ok) return;
         try {
           localStorage.removeItem(SAVE_STORAGE_KEY);
@@ -1210,16 +1823,21 @@ class SettingsPanel {
         location.reload();
       }
     });
-    return this._buildRow('♻️', 'Reset postępu', 'Kasuje cały zapis i zaczyna grę od nowa - nieodwracalne', btn.mount());
+    return this._buildRow(RECYCLE_RESET_ICON_SVG, I18n.t('settings.reset.name'), I18n.t('settings.reset.desc'), btn.mount());
   }
 
   _buildAboutRow() {
-    return this._buildRow('ℹ️', 'Eco Mart', `Wersja ${SETTINGS_APP_VERSION}`, null);
+    return this._buildRow(INFO_ICON_SVG, 'Eco Mart', I18n.t('settings.about.version', { version: SETTINGS_APP_VERSION }), null);
   }
 
   destroy() {
     document.removeEventListener('keydown', this._onKeyDown);
+    Bus.unsubscribe(Events.CLOUD_SAVE_STATE_CHANGED, this._onCloudSaveStateChanged);
+    Bus.unsubscribe(Events.INTEGRITY_STATE_CHANGED, this._onIntegrityStateChanged);
     if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
+    if (this._importFileInput && this._importFileInput.parentNode) {
+      this._importFileInput.parentNode.removeChild(this._importFileInput);
+    }
   }
 }
 
@@ -1260,12 +1878,12 @@ class AchievementsPanel {
     sheet.className = 'ui-shop-sheet';
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
-    sheet.setAttribute('aria-label', 'Osiągnięcia');
+    sheet.setAttribute('aria-label', I18n.t('panel.achievements.title'));
     sheet.innerHTML = `
       <div class="ui-shop-sheet__handle"></div>
       <header class="ui-shop-sheet__header">
-        <span class="ui-shop-sheet__title"><span aria-hidden="true">🏆</span> Osiągnięcia</span>
-        <button type="button" class="ui-shop-sheet__close" aria-label="Zamknij osiągnięcia">✕</button>
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${TROPHY_ICON_SVG}</span> ${I18n.t('panel.achievements.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('panel.achievements.close')}">${CLOSE_ICON_SVG}</button>
       </header>
       <div class="ui-shop-sheet__body"></div>
     `;
@@ -1303,6 +1921,9 @@ class AchievementsPanel {
     if (!this.bodyEl || !this.economyManager) return;
     const catalog = this.economyManager.getAchievementsCatalog();
     const unlocked = catalog.filter((a) => a.unlocked).length;
+    const bonusPct = typeof this.economyManager.getAchievementIncomeBonusPercent === 'function'
+      ? this.economyManager.getAchievementIncomeBonusPercent()
+      : 0;
 
     this.bodyEl.innerHTML = '';
 
@@ -1310,7 +1931,7 @@ class AchievementsPanel {
     section.className = 'ui-shop-section';
     const heading = document.createElement('h3');
     heading.className = 'ui-shop-section__title';
-    heading.textContent = `Zdobyte: ${unlocked} / ${catalog.length}`;
+    heading.textContent = `Zdobyte: ${unlocked} / ${catalog.length} — bonus zarobku: +${bonusPct}%`;
     section.appendChild(heading);
 
     const list = document.createElement('div');
@@ -1343,10 +1964,639 @@ class AchievementsPanel {
       <div class="ui-shop-item__info">
         <span class="ui-shop-item__name">${a.name}</span>
         <span class="ui-shop-item__desc">${a.desc}</span>
+        <span class="ui-shop-item__reward">${PAY_ICON_SVG} +1% do zarobku (na stałe)</span>
         ${progressHtml}
       </div>
-      <div class="ui-shop-item__action">${a.unlocked ? '<span class="ui-shop-item__done" aria-label="Zdobyte">✓</span>' : ''}</div>
+      <div class="ui-shop-item__action">${a.unlocked ? `<span class="ui-shop-item__done" aria-label="Zdobyte">${CHECK_ICON_SVG}</span>` : ''}</div>
     `;
+    return row;
+  }
+
+  destroy() {
+    document.removeEventListener('keydown', this._onKeyDown);
+    if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
+  }
+}
+
+// --- Statystyki ----------------------------------------------------------------
+// Ta sama struktura co AchievementsPanel wyżej (bottom sheet, .ui-shop-item
+// wiersze) - czysty przegląd liczników z EconomyManager.getStatsCatalog(),
+// bez paska postępu/odblokowań (to już robi panel Osiągnięć) - tylko
+// ikona/etykieta/aktualna wartość.
+class StatsPanel {
+  constructor(economyManager) {
+    this.economyManager = economyManager;
+    this.el = null;
+    this.bodyEl = null;
+    this.isOpen = false;
+
+    this._onKeyDown = (e) => {
+      if (e.key === 'Escape' && this.isOpen) this.close();
+    };
+  }
+
+  mount(parent) {
+    if (!this.el) this._render();
+    if (parent && this.el.parentNode !== parent) parent.appendChild(this.el);
+    return this.el;
+  }
+
+  _render() {
+    this.el = document.createElement('div');
+    this.el.className = 'ui-shop';
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'ui-shop-backdrop';
+    backdrop.addEventListener('click', () => this.close());
+
+    const sheet = document.createElement('div');
+    sheet.className = 'ui-shop-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', I18n.t('panel.stats.title'));
+    sheet.innerHTML = `
+      <div class="ui-shop-sheet__handle"></div>
+      <header class="ui-shop-sheet__header">
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${CHART_ICON_SVG}</span> ${I18n.t('panel.stats.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('panel.stats.close')}">${CLOSE_ICON_SVG}</button>
+      </header>
+      <div class="ui-shop-sheet__body"></div>
+    `;
+    sheet.querySelector('.ui-shop-sheet__close').addEventListener('click', () => this.close());
+    sheet.addEventListener('click', (e) => e.stopPropagation());
+
+    this.bodyEl = sheet.querySelector('.ui-shop-sheet__body');
+
+    this.el.appendChild(backdrop);
+    this.el.appendChild(sheet);
+
+    this.refresh();
+  }
+
+  open() {
+    if (!this.el) this._render();
+    this.isOpen = true;
+    this.el.classList.add('ui-shop--open');
+    document.addEventListener('keydown', this._onKeyDown);
+    this.refresh();
+  }
+
+  close() {
+    this.isOpen = false;
+    if (this.el) this.el.classList.remove('ui-shop--open');
+    document.removeEventListener('keydown', this._onKeyDown);
+  }
+
+  toggle() {
+    if (this.isOpen) this.close();
+    else this.open();
+  }
+
+  refresh() {
+    if (!this.bodyEl || !this.economyManager || typeof this.economyManager.getStatsCatalog !== 'function') return;
+    const catalog = this.economyManager.getStatsCatalog();
+
+    this.bodyEl.innerHTML = '';
+
+    const section = document.createElement('div');
+    section.className = 'ui-shop-section';
+
+    const list = document.createElement('div');
+    list.className = 'ui-shop-list';
+    catalog.forEach((s) => list.appendChild(this._buildRow(s)));
+    section.appendChild(list);
+
+    this.bodyEl.appendChild(section);
+  }
+
+  /** Wiersz statystyki - reużywa .ui-shop-item (ikona/info/akcja), akcja
+   * to zawsze sama wartość licznika zamiast przycisku - panel jest
+   * czysto informacyjny. */
+  _buildRow(s) {
+    const row = document.createElement('article');
+    row.className = 'ui-shop-item';
+    row.innerHTML = `
+      <div class="ui-shop-item__icon" aria-hidden="true">${s.icon}</div>
+      <div class="ui-shop-item__info">
+        <span class="ui-shop-item__name">${s.label}</span>
+      </div>
+      <div class="ui-shop-item__action"><span class="ui-shop-item__stat-value">${s.value}</span></div>
+    `;
+    return row;
+  }
+
+  destroy() {
+    document.removeEventListener('keydown', this._onKeyDown);
+    if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
+  }
+}
+
+// --- Lokalna tablica wyników --------------------------------------------------
+// Tomek: "najlepsze przebiegi (zarobek, czas do prestiżu, liczba planet) -
+// lepsza alternatywa dla auto-kupowania, daje powód do rywalizacji z samym
+// sobą". Ten sam bottom-sheet co StatsPanel wyżej (.ui-shop*, zero nowego
+// CSS na sam panel), z DODANYM przełącznikiem trybu (Zarobek/Czas) na górze -
+// economy.js trzyma DWIE niezależne listy top-N (bestRunsByEarned/
+// bestRunsByTime), więc panel tylko wybiera, którą pokazać (getLeaderboard).
+class LeaderboardPanel {
+  constructor(economyManager) {
+    this.economyManager = economyManager;
+    this.el = null;
+    this.bodyEl = null;
+    this.isOpen = false;
+    // 'earned' domyślnie - zarobek to główny zasób gry, najbardziej
+    // intuicyjna oś rankingu przy pierwszym otwarciu panelu.
+    this.mode = 'earned';
+
+    this._onKeyDown = (e) => {
+      if (e.key === 'Escape' && this.isOpen) this.close();
+    };
+  }
+
+  mount(parent) {
+    if (!this.el) this._render();
+    if (parent && this.el.parentNode !== parent) parent.appendChild(this.el);
+    return this.el;
+  }
+
+  _render() {
+    this.el = document.createElement('div');
+    this.el.className = 'ui-shop';
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'ui-shop-backdrop';
+    backdrop.addEventListener('click', () => this.close());
+
+    const sheet = document.createElement('div');
+    sheet.className = 'ui-shop-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', I18n.t('panel.leaderboard.title'));
+    sheet.innerHTML = `
+      <div class="ui-shop-sheet__handle"></div>
+      <header class="ui-shop-sheet__header">
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${MEDAL_ICON_SVG}</span> ${I18n.t('panel.leaderboard.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('panel.leaderboard.close')}">${CLOSE_ICON_SVG}</button>
+      </header>
+      <div class="ui-shop-sheet__body"></div>
+    `;
+    sheet.querySelector('.ui-shop-sheet__close').addEventListener('click', () => this.close());
+    sheet.addEventListener('click', (e) => e.stopPropagation());
+
+    this.bodyEl = sheet.querySelector('.ui-shop-sheet__body');
+
+    this.el.appendChild(backdrop);
+    this.el.appendChild(sheet);
+
+    this.refresh();
+  }
+
+  open() {
+    if (!this.el) this._render();
+    this.isOpen = true;
+    this.el.classList.add('ui-shop--open');
+    document.addEventListener('keydown', this._onKeyDown);
+    this.refresh();
+  }
+
+  close() {
+    this.isOpen = false;
+    if (this.el) this.el.classList.remove('ui-shop--open');
+    document.removeEventListener('keydown', this._onKeyDown);
+  }
+
+  toggle() {
+    if (this.isOpen) this.close();
+    else this.open();
+  }
+
+  /** Dwa przyciski Zarobek/Czas - odtwarzane od zera przy KAŻDYM refresh()
+   * (ten sam "przebuduj całość" wzorzec co reszta panelu, żadnego ręcznego
+   * przełączania klas), przycisk BIEŻĄCEGO trybu dostaje wariant 'accent'
+   * (wyróżniony), drugi 'ghost' - czytelne bez osobnego znacznika "aktywne". */
+  _buildTabs() {
+    const wrap = document.createElement('div');
+    wrap.className = 'ui-leaderboard-tabs';
+    const tabs = [
+      { mode: 'earned', label: I18n.t('ui.leaderboard.tab.earned') },
+      { mode: 'time', label: I18n.t('ui.leaderboard.tab.time') }
+    ];
+    tabs.forEach(({ mode, label }) => {
+      const btn = new UIButton({
+        label,
+        variant: this.mode === mode ? 'accent' : 'ghost',
+        onClick: () => {
+          if (this.mode === mode) return;
+          this.mode = mode;
+          this.refresh();
+        }
+      });
+      wrap.appendChild(btn.mount());
+    });
+    return wrap;
+  }
+
+  refresh() {
+    if (!this.bodyEl || !this.economyManager || typeof this.economyManager.getLeaderboard !== 'function') return;
+    const rows = this.economyManager.getLeaderboard(this.mode);
+
+    this.bodyEl.innerHTML = '';
+    this.bodyEl.appendChild(this._buildTabs());
+
+    const section = document.createElement('div');
+    section.className = 'ui-shop-section';
+
+    if (rows.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'ui-leaderboard-empty';
+      empty.textContent = I18n.t('ui.leaderboard.empty');
+      section.appendChild(empty);
+    } else {
+      const list = document.createElement('div');
+      list.className = 'ui-shop-list';
+      rows.forEach((r) => list.appendChild(this._buildRow(r)));
+      section.appendChild(list);
+    }
+
+    this.bodyEl.appendChild(section);
+  }
+
+  /** Kolor plakietki rangi - top 3 w barwach medali (złoto/srebro/brąz),
+   * reszta neutralna jak zwykła ikonka wiersza gdzie indziej w grze. */
+  _rankColor(rank) {
+    if (rank === 1) return '#FFD54F';
+    if (rank === 2) return '#CFD8DC';
+    if (rank === 3) return '#D7A46A';
+    return 'rgba(255,255,255,0.5)';
+  }
+
+  _buildRow(r) {
+    const row = document.createElement('article');
+    row.className = 'ui-shop-item';
+    const color = this._rankColor(r.rank);
+    // Poboczna metryka pod nazwą - odwrotność trybu (w widoku "Zarobek"
+    // pokazujemy czas tego przebiegu i na odwrót), żeby oba wymiary były
+    // widoczne naraz mimo że lista jest posortowana tylko po jednym z nich.
+    const secondaryLabel = this.mode === 'earned' ? I18n.t('ui.leaderboard.row.time', { value: r.timeLabel }) : I18n.t('ui.leaderboard.row.earned', { value: r.earnedLabel });
+    const primaryLabel = this.mode === 'earned' ? r.earnedLabel : r.timeLabel;
+    row.innerHTML = `
+      <div class="ui-shop-item__icon" aria-hidden="true" style="background:${color}26;color:${color};font-weight:800;font-size:0.95rem">#${r.rank}</div>
+      <div class="ui-shop-item__info">
+        <span class="ui-shop-item__name">${I18n.t('ui.leaderboard.row.planet', { n: r.planetNumber })}</span>
+        <span class="ui-shop-item__desc">${secondaryLabel}</span>
+      </div>
+      <div class="ui-shop-item__action"><span class="ui-shop-item__stat-value">${primaryLabel}</span></div>
+    `;
+    return row;
+  }
+
+  destroy() {
+    document.removeEventListener('keydown', this._onKeyDown);
+    if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
+  }
+}
+
+// --- Skiny postaci -----------------------------------------------------------
+// Ta sama struktura co AchievementsPanel wyżej (bottom sheet, .ui-shop-item
+// wiersze) - czysto kosmetyczny katalog (economy.js: PLAYER_SKINS/
+// getSkinCatalog/buySkin/selectSkin), płatny Rdzeniami jak drugi poziom
+// ulepszeń w PrestigePanel.
+class SkinsPanel {
+  constructor(economyManager) {
+    this.economyManager = economyManager;
+    this.el = null;
+    this.bodyEl = null;
+    this.isOpen = false;
+
+    this._onKeyDown = (e) => {
+      if (e.key === 'Escape' && this.isOpen) this.close();
+    };
+  }
+
+  mount(parent) {
+    if (!this.el) this._render();
+    if (parent && this.el.parentNode !== parent) parent.appendChild(this.el);
+    return this.el;
+  }
+
+  _render() {
+    this.el = document.createElement('div');
+    this.el.className = 'ui-shop';
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'ui-shop-backdrop';
+    backdrop.addEventListener('click', () => this.close());
+
+    const sheet = document.createElement('div');
+    sheet.className = 'ui-shop-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', I18n.t('panel.skins.title'));
+    sheet.innerHTML = `
+      <div class="ui-shop-sheet__handle"></div>
+      <header class="ui-shop-sheet__header">
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${SHIRT_ICON_SVG}</span> ${I18n.t('panel.skins.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('panel.skins.close')}">${CLOSE_ICON_SVG}</button>
+      </header>
+      <div class="ui-shop-sheet__body"></div>
+    `;
+    sheet.querySelector('.ui-shop-sheet__close').addEventListener('click', () => this.close());
+    sheet.addEventListener('click', (e) => e.stopPropagation());
+
+    this.bodyEl = sheet.querySelector('.ui-shop-sheet__body');
+
+    this.el.appendChild(backdrop);
+    this.el.appendChild(sheet);
+
+    this.refresh();
+  }
+
+  open() {
+    if (!this.el) this._render();
+    this.isOpen = true;
+    this.el.classList.add('ui-shop--open');
+    document.addEventListener('keydown', this._onKeyDown);
+    this.refresh();
+  }
+
+  close() {
+    this.isOpen = false;
+    if (this.el) this.el.classList.remove('ui-shop--open');
+    document.removeEventListener('keydown', this._onKeyDown);
+  }
+
+  toggle() {
+    if (this.isOpen) this.close();
+    else this.open();
+  }
+
+  refresh() {
+    if (!this.bodyEl || !this.economyManager) return;
+    const catalog = this.economyManager.getSkinCatalog();
+
+    this.bodyEl.innerHTML = '';
+
+    const section = document.createElement('div');
+    section.className = 'ui-shop-section';
+    const heading = document.createElement('h3');
+    heading.className = 'ui-shop-section__title';
+    heading.innerHTML = `${CORE_ICON_SVG} Masz ${this.economyManager.cores}`;
+    section.appendChild(heading);
+
+    const list = document.createElement('div');
+    list.className = 'ui-shop-list';
+    catalog.forEach((s) => list.appendChild(this._buildRow(s)));
+    section.appendChild(list);
+
+    this.bodyEl.appendChild(section);
+  }
+
+  /**
+   * Podgląd - MAŁY <canvas> z rzeczywistą postacią gracza w tym kolorze
+   * (nie tylko kolorowa plamka), narysowany z JUŻ upieczonej tintowanej
+   * kopii sprite'a (player.js: _tintedSprites, patrz _bakeSkinTints) - ten
+   * sam obrazek, który gracz zobaczy w świecie po wybraniu tego skina.
+   * Zwraca null, gdy sprite jeszcze się nie wczytał (rzadkie - wtedy
+   * _buildRow rysuje zwykłe kółko w kolorze tint zamiast podglądu).
+   */
+  _buildPreviewCanvas(skin) {
+    const pc = window.playerController;
+    // BUGFIX: warunek sprawdzał WYŁĄCZNIE skin.tint - skiny z prawdziwie
+    // innym ciałem, ale BEZ przebarwienia (patrz PLAYER_SKINS.body w
+    // economy.js, np. 'verde'/'gold' - natywny kolor paczki, tint:null)
+    // wpadały w gałąź "brak upieczonej kopii" i pokazywały domyślne ciało
+    // gracza zamiast wybranego skina.
+    const srcImg = (skin.tint || skin.body) && pc && pc._tintedSprites[skin.id]
+      ? pc._tintedSprites[skin.id].static
+      : (pc && pc._spriteLoaded ? pc._spriteImg : null);
+    if (!srcImg || !srcImg.width) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 40;
+    canvas.height = 40;
+    canvas.className = 'ui-shop-item__skin-preview';
+    const ctx = canvas.getContext('2d');
+    const scale = Math.min(40 / srcImg.width, 40 / srcImg.height) * 0.9;
+    const w = srcImg.width * scale;
+    const h = srcImg.height * scale;
+    ctx.drawImage(srcImg, (40 - w) / 2, (40 - h) / 2, w, h);
+    return canvas;
+  }
+
+  _buildRow(s) {
+    const row = document.createElement('article');
+    row.className = 'ui-shop-item';
+    if (s.selected) row.classList.add('ui-shop-item--afford');
+
+    const iconFallback = `<span style="display:inline-block;width:26px;height:26px;border-radius:50%;background:${s.tint || s.previewColor || '#5C85D6'}"></span>`;
+    row.innerHTML = `
+      <div class="ui-shop-item__icon" aria-hidden="true">${iconFallback}</div>
+      <div class="ui-shop-item__info">
+        <span class="ui-shop-item__name">${s.name}</span>
+        <span class="ui-shop-item__desc">${s.desc}</span>
+      </div>
+      <div class="ui-shop-item__action"></div>
+    `;
+
+    // Podmieniamy placeholder-kółko na prawdziwy podgląd postaci, jeśli
+    // sprite już się wczytał (patrz _buildPreviewCanvas).
+    const preview = this._buildPreviewCanvas(s);
+    if (preview) row.querySelector('.ui-shop-item__icon').replaceChildren(preview);
+
+    const actionEl = row.querySelector('.ui-shop-item__action');
+    if (s.selected) {
+      const badge = document.createElement('span');
+      badge.className = 'ui-shop-item__done';
+      badge.setAttribute('aria-label', I18n.t('ui.skin.selected'));
+      badge.innerHTML = CHECK_ICON_SVG;
+      actionEl.appendChild(badge);
+    } else if (s.unlocked) {
+      const btn = new UIButton({
+        label: I18n.t('ui.skin.select'),
+        variant: 'ghost',
+        onClick: () => {
+          if (this.economyManager.selectSkin(s.id)) this.refresh();
+        }
+      });
+      actionEl.appendChild(btn.mount());
+    } else if (s.eventOnly && !s.available) {
+      // Wydarzenie ("Deszcz Meteorytów") aktualnie nieaktywne - zwykły
+      // przycisk kupna byłby mylący (klik i tak zostałby odrzucony przez
+      // buySkin()), więc zamiast niego stały, nieklikalny badge z
+      // wyjaśnieniem KIEDY wrócić, zamiast po prostu chować pozycję (gracz
+      // ma wiedzieć, że taki skin w ogóle istnieje).
+      const btn = new UIButton({
+        label: I18n.t('ui.skin.weekendOnly', { icon: LOCK_ICON_SVG }),
+        variant: 'ghost',
+        disabled: true,
+        title: I18n.t('ui.skin.meteorOnly.title')
+      });
+      actionEl.appendChild(btn.mount());
+    } else {
+      const canBuy = this.economyManager.cores >= s.cost;
+      // Kłódka gdy nie stać - patrz identyczny komentarz w ShopPanel._buildRow.
+      const costLabel = canBuy ? `${CORE_ICON_SVG}${s.cost}` : `${LOCK_ICON_SVG} ${CORE_ICON_SVG}${s.cost}`;
+      const btn = new UIButton({
+        label: costLabel,
+        variant: canBuy ? 'accent' : 'ghost',
+        denied: !canBuy,
+        title: canBuy ? I18n.t('ui.buySkin.title') : I18n.t('ui.notEnoughCores.title'),
+        onClick: () => {
+          if (this.economyManager.buySkin(s.id)) this.refresh();
+        }
+      });
+      actionEl.appendChild(btn.mount());
+    }
+
+    return row;
+  }
+
+  destroy() {
+    document.removeEventListener('keydown', this._onKeyDown);
+    if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
+  }
+}
+
+/**
+ * Dekoracje straganu (economy.js STALL_DECORATIONS) - Tomek: "zacznijmy od
+ * kosmetyki straganu". Ten sam szkielet co SkinsPanel wyżej, ale prostszy:
+ * dekoracje nie mają "załóż" (WSZYSTKIE posiadane są widoczne naraz przy
+ * Terminalu, patrz _drawStallDecorations w market.js), więc wiersz to tylko
+ * kup/posiadam - dokładnie ten sam dwu-stanowy wzorzec co jednorazowe
+ * pozycje w ShopPanel (maxLevel:1), tylko własna, niezależna klasa (panel
+ * ma inny nagłówek/katalog/metodę zakupu niż Sklep).
+ */
+class DecorationsPanel {
+  constructor(economyManager) {
+    this.economyManager = economyManager;
+    this.el = null;
+    this.bodyEl = null;
+    this.isOpen = false;
+
+    this._onKeyDown = (e) => {
+      if (e.key === 'Escape' && this.isOpen) this.close();
+    };
+  }
+
+  mount(parent) {
+    if (!this.el) this._render();
+    if (parent && this.el.parentNode !== parent) parent.appendChild(this.el);
+    return this.el;
+  }
+
+  _render() {
+    this.el = document.createElement('div');
+    this.el.className = 'ui-shop';
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'ui-shop-backdrop';
+    backdrop.addEventListener('click', () => this.close());
+
+    const sheet = document.createElement('div');
+    sheet.className = 'ui-shop-sheet';
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-modal', 'true');
+    sheet.setAttribute('aria-label', I18n.t('panel.decorations.title'));
+    sheet.innerHTML = `
+      <div class="ui-shop-sheet__handle"></div>
+      <header class="ui-shop-sheet__header">
+        <span class="ui-shop-sheet__title"><span aria-hidden="true">${DECOR_ICON_SVG}</span> ${I18n.t('panel.decorations.title')}</span>
+        <button type="button" class="ui-shop-sheet__close" aria-label="${I18n.t('panel.decorations.close')}">${CLOSE_ICON_SVG}</button>
+      </header>
+      <div class="ui-shop-sheet__body"></div>
+    `;
+    sheet.querySelector('.ui-shop-sheet__close').addEventListener('click', () => this.close());
+    sheet.addEventListener('click', (e) => e.stopPropagation());
+
+    this.bodyEl = sheet.querySelector('.ui-shop-sheet__body');
+
+    this.el.appendChild(backdrop);
+    this.el.appendChild(sheet);
+
+    this.refresh();
+  }
+
+  open() {
+    if (!this.el) this._render();
+    this.isOpen = true;
+    this.el.classList.add('ui-shop--open');
+    document.addEventListener('keydown', this._onKeyDown);
+    this.refresh();
+  }
+
+  close() {
+    this.isOpen = false;
+    if (this.el) this.el.classList.remove('ui-shop--open');
+    document.removeEventListener('keydown', this._onKeyDown);
+  }
+
+  toggle() {
+    if (this.isOpen) this.close();
+    else this.open();
+  }
+
+  refresh() {
+    if (!this.bodyEl || !this.economyManager) return;
+    const catalog = this.economyManager.getDecorationsCatalog();
+    const money = this.economyManager.getMoney();
+
+    this.bodyEl.innerHTML = '';
+
+    const section = document.createElement('div');
+    section.className = 'ui-shop-section';
+    const heading = document.createElement('h3');
+    heading.className = 'ui-shop-section__title';
+    heading.innerHTML = I18n.t('panel.decorations.haveMoney', { icon: CREDIT_ICON_SVG, amount: money });
+    section.appendChild(heading);
+
+    const list = document.createElement('div');
+    list.className = 'ui-shop-list';
+    catalog.forEach((d) => list.appendChild(this._buildRow(d, money)));
+    section.appendChild(list);
+
+    this.bodyEl.appendChild(section);
+  }
+
+  _buildRow(d, money) {
+    const row = document.createElement('article');
+    row.className = 'ui-shop-item';
+    if (d.owned) row.classList.add('ui-shop-item--maxed');
+
+    const canBuy = !d.owned && money >= d.cost;
+    if (canBuy) row.classList.add('ui-shop-item--afford');
+
+    row.innerHTML = `
+      <div class="ui-shop-item__icon" aria-hidden="true">${d.icon}</div>
+      <div class="ui-shop-item__info">
+        <span class="ui-shop-item__name">${d.name}</span>
+        <span class="ui-shop-item__desc">${d.description}</span>
+      </div>
+      <div class="ui-shop-item__action"></div>
+    `;
+
+    const actionEl = row.querySelector('.ui-shop-item__action');
+    if (d.owned) {
+      const badge = document.createElement('span');
+      badge.className = 'ui-shop-item__done';
+      badge.setAttribute('aria-label', I18n.t('ui.decoration.owned'));
+      badge.innerHTML = CHECK_ICON_SVG;
+      actionEl.appendChild(badge);
+    } else {
+      // Kłódka gdy nie stać - patrz identyczny komentarz w ShopPanel._buildRow.
+      const costLabel = canBuy ? `${d.cost}${CREDIT_ICON_SVG}` : `${LOCK_ICON_SVG} ${d.cost}${CREDIT_ICON_SVG}`;
+      const btn = new UIButton({
+        label: costLabel,
+        variant: canBuy ? 'accent' : 'ghost',
+        denied: !canBuy,
+        title: canBuy ? I18n.t('ui.buyDecoration.title') : I18n.t('ui.notEnoughMoney.title'),
+        onClick: () => {
+          if (this.economyManager.buyDecoration(d.id)) this.refresh();
+        }
+      });
+      actionEl.appendChild(btn.mount());
+    }
+
+    row.dataset.tooltip = `${d.name}: ${d.description}`;
     return row;
   }
 
@@ -1455,6 +2705,10 @@ class UIManager {
     this.prestigePanel = null;
     this.settingsPanel = null;
     this.achievementsPanel = null;
+    this.skinsPanel = null;
+    this.decorationsPanel = null;
+    this.statsPanel = null;
+    this.leaderboardPanel = null;
     this.offlineModal = null;
     this.notifications = null;
     this.tooltip = null;
@@ -1463,7 +2717,13 @@ class UIManager {
     this.settingsToggleBtn = null;
     this.shipContributeBtn = null;
     this.shipContributeWrap = null;
-    this.muteToggleBtn = null;
+    // Cache ostatnio zapisanej widoczności (patrz update() niżej) - BUGFIX
+    // (wydajność, niezależna od dpr): oba przyciski dostawały nowy
+    // style.display co klatkę (60x/s), NAWET gdy wartość się nie zmieniała -
+    // każdy zapis do .style to potencjalne przeliczenie stylu przez
+    // przeglądarkę. Piszemy teraz tylko przy FAKTYCZNEJ zmianie stanu.
+    this._shipToggleVisible = false;
+    this._shipContributeVisible = false;
 
     this._onMoney = () => this._syncMoney(true);
     this._onMachineOutput = () => this._syncMoney(true);
@@ -1484,18 +2744,21 @@ class UIManager {
       // pokazywał tylko ogólne "Kupiono ulepszenie" zamiast kontekstowej
       // wiadomości o odblokowanej strefie.
       const unlockMessages = {
-        stage_paper: '📜 Papier odblokowany! Szukaj go w świecie i wrzuć do Recyklera.',
-        minimap: '🗺️ Minimapa kupiona! Radar w rogu ekranu pokazuje, co jest w pobliżu.',
-        headlamp: '🪖 Kask z Latarką kupiony! Mniejsza kara prędkości w strefach skażenia.',
-        boots: '🥾 Robocze Buty kupione! Więcej czasu, zanim stracisz przedmiot w hazardzie.',
-        toxic_filter: '😷 Filtr Toksyn kupiony! Bagno jest już dla Ciebie bezpieczne.',
-        radiation_suit: '☢️ Kombinezon Radiacyjny kupiony! Strefa Atomowa jest już dla Ciebie bezpieczna.'
+        stage_paper: I18n.t('ui.gearUnlocked.stage_paper'),
+        minimap: I18n.t('ui.gearUnlocked.minimap'),
+        headlamp: I18n.t('ui.gearUnlocked.headlamp'),
+        boots: I18n.t('ui.gearUnlocked.boots'),
+        toxic_filter: I18n.t('ui.gearUnlocked.toxic_filter'),
+        radiation_suit: I18n.t('ui.gearUnlocked.radiation_suit')
       };
       const message = unlockMessages[d.upgradeId];
       if (message) {
-        this.notifications.show(message, { type: 'success', icon: '🎉', duration: 3600 });
+        // Ikona TEGO SAMEGO ulepszenia, zdefiniowana raz w SHOP_UPGRADES
+        // (economy.js) - żadnego osobnego zestawu ikon do zsynchronizowania.
+        const shopDef = window.SHOP_UPGRADES && window.SHOP_UPGRADES.find((u) => u.id === d.upgradeId);
+        this.notifications.show(message, { type: 'success', icon: (shopDef && shopDef.icon) || PARTY_ICON_SVG, duration: 3600 });
       } else {
-        this.notifications.show(`Kupiono ulepszenie`, { type: 'success', icon: '✅' });
+        this.notifications.show(I18n.t('ui.upgradeBoughtToast'), { type: 'success', icon: CHECK_ICON_SVG });
       }
     };
 
@@ -1508,10 +2771,10 @@ class UIManager {
     // bezpośredni lek na "martwo/ciągle to samo". Dłuższy i mocniejszy niż
     // zwykły toast, bo to rzadki, ważny moment odkrycia.
     this._onUnlockGranted = (d) => {
-      const kindLabel = d.kind === 'zone' ? 'Nowa strefa' : 'Nowa maszyna';
-      this.notifications.show(`🔓 ${kindLabel}: ${d.name}! ${d.desc || ''}`, {
+      const kindLabel = d.kind === 'zone' ? I18n.t('ui.unlock.zoneKind') : I18n.t('ui.unlock.machineKind');
+      this.notifications.show(I18n.t('ui.unlockToast', { icon: UNLOCK_ICON_SVG, kind: kindLabel, name: d.name, desc: d.desc || '' }), {
         type: 'success',
-        icon: '✨',
+        icon: SPARKLE_ICON_SVG,
         duration: 5000
       });
     };
@@ -1520,9 +2783,9 @@ class UIManager {
     // osiągnięć (gdyby akurat był otwarty) i licznik "X/Y" w Menu przy
     // następnym otwarciu (Menu i tak odświeża się przy każdym open()).
     this._onAchievementUnlocked = (d) => {
-      this.notifications.show(`Osiągnięcie: ${d.name}!`, {
+      this.notifications.show(I18n.t('ui.achievementToast', { name: d.name }), {
         type: 'success',
-        icon: d.icon || '🏆',
+        icon: d.icon || TROPHY_ICON_SVG,
         duration: 4200
       });
       if (this.achievementsPanel) this.achievementsPanel.refresh();
@@ -1539,9 +2802,9 @@ class UIManager {
         ? eco.getShipPerkLabel(d.moduleId)
         : '';
       const suffix = perkLabel ? ` ${perkLabel}` : '';
-      this.notifications.show(`Moduł ukończony (${doneCount}/${total})!${suffix}`, {
+      this.notifications.show(I18n.t('ui.moduleCompleteToast', { done: doneCount, total, suffix }), {
         type: 'success',
-        icon: '🛠️',
+        icon: WRENCH_ICON_SVG,
         duration: 4600
       });
     };
@@ -1552,14 +2815,18 @@ class UIManager {
     // wcześniej (patrz ship.js _initialSyncDone) - stąd shipToggleBtn w
     // update() jako TRWAŁA droga powrotu do tego samego panelu.
     this._onGameWon = () => {
-      this.notifications.show('🚀 Wszystkie moduły gotowe! Możesz lecieć dalej.', {
+      this.notifications.show(I18n.t('ui.allModulesReadyToast', { icon: ROCKET_ICON_SVG }), {
         type: 'success',
-        icon: '🎉',
+        icon: PARTY_ICON_SVG,
         duration: 4000
       });
       if (this.shopPanel) this.shopPanel.close();
       if (this.settingsPanel) this.settingsPanel.close();
       if (this.achievementsPanel) this.achievementsPanel.close();
+      if (this.skinsPanel) this.skinsPanel.close();
+      if (this.decorationsPanel) this.decorationsPanel.close();
+      if (this.statsPanel) this.statsPanel.close();
+      if (this.leaderboardPanel) this.leaderboardPanel.close();
       if (this.prestigePanel) this.prestigePanel.open();
     };
 
@@ -1575,11 +2842,37 @@ class UIManager {
       this._refreshPrestige();
       const planet = (d && d.planetNumber) || '?';
       const cores = (d && d.coresEarned) || 0;
-      this.notifications.show(`🌌 Nowa planeta #${planet}! +⚡${cores} Rdzeni`, {
-        type: 'success',
-        icon: '✨',
-        duration: 4200
-      });
+      const mod = d && d.modifier;
+      // Tomek: "'ceremonii' prestiżu - coś w rodzaju animacji/efektu na
+      // cały ekran przy odlocie/resecie, zamiast cichej zmiany liczb" -
+      // ZASTĘPUJE dawny sam toast (poniższy tier2-unlock toast zostaje bez
+      // zmian - to osobna, ważna informacja, nie feedback SAMEGO odlotu).
+      this._playPrestigeCeremony(planet, cores, mod);
+      // Drugi poziom trwałych ulepszeń (economy.js) jest CELOWO ukryty z
+      // katalogu do tego momentu (patrz CORE_TIER2_UNLOCK_PLANET) - bez tego
+      // toastu gracz mógłby nigdy nie zauważyć, że w Statku pojawiły się
+      // nowe pozycje, skoro sam katalog wcześniej wyglądał "ukończony".
+      if (window.CORE_TIER2_UNLOCK_PLANET && planet === window.CORE_TIER2_UNLOCK_PLANET) {
+        this.notifications.show(I18n.t('ui.newCoreUpgradesToast', { icon: UNLOCK_ICON_SVG }), {
+          type: 'success',
+          icon: CORE_ICON_SVG,
+          duration: 4600
+        });
+      }
+      // Lokalna tablica wyników (economy.js: bestRunsByEarned/bestRunsByTime) -
+      // osobny toast TYLKO gdy przebieg faktycznie pobił poprzedni rekord
+      // (d.newRecords, patrz _recordRun w economy.js) - to właśnie ten
+      // moment ma dawać "powód do rywalizacji z samym sobą".
+      const nr = d && d.newRecords;
+      if (nr && (nr.earned || nr.time)) {
+        const what = nr.earned && nr.time ? I18n.t('ui.record.both') : (nr.earned ? I18n.t('ui.record.earned') : I18n.t('ui.record.time'));
+        this.notifications.show(I18n.t('ui.newRecordToast', { icon: MEDAL_ICON_SVG, what }), {
+          type: 'success',
+          icon: MEDAL_ICON_SVG,
+          duration: 4200
+        });
+      }
+      if (this.leaderboardPanel) this.leaderboardPanel.refresh();
     };
 
     this._onCoreUpgrade = () => this._refreshPrestige();
@@ -1589,10 +2882,10 @@ class UIManager {
     // i zdążył się zasubskrybować - więc te dwa eventy na pewno zostaną złapane,
     // nawet jeśli strzelą w tej samej klatce co konstrukcja.
     this._onDailyLogin = (d) => {
-      const coreText = d.coreBonus > 0 ? ` + ⚡${d.coreBonus} Rdzeni!` : '';
-      this.notifications.show(`Dzień ${d.streak} z rzędu! +${d.moneyReward}$${coreText}`, {
+      const coreText = d.coreBonus > 0 ? I18n.t('ui.dailyStreak.coreBonus', { icon: CORE_ICON_SVG, amount: d.coreBonus }) : '';
+      this.notifications.show(I18n.t('ui.dailyStreakToast', { streak: d.streak, amount: d.moneyReward, icon: CREDIT_ICON_SVG, coreText }), {
         type: 'success',
-        icon: '🔥',
+        icon: FLAME_ICON_SVG,
         duration: 4200
       });
     };
@@ -1601,7 +2894,7 @@ class UIManager {
     };
     this._onDailyChallengeClaimed = (d) => {
       this._syncMoney(true);
-      this.notifications.show(`Wyzwanie odebrane! +${d.reward}$`, { type: 'success', icon: '✅', duration: 2600 });
+      this.notifications.show(I18n.t('ui.challenge.claimedToast', { amount: d.reward, icon: CREDIT_ICON_SVG }), { type: 'success', icon: CHECK_ICON_SVG, duration: 2600 });
     };
 
     this._buildDOM();
@@ -1654,9 +2947,21 @@ class UIManager {
       this._refreshPrestige();
     });
     this.achievementsPanel = new AchievementsPanel(economy);
+    this.skinsPanel = new SkinsPanel(economy);
+    this.decorationsPanel = new DecorationsPanel(economy);
+    this.statsPanel = new StatsPanel(economy);
+    this.leaderboardPanel = new LeaderboardPanel(economy);
+    // Dźwięk włącza/wyłącza się TYLKO z Menu (SettingsPanel._buildSoundRow) -
+    // brak osobnego przycisku Wycisz na ekranie gry (patrz usunięty
+    // muteToggleBtn niżej), więc nie ma już nic do zsynchronizowania po
+    // przełączeniu - pierwszy argument (onChange) zostaje pusty.
     this.settingsPanel = new SettingsPanel(
-      () => this._updateMuteButtonIcon(),
-      () => this.achievementsPanel.open()
+      null,
+      () => this.achievementsPanel.open(),
+      () => this.skinsPanel.open(),
+      () => this.decorationsPanel.open(),
+      () => this.statsPanel.open(),
+      () => this.leaderboardPanel.open()
     );
 
     const toastContainer = document.createElement('div');
@@ -1670,8 +2975,8 @@ class UIManager {
     fabRow.className = 'game-ui__fab-row';
 
     this.shopToggleBtn = new UIButton({
-      icon: '🛒',
-      label: 'Sklep',
+      icon: CART_ICON_SVG,
+      label: I18n.t('nav.shop'),
       variant: 'fab',
       onClick: () => {
         // Tylko jeden bottom-sheet naraz - wszystkie (Sklep/Statek/Menu/
@@ -1680,6 +2985,10 @@ class UIManager {
         if (this.prestigePanel) this.prestigePanel.close();
         if (this.settingsPanel) this.settingsPanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
+        if (this.skinsPanel) this.skinsPanel.close();
+        if (this.decorationsPanel) this.decorationsPanel.close();
+        if (this.statsPanel) this.statsPanel.close();
+        if (this.leaderboardPanel) this.leaderboardPanel.close();
         this.shopPanel.toggle();
       }
     });
@@ -1689,13 +2998,17 @@ class UIManager {
     // update() - czyta window.ship.inRange co klatkę). Domyślnie ukryty, bo
     // przy starcie gry (spawn daleko od statku) i tak nie ma sensu.
     this.shipToggleBtn = new UIButton({
-      icon: '🚀',
-      label: 'Statek',
+      icon: ROCKET_ICON_SVG,
+      label: I18n.t('nav.ship'),
       variant: 'fab',
       onClick: () => {
         if (this.shopPanel) this.shopPanel.close();
         if (this.settingsPanel) this.settingsPanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
+        if (this.skinsPanel) this.skinsPanel.close();
+        if (this.decorationsPanel) this.decorationsPanel.close();
+        if (this.statsPanel) this.statsPanel.close();
+        if (this.leaderboardPanel) this.leaderboardPanel.close();
         this.prestigePanel.toggle();
       }
     });
@@ -1706,13 +3019,17 @@ class UIManager {
     // samouczek/reset postępu/wersja (patrz SettingsPanel). Zawsze widoczny,
     // w przeciwieństwie do przycisku Statku.
     this.settingsToggleBtn = new UIButton({
-      icon: '⚙️',
-      label: 'Menu',
+      icon: GEAR_ICON_SVG,
+      label: I18n.t('nav.menu'),
       variant: 'fab',
       onClick: () => {
         if (this.shopPanel) this.shopPanel.close();
         if (this.prestigePanel) this.prestigePanel.close();
         if (this.achievementsPanel) this.achievementsPanel.close();
+        if (this.skinsPanel) this.skinsPanel.close();
+        if (this.decorationsPanel) this.decorationsPanel.close();
+        if (this.statsPanel) this.statsPanel.close();
+        if (this.leaderboardPanel) this.leaderboardPanel.close();
         this.settingsPanel.toggle();
       }
     });
@@ -1726,10 +3043,10 @@ class UIManager {
     // niżej, przelicza world->screen przez window.game.cameraX/Y), żeby
     // przycisk pojawiał się tam, gdzie faktycznie dzieje się akcja.
     this.shipContributeBtn = new UIButton({
-      icon: '💰',
-      label: 'Wpłać',
+      icon: PAY_ICON_SVG,
+      label: I18n.t('ui.deposit.label'),
       variant: 'accent',
-      title: 'Przekaż pieniądze i surowce na bieżący moduł statku',
+      title: I18n.t('ui.deposit.title'),
       onClick: () => {
         if (window.ship && typeof window.ship.confirmContribution === 'function') {
           window.ship.confirmContribution();
@@ -1741,18 +3058,11 @@ class UIManager {
     this.shipContributeWrap.style.display = 'none';
     this.shipContributeWrap.appendChild(this.shipContributeBtn.mount());
 
-    this.muteToggleBtn = new UIButton({
-      icon: (window.audioManager && window.audioManager.muted) ? '🔇' : '🔊',
-      label: '',
-      variant: 'fab',
-      title: 'Wycisz / włącz dźwięk',
-      onClick: () => {
-        if (!window.audioManager) return;
-        window.audioManager.toggleMute();
-        this._updateMuteButtonIcon();
-      }
-    });
-    fabRow.appendChild(this.muteToggleBtn.mount());
+    // BRAK przycisku Wycisz tutaj (dawniej muteToggleBtn w fabRow, obok
+    // Sklep/Statek/Menu) - dźwięk włącza/wyłącza się TERAZ wyłącznie z Menu
+    // (SettingsPanel._buildSoundRow), żeby ekran gry nie zaśmiecał się
+    // czwartą stałą ikoną, której gracz dotyka raz na sesję, nie co chwilę
+    // jak Sklepu/Statku.
 
     this.root.appendChild(topBar);
     this.root.appendChild(toastContainer);
@@ -1762,6 +3072,10 @@ class UIManager {
     this.root.appendChild(this.prestigePanel.mount());
     this.root.appendChild(this.settingsPanel.mount());
     this.root.appendChild(this.achievementsPanel.mount());
+    this.root.appendChild(this.skinsPanel.mount());
+    this.root.appendChild(this.decorationsPanel.mount());
+    this.root.appendChild(this.statsPanel.mount());
+    this.root.appendChild(this.leaderboardPanel.mount());
     this.offlineModal = new OfflineRewardModal(window.economyManager, () => this._syncMoney(true));
     this.root.appendChild(this.offlineModal.mount());
 
@@ -1824,13 +3138,87 @@ class UIManager {
     if (this.prestigePanel) this.prestigePanel.refresh();
   }
 
-  /** Aktualizuje ikonę przycisku mute (🔊/🔇) po przełączeniu. */
-  _updateMuteButtonIcon() {
-    if (!this.muteToggleBtn || !this.muteToggleBtn.el) return;
-    const iconEl = this.muteToggleBtn.el.querySelector('.ui-btn__icon');
-    if (iconEl) {
-      iconEl.textContent = (window.audioManager && window.audioManager.muted) ? '🔇' : '🔊';
+  /**
+   * "Ceremonia" prestiżu (Tomek: "coś w rodzaju animacji/efektu na cały
+   * ekran przy odlocie/resecie, zamiast cichej zmiany liczb", potem "zrób
+   * tą ceremonię o wiele ładniejsza, daj jakąś fajną grafikę planety, mamy
+   * paczki przecież użyć tego") - pełnoekranowy moment PO prestige()
+   * (economy.js): migoczące gwiazdy w tle, błysk zapłonu, rakieta
+   * odlatująca w górę, PRAWDZIWA grafika nowej planety (patrz
+   * PRESTIGE_CEREMONY_PLANET_COUNT/assets/planets/) obracająca się
+   * powoli za tekstem, i licznik zdobytych Rdzeni odliczający się w górę
+   * od zera (patrz _animatePrestigeCoresCount). Element tworzony RAZ i
+   * cache'owany (this._prestigeCeremonyEl) jak inne panele w tym pliku -
+   * kolejne odloty tylko podmieniają treść i odpalają animację od nowa
+   * (patrz trik z offsetWidth niżej, ten sam co przy .ui-money--pulse w
+   * _syncMoney/MoneyDisplay).
+   */
+  _playPrestigeCeremony(planetNumber, coresEarned, modifier) {
+    if (!this._prestigeCeremonyEl) {
+      const el = document.createElement('div');
+      el.className = 'ui-prestige-ceremony';
+      el.innerHTML = `
+        <div class="ui-prestige-ceremony__stars" aria-hidden="true"></div>
+        <div class="ui-prestige-ceremony__flash"></div>
+        <div class="ui-prestige-ceremony__rocket" aria-hidden="true">${ROCKET_ICON_SVG}</div>
+        <div class="ui-prestige-ceremony__planet-wrap">
+          <div class="ui-prestige-ceremony__planet-glow" aria-hidden="true"></div>
+          <img class="ui-prestige-ceremony__planet" alt="" width="220" height="220">
+        </div>
+        <div class="ui-prestige-ceremony__content">
+          <div class="ui-prestige-ceremony__title">${I18n.t('ui.ceremony.title')}</div>
+          <div class="ui-prestige-ceremony__planet-name"></div>
+          <div class="ui-prestige-ceremony__cores">+<span class="ui-prestige-ceremony__cores-num">0</span> ${CORE_ICON_SVG} ${I18n.t('ui.ceremony.cores')}</div>
+        </div>
+      `;
+      // Dotknięcie GDZIEKOLWIEK na overlayu ścina ceremonię wcześniej -
+      // gracz, który już to widział, nie musi czekać pełnych 3.8s za
+      // każdym kolejnym odlotem.
+      el.addEventListener('click', () => this._dismissPrestigeCeremony());
+      document.body.appendChild(el);
+      this._prestigeCeremonyEl = el;
     }
+
+    const el = this._prestigeCeremonyEl;
+    const modSuffix = modifier ? ` — ${modifier.icon} ${modifier.name}` : '';
+    el.querySelector('.ui-prestige-ceremony__planet-name').innerHTML = I18n.t('ui.ceremony.planet', { n: planetNumber, modSuffix });
+
+    const planetIndex = ((planetNumber - 1) % PRESTIGE_CEREMONY_PLANET_COUNT + PRESTIGE_CEREMONY_PLANET_COUNT) % PRESTIGE_CEREMONY_PLANET_COUNT;
+    const planetImg = el.querySelector('.ui-prestige-ceremony__planet');
+    planetImg.src = `assets/planets/planet${String(planetIndex).padStart(2, '0')}.png`;
+
+    el.classList.remove('ui-prestige-ceremony--visible');
+    void el.offsetWidth; // wymuszony reflow - restart CSS animacji od zera
+    el.classList.add('ui-prestige-ceremony--visible');
+
+    this._animatePrestigeCoresCount(el, coresEarned);
+
+    clearTimeout(this._prestigeCeremonyTimer);
+    this._prestigeCeremonyTimer = setTimeout(() => this._dismissPrestigeCeremony(), PRESTIGE_CEREMONY_DURATION_MS);
+  }
+
+  _dismissPrestigeCeremony() {
+    if (!this._prestigeCeremonyEl) return;
+    this._prestigeCeremonyEl.classList.remove('ui-prestige-ceremony--visible');
+    clearTimeout(this._prestigeCeremonyTimer);
+  }
+
+  /** Licznik Rdzeni w ceremonii odliczający się w górę (0 -> coresEarned),
+   * ease-out (szybko na starcie, zwalnia pod koniec) - ten sam "policzone
+   * na twoich oczach" efekt, co count-up liczniki w wielu idle-grach,
+   * zamiast liczby pojawiającej się od razu w pełnej wysokości. */
+  _animatePrestigeCoresCount(el, target) {
+    const numEl = el.querySelector('.ui-prestige-ceremony__cores-num');
+    if (!numEl) return;
+    const start = performance.now();
+    const DURATION_MS = 900;
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / DURATION_MS);
+      const eased = 1 - Math.pow(1 - t, 3);
+      numEl.textContent = Math.round(target * eased);
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   syncFromGameState() {
@@ -1845,6 +3233,10 @@ class UIManager {
     if (this.prestigePanel) this.prestigePanel.close();
     if (this.settingsPanel) this.settingsPanel.close();
     if (this.achievementsPanel) this.achievementsPanel.close();
+    if (this.skinsPanel) this.skinsPanel.close();
+    if (this.decorationsPanel) this.decorationsPanel.close();
+    if (this.statsPanel) this.statsPanel.close();
+    if (this.leaderboardPanel) this.leaderboardPanel.close();
     if (this.offlineModal) this.offlineModal.open(data);
   }
 
@@ -1879,9 +3271,15 @@ class UIManager {
     // modułów w game.js woła je PRZED update() UIManagera, patrz kolejność
     // registerModule w main.js), więc tu tylko czytamy gotowy wynik, zero
     // duplikowania liczenia odległości.
+    // BUGFIX (wydajność): style.display zapisywany TYLKO gdy nearShip
+    // faktycznie się zmienił (patrz this._shipToggleVisible w konstruktorze) -
+    // dawniej pisany co klatkę (60x/s) niezależnie od tego, czy się zmienił.
     if (this.shipToggleBtn && this.shipToggleBtn.el) {
       const nearShip = !!(window.ship && window.ship.inRange);
-      this.shipToggleBtn.el.style.display = nearShip ? '' : 'none';
+      if (nearShip !== this._shipToggleVisible) {
+        this._shipToggleVisible = nearShip;
+        this.shipToggleBtn.el.style.display = nearShip ? '' : 'none';
+      }
     }
 
     // Przycisk "Wpłać" - widoczny tylko, dopóki gracz stoi w zasięgu I
@@ -1889,7 +3287,9 @@ class UIManager {
     // (Ship.needsContributionConfirm() sam pilnuje obu warunków). Pozycja
     // przeliczana co klatkę ze świata na ekran (world - camera) - ten sam
     // przelicznik co canvas (patrz game.js translate(-cameraX/Y)), więc
-    // przycisk "przykleja się" do statku niezależnie od ruchu kamery.
+    // przycisk "przykleja się" do statku niezależnie od ruchu kamery -
+    // left/top MUSZĄ zostać przeliczane co klatkę (kamera się rusza), ale
+    // display - tak jak przy shipToggleBtn wyżej - tylko przy zmianie stanu.
     if (this.shipContributeWrap) {
       const ship = window.ship;
       const needsConfirm = !!(ship && typeof ship.needsContributionConfirm === 'function'
@@ -1899,8 +3299,12 @@ class UIManager {
         const screenY = ship.y + ship.h / 2 - window.game.cameraY + 90;
         this.shipContributeWrap.style.left = `${screenX}px`;
         this.shipContributeWrap.style.top = `${screenY}px`;
-        this.shipContributeWrap.style.display = '';
-      } else {
+        if (!this._shipContributeVisible) {
+          this._shipContributeVisible = true;
+          this.shipContributeWrap.style.display = '';
+        }
+      } else if (this._shipContributeVisible) {
+        this._shipContributeVisible = false;
         this.shipContributeWrap.style.display = 'none';
       }
     }
@@ -1931,6 +3335,10 @@ class UIManager {
     if (this.prestigePanel) this.prestigePanel.destroy();
     if (this.settingsPanel) this.settingsPanel.destroy();
     if (this.achievementsPanel) this.achievementsPanel.destroy();
+    if (this.skinsPanel) this.skinsPanel.destroy();
+    if (this.decorationsPanel) this.decorationsPanel.destroy();
+    if (this.statsPanel) this.statsPanel.destroy();
+    if (this.leaderboardPanel) this.leaderboardPanel.destroy();
     if (this.offlineModal) this.offlineModal.destroy();
     if (this.root && this.root.parentNode) this.root.parentNode.removeChild(this.root);
   }

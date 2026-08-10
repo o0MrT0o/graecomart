@@ -44,37 +44,61 @@ const SHIP_WORLD_HEIGHT = 2000;
 // plastic/product/alloy, które gra już zna, żadnych nowych surowców/maszyn.
 // Koszty rosną z każdym modułem (naturalny ramp trudności do finału).
 const SHIP_MODULE_DEFINITIONS = [
-  { id: 'life_support', name: 'Podtrzymywanie Życia', money: 300, materials: { plastic: 10 } },
-  { id: 'navigation', name: 'Nawigacja', money: 500, materials: { plastic: 5, product: 8 } },
-  { id: 'shields', name: 'Osłony', money: 800, materials: { product: 6, alloy: 8 } },
-  { id: 'engine', name: 'Silnik', money: 1200, materials: { product: 4, alloy: 14 } },
-  { id: 'hyperdrive', name: 'Hipernapęd', money: 2000, materials: { plastic: 5, product: 10, alloy: 12 } }
+  { id: 'life_support', get name() { return I18n.t('ship.module.life_support'); }, money: 300, materials: { plastic: 10 } },
+  { id: 'navigation', get name() { return I18n.t('ship.module.navigation'); }, money: 500, materials: { plastic: 5, product: 8 } },
+  { id: 'shields', get name() { return I18n.t('ship.module.shields'); }, money: 800, materials: { product: 6, alloy: 8 } },
+  { id: 'engine', get name() { return I18n.t('ship.module.engine'); }, money: 1200, materials: { product: 4, alloy: 14 } },
+  { id: 'hyperdrive', get name() { return I18n.t('ship.module.hyperdrive'); }, money: 2000, materials: { plastic: 5, product: 10, alloy: 12 } }
 ];
 
-const SHIP_MATERIAL_ICONS = { plastic: '♻️', product: '🎁', alloy: '🧱' };
+// Wartości puste - BYŁY emoji (ten sam powód co ITEM_TYPES.label w items.js).
+// ItemRenderer._drawSpriteOrLabel (jedyny konsument, patrz draw() niżej)
+// rysuje sprite/proceduralną bryłę/neutralną plakietkę, nigdy tekstu.
+const SHIP_MATERIAL_ICONS = { plastic: '', product: '', alloy: '' };
 
-const SHIP_SIZE = 220;
 const SHIP_DROP_RADIUS = 90;
 // Ten sam rytm co MACHINE_UNLOAD_INTERVAL_MS / TRADING_POST_SELL_INTERVAL_MS -
 // jedna "porcja" dostawy na tyle ms, dopóki gracz stoi w zasięgu.
 const SHIP_CONTRIBUTION_INTERVAL_MS = 200;
 const SHIP_MONEY_PER_TICK = 25;
 
-// --- Wygląd: "statek obcych" (odświeżony wygląd) -----------------------------
-// Pierścień okienek dookoła obrzeża kadłuba - zapala się STOPNIOWO wraz z
-// ukończonymi modułami (litFraction w _drawPortholes), więc statek wizualnie
-// "budzi się do życia" w miarę postępu, zamiast być cały czas tym samym
-// jednolitym kształtem od pierwszego do ostatniego modułu.
-const SHIP_PORTHOLE_COUNT = 12;
-const SHIP_PORTHOLE_LIT_COLOR = '#7CFFD4';
-const SHIP_PORTHOLE_UNLIT_COLOR = 'rgba(18, 22, 26, 0.65)';
-// Stały kąt/szerokość wyrwy w kadłubie (radiany) - CELOWO nie losowy, żeby
-// uszkodzenie nie "skakało" między odświeżeniami strony. 2.35 rad ~ 135°,
-// czyli lewy-dolny bok - z dala od etykiety (góra) i kopuły (środek).
-const SHIP_DAMAGE_ANGLE = 2.35;
-const SHIP_DAMAGE_WIDTH = 0.85;
+// --- Wygląd (Faza kosmicznego reskinu, wersja 3): PRAWDZIWY myśliwiec z
+// Kenney "Space Shooter Extension" (spaceShips_001, assets/ship_fighter.png,
+// CC0). Trzecia iteracja kadłuba: rakieta (spaceRockets_002, "za ludzka")
+// -> spodek/UFO (spaceStation_031) -> TA, po tym jak Tomek wysłał zrzut
+// folderu Ships z paczki i powiedział "użyj tych bardziej, są ładne".
+// W przeciwieństwie do dwóch poprzednich, TA bryła zostaje w NATYWNYCH
+// kolorach (czerwono-biało-fioletowa, zaostrzony nos, zamaszyste skrzydła,
+// fioletowy owalny kokpit) - żadnego przefarbowywania, dostała wyraźną
+// pochwałę wyglądu. SHIP_FIGHTER_ASPECT to proporcje PRAWDZIWEGO pliku
+// (198x188, prawie kwadratowy).
+const SHIP_FIGHTER_ASPECT = 198 / 188;
+const SHIP_HULL_H = 260;
+// Kokpit myśliwca - pozycja/rozmiar zmierzone WPROST z pliku (bbox
+// fioletowego owalu), jako ułamek szerokości/wysokości całego sprite'a.
+// W_FRAC/H_FRAC lekko powiększone względem samego konturu owalu, żeby
+// poświata delikatnie "przelewała się" na kadłub wokół, nie kończyła
+// twardo na krawędzi kokpitu.
+const SHIP_WINDOW_X_FRAC = 0.497;
+const SHIP_WINDOW_Y_FRAC = 0.705;
+const SHIP_WINDOW_W_FRAC = 0.22;
+const SHIP_WINDOW_H_FRAC = 0.36;
+// Zapala się STOPNIOWO wraz z ukończonymi modułami (litFraction w draw()) -
+// statek wizualnie "budzi się do życia" w miarę postępu, zamiast być cały
+// czas tym samym jednolitym kokpitem od pierwszego do ostatniego modułu.
+const SHIP_WINDOW_GLOW_COLOR = '#7CFFD4';
+// Stała pozycja plamy uszkodzenia (ułamek hw/hh od środka) - CELOWO nie
+// losowa, żeby nie "skakała" między odświeżeniami strony. BYŁO DX:0.55
+// (dolne prawe skrzydło, z dala od kokpitu) - Tomek: "ten dym co jest na
+// statku niech będzie w centralnej części z tymi iskrami nie z boku".
+// DX:0 wyśrodkowuje dym/sadzę/iskry poziomo (to o to poprosił - "nie z
+// boku"), DY zostaje - dym/sadza teraz nakłada się częściowo na kokpit,
+// ale to czyta się dramatycznie ("uszkodzenie centralnego rdzenia/kokpitu"),
+// nie jak błąd.
+const SHIP_DAMAGE_DX = 0;
+const SHIP_DAMAGE_DY = 0.5;
 // Co ile ms z uszkodzenia leci odrobina dymu - tylko dopóki statek nie jest
-// naprawiony (this._won == false). Po naprawie dziura + dym znikają.
+// naprawiony (this._won == false). Po naprawie plama + dym znikają.
 const SHIP_SMOKE_INTERVAL_MS = 1100;
 
 class Ship {
@@ -90,8 +114,8 @@ class Ship {
     this.yRatio = 0.55;
     this.x = SHIP_WORLD_WIDTH * this.xRatio;
     this.y = SHIP_WORLD_HEIGHT * this.yRatio;
-    this.w = SHIP_SIZE;
-    this.h = SHIP_SIZE * 0.7;
+    this.h = SHIP_HULL_H;
+    this.w = SHIP_HULL_H * SHIP_FIGHTER_ASPECT;
 
     this.playerX = 0;
     this.playerY = 0;
@@ -284,7 +308,10 @@ class Ship {
       this._moduleCompleteFlashUntil = performance.now() + 1100;
 
       Bus.publish(Events.FX_POPUP, {
-        text: `✅ ${def.name} gotowy!`,
+        text: `${def.name} gotowy!`,
+        // Checkmark rysowany PROCEDURALNIE nad popupem (patrz _drawPopupIcon
+        // w gamefeel.js) zamiast dawnego ✅ wtopionego w text.
+        icon: 'done',
         x: this.x,
         y: this.y - this.h / 2,
         duration: 2400,
@@ -299,7 +326,22 @@ class Ship {
     }
   }
 
+  /**
+   * Viewport culling (ten sam wzorzec co items.js/machines.js/market.js) -
+   * jedna instancja, ale rysowanie (kadłub z gradientem, nogi, wskaźniki
+   * modułów, poświata po wygranej) kosztuje niezależnie od tego ile ich
+   * jest. update() (stan ukończenia modułów) działa zawsze, niezależnie od
+   * widoczności - statek ma pamiętać postęp, nawet gdy nikt na niego nie patrzy.
+   */
   draw(ctxBg, ctx, ctxUI) {
+    const camX = window.game ? window.game.cameraX : 0;
+    const camY = window.game ? window.game.cameraY : 0;
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const margin = 150;
+    if (this.x < camX - margin || this.x > camX + viewW + margin) return;
+    if (this.y < camY - margin || this.y > camY + viewH + margin) return;
+
     const hw = this.w / 2;
     const hh = this.h / 2;
     const idx = this._currentModuleIndex();
@@ -322,11 +364,6 @@ class Ship {
     ctx.ellipse(this.x, this.y + hh + 6, hw * 0.9, hh * 0.25, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Nogi lądownicze - PRZED kadłubem (poza translate/rotate hull-grupy, w
-    // świecie), żeby wizualnie "wchodziły w ziemię" spod spodu, a nie kręciły
-    // się razem z przechyłem kadłuba.
-    this._drawStruts(ctx, hw, hh);
-
     // Poświata po ukończeniu wszystkiego - POD kadłubem, żeby nie zasłaniać tekstu.
     if (this._won) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 300);
@@ -334,22 +371,21 @@ class Ship {
       ctx.globalAlpha = 0.22 + 0.18 * pulse;
       ctx.fillStyle = '#81D4FA';
       ctx.beginPath();
-      ctx.ellipse(this.x, this.y, hw * 1.3, hh * 1.15, 0, 0, Math.PI * 2);
+      ctx.ellipse(this.x, this.y, hw * 1.6, hh * 1.05, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
 
-    // Kadłub + wyrwa uszkodzenia + okienka + kopuła - wszystko w jednej
-    // przechylonej "hull-grupie" (ten sam przechył -0.08 co wcześniej,
-    // "rozbity" wygląd), żeby obracały się razem jako jedna bryła.
+    // Kadłub + plama uszkodzenia + poświata okna - wszystko w jednej
+    // przechylonej "grupie" (lekki przechył -0.06, "rozbity" wygląd), żeby
+    // obracały się razem jako jedna bryła. Rakieta ma WŁASNE płetwy/nogi
+    // wrysowane w sprite - osobne _drawStruts nie jest już potrzebne.
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.rotate(-0.08);
+    ctx.rotate(-0.06);
 
-    this._drawHull(ctx, hw, hh);
-    if (!this._won) this._drawDamage(ctx, hw, hh);
-    this._drawPortholes(ctx, hw, hh, litFraction);
-    this._drawDome(ctx, hw, hh);
+    this._drawShipBody(ctx, hw, hh, litFraction);
+    if (!this._won) this._drawDamageScorch(ctx, hw, hh);
 
     ctx.restore();
 
@@ -357,7 +393,7 @@ class Ship {
     ctx.font = 'bold 12px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    this._drawOutlinedText(ctx, this._won ? 'Gotowy do startu!' : 'Rozbity Statek', this.x, this.y - hh - 40, '#FFFFFF');
+    this._drawOutlinedText(ctx, this._won ? I18n.t('ship.readyLabel') : I18n.t('ship.wreckedLabel'), this.x, this.y - hh - 40, '#FFFFFF');
 
     // 5 ikon modułów - jasna/zielona = gotowa, przygaszona = jeszcze nie,
     // większa = aktualna. Proceduralne kształty (_drawModuleIcon) zamiast
@@ -543,214 +579,159 @@ class Ship {
   }
 
   /**
-   * Trzy nogi lądownicze, CELOWO niesymetryczne (różne długości/kąty) - efekt
-   * krzywo wbitego wraku, nie schludnego statywu. Rysowane w świecie (przed
-   * translate/rotate kadłuba), żeby zawsze "stały prosto" niezależnie od
-   * przechyłu bryły nad nimi.
+   * Tonuje fx_glow.png (Kenney Particle Pack, ta sama teksturka co poświata
+   * maszyn - machines.js _drawCosmicGlow) na SHIP_WINDOW_GLOW_COLOR - jedna,
+   * cache'owana raz w konstruktorze przy pierwszym użyciu (statek ma tylko
+   * JEDEN akcent koloru, w przeciwieństwie do maszyn z 5 różnymi, więc nie
+   * potrzeba tu całego _getRecoloredSprite/_getTintedFx z machines.js -
+   * własna, dużo prostsza kopia zgodnie z konwencją "brak współdzielonych
+   * utili" w tym projekcie).
    */
-  _drawStruts(ctx, hw, hh) {
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.strokeStyle = 'rgba(38, 42, 46, 0.9)';
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
+  _getWindowGlow() {
+    if (this._windowGlowCanvas) return this._windowGlowCanvas;
+    const img = window.spriteLoader && window.spriteLoader.get('fx_glow');
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const size = img.naturalWidth;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const tctx = canvas.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    tctx.globalCompositeOperation = 'source-atop';
+    tctx.fillStyle = SHIP_WINDOW_GLOW_COLOR;
+    tctx.fillRect(0, 0, size, size);
+    this._windowGlowCanvas = canvas;
+    return canvas;
+  }
 
-    const legs = [
-      { fx: -hw * 0.5, fy: hh * 0.15, tx: -hw * 0.82, ty: hh * 0.95, footAngle: -0.35 },
-      { fx: hw * 0.48, fy: hh * 0.2, tx: hw * 0.88, ty: hh * 0.85, footAngle: 0.3 },
-      { fx: hw * 0.02, fy: hh * 0.4, tx: hw * 0.12, ty: hh * 1.05, footAngle: 0.05 }
-    ];
-
-    legs.forEach((leg) => {
+  /**
+   * Kadłub: PRAWDZIWY myśliwiec z Kenney "Space Shooter Extension"
+   * (assets/ship_fighter.png, CC0) - trzecia iteracja (patrz komentarz przy
+   * SHIP_FIGHTER_ASPECT), zastępuje dawną ręcznie rysowaną elipsę "spodka" +
+   * kopułę + pierścień okienek. W NATYWNYCH kolorach - bez przefarbowywania
+   * (Tomek: "są ładne"), w przeciwieństwie do dwóch poprzednich wersji
+   * kadłuba. Jedyna pozostała animacja to poświata NA prawdziwym kokpicie
+   * sprite'a (SHIP_WINDOW_*_FRAC, zmierzone wprost z pliku, rysowana jako
+   * elipsa dopasowana do owalnego konturu kokpitu) - jaśniejsza wraz z
+   * litFraction (statek "budzi się" wraz z ukończonymi modułami), z krótkim
+   * przebłyskiem zaraz po ukończeniu (_moduleCompleteFlashUntil, ten sam
+   * wzorzec co dawny pierścień okienek rakiety/spodka).
+   */
+  _drawShipBody(ctx, hw, hh, litFraction) {
+    const fighterImg = window.spriteLoader && window.spriteLoader.get('ship_fighter');
+    if (fighterImg && fighterImg.complete && fighterImg.naturalWidth) {
+      ctx.drawImage(fighterImg, -hw, -hh, hw * 2, hh * 2);
+    } else {
+      // Awaryjny fallback (plik się nie wczytał) - prosty szary owal,
+      // wystarczający żeby statek nie zniknął całkiem z ekranu.
+      ctx.fillStyle = '#8B8B93';
       ctx.beginPath();
-      ctx.moveTo(leg.fx, leg.fy);
-      ctx.lineTo(leg.tx, leg.ty);
-      ctx.stroke();
-
-      ctx.save();
-      ctx.translate(leg.tx, leg.ty);
-      ctx.rotate(leg.footAngle);
-      ctx.fillStyle = 'rgba(38, 42, 46, 0.9)';
-      ctx.beginPath();
-      ctx.moveTo(-9, 0);
-      ctx.lineTo(9, 0);
-      ctx.lineTo(0, 8);
-      ctx.closePath();
+      ctx.ellipse(0, 0, hw * 0.7, hh, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
-    });
+    }
 
-    ctx.restore();
-  }
+    const winCx = -hw + hw * 2 * SHIP_WINDOW_X_FRAC;
+    const winCy = -hh + hh * 2 * SHIP_WINDOW_Y_FRAC;
+    const winRx = hw * 2 * SHIP_WINDOW_W_FRAC * 0.5;
+    const winRy = hh * 2 * SHIP_WINDOW_H_FRAC * 0.5;
 
-  /**
-   * Kadłub - elipsa z pionowym gradientem (jaśniejsza góra = górne
-   * oświetlenie, ciemniejszy dół) zamiast płaskiego koloru, żeby czytał się
-   * jako metalowa bryła, nie naklejka. Paleta lekko zielonkawo-chromowa
-   * (nie czysty szaro-niebieski) - obcy stop, nie ziemska blacha.
-   */
-  _drawHull(ctx, hw, hh) {
-    const top = this._won ? '#DCF5F2' : '#8FA69C';
-    const mid = this._won ? '#A9D6D1' : '#5C7269';
-    const bottom = this._won ? '#6FA39C' : '#33443D';
-
-    const grad = ctx.createLinearGradient(0, hh * 0.3 - hh * 0.55, 0, hh * 0.3 + hh * 0.55);
-    grad.addColorStop(0, top);
-    grad.addColorStop(0.55, mid);
-    grad.addColorStop(1, bottom);
-
-    ctx.fillStyle = grad;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(0, hh * 0.3, hw, hh * 0.55, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Cienka krawędziowa obwódka podkreślająca rant "spodka" - jaśniejsza
-    // linia w 2/3 wysokości, gdzie kadłub najszerszy.
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.ellipse(0, hh * 0.42, hw * 0.94, hh * 0.42, 0, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  /**
-   * Postrzępiona wyrwa w kadłubie - stały kąt (SHIP_DAMAGE_ANGLE), żeby nie
-   * "skakała" między klatkami/odświeżeniami. Znika, gdy statek jest
-   * naprawiony (this._won) - patrz draw().
-   */
-  _drawDamage(ctx, hw, hh) {
-    const lx = Math.cos(SHIP_DAMAGE_ANGLE) * hw * 0.85;
-    const ly = hh * 0.3 + Math.sin(SHIP_DAMAGE_ANGLE) * hh * 0.55 * 0.85;
-
-    ctx.save();
-    ctx.translate(lx, ly);
-    ctx.rotate(SHIP_DAMAGE_ANGLE);
-    ctx.fillStyle = 'rgba(14, 15, 17, 0.92)';
-    ctx.beginPath();
-    ctx.moveTo(-15, -11);
-    ctx.lineTo(11, -15);
-    ctx.lineTo(17, 5);
-    ctx.lineTo(-5, 17);
-    ctx.lineTo(-19, 6);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-7, -9);
-    ctx.lineTo(-2, 5);
-    ctx.moveTo(4, -11);
-    ctx.lineTo(9, 2);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  /** Świat = kadłub + rotacja -0.08 statku, do wysyłania cząsteczek dymu
-   * (Bus.publish, poza kontekstem transformowanym przez draw()). Nie
-   * kompensuje rotacji -0.08 (za mały kąt, żeby było to zauważalne) - patrz
-   * update(). */
-  _damageWorldPos() {
-    const hw = this.w / 2;
-    const hh = this.h / 2;
-    const lx = Math.cos(SHIP_DAMAGE_ANGLE) * hw * 0.85;
-    const ly = hh * 0.3 + Math.sin(SHIP_DAMAGE_ANGLE) * hh * 0.55 * 0.85;
-    return { x: this.x + lx, y: this.y + ly };
-  }
-
-  /**
-   * Pierścień okienek dookoła obrzeża kadłuba - ta sama elipsa co _drawHull,
-   * przeskalowana lekko do wewnątrz (0.82), żeby okienka siedziały NA
-   * obrzeżu, nie poza nim. Pomija okienka wypadające w wyrwie uszkodzenia -
-   * fizycznie ich tam nie ma. litFraction (0..1, z draw()) określa, ile
-   * okienek świeci - statek "budzi się" wraz z ukończonymi modułami.
-   */
-  _drawPortholes(ctx, hw, hh, litFraction) {
-    const count = SHIP_PORTHOLE_COUNT;
-    const litCount = Math.round(count * litFraction);
-
-    // Przebłysk tuż po ukończeniu modułu - okienka wyraźnie jaśniejsze przez
-    // krótką chwilę, żeby ten moment było widać na samym statku, nie tylko w
-    // popupie/screen shake. Ćwierćsinusoida: szczyt DOKŁADNIE w momencie
-    // ukończenia, płynne wygaszanie do zera - pierwsza wersja liczyła
-    // sin(t*PI), co dawało ZERO w chwili ukończenia i szczyt dopiero w
-    // połowie czasu trwania, rozjeżdżając się w czasie ze wstrząsem/
-    // cząsteczkami/falą uderzeniową (te odpalają się natychmiast).
     const now = performance.now();
     const flashRemaining = this._moduleCompleteFlashUntil - now;
     const flashT = flashRemaining > 0 ? Math.sin((flashRemaining / 1100) * (Math.PI / 2)) : 0;
+    const baseGlow = this._won ? 1 : 0.25 + litFraction * 0.55;
 
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2;
-
-      if (!this._won) {
-        let diff = Math.abs(angle - SHIP_DAMAGE_ANGLE);
-        if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        if (diff < SHIP_DAMAGE_WIDTH / 2) continue;
-      }
-
-      const px = Math.cos(angle) * hw * 0.82;
-      const py = hh * 0.3 + Math.sin(angle) * hh * 0.55 * 0.82;
-      const isLit = i < litCount;
-
-      if (isLit) {
-        ctx.save();
-        ctx.globalAlpha = 0.45 + flashT * 0.4;
-        ctx.fillStyle = SHIP_PORTHOLE_LIT_COLOR;
-        ctx.beginPath();
-        ctx.arc(px, py, 6.5 + flashT * 3.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      ctx.fillStyle = isLit ? SHIP_PORTHOLE_LIT_COLOR : SHIP_PORTHOLE_UNLIT_COLOR;
-      ctx.beginPath();
-      ctx.arc(px, py, 3.2, 0, Math.PI * 2);
-      ctx.fill();
+    const glow = this._getWindowGlow();
+    if (glow) {
+      ctx.save();
+      ctx.globalAlpha = baseGlow + flashT * 0.5;
+      const growth = 1.3 + flashT * 0.4 + (this._won ? 0.35 * (0.5 + 0.5 * Math.sin(now / 300)) : 0);
+      const gx = winRx * growth, gy = winRy * growth;
+      ctx.translate(winCx, winCy);
+      ctx.scale(gx, gy);
+      ctx.drawImage(glow, -1, -1, 2, 2);
+      ctx.restore();
     }
   }
 
   /**
-   * Kopuła - jak wcześniej (półelipsa na wierzchu), plus dwa nowe detale:
-   * cienki świecący pierścień u nasady (gdzie kopuła styka się z kadłubem -
-   * "obcy" akcent, nie tylko ludzka szyba) i pulsujący rdzeń w środku,
-   * niezależny od poświaty zwycięstwa - kopuła "żyje" cały czas, nie tylko
-   * po naprawieniu statku.
+   * Tonuje fx_soot.png (Kenney Particle Pack, miękka nieregularna plama -
+   * ta sama teksturka co "smoke_01") na prawie czarno - ten sam wzorzec co
+   * _getWindowGlow, osobna, dużo prostsza kopia (jeden kolor, cache'owany
+   * raz) zgodnie z konwencją "brak współdzielonych utili".
    */
-  _drawDome(ctx, hw, hh) {
-    const domeCenterY = -hh * 0.05;
-    const domeRX = hw * 0.45;
-    const domeRY = hh * 0.4;
+  _getSootStain() {
+    if (this._sootCanvas) return this._sootCanvas;
+    const img = window.spriteLoader && window.spriteLoader.get('fx_soot');
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    const size = img.naturalWidth;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const tctx = canvas.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    tctx.globalCompositeOperation = 'source-atop';
+    tctx.fillStyle = '#15130F';
+    tctx.fillRect(0, 0, size, size);
+    this._sootCanvas = canvas;
+    return canvas;
+  }
 
-    // Pierścień u nasady.
-    ctx.strokeStyle = this._won ? 'rgba(124, 255, 212, 0.9)' : 'rgba(124, 255, 212, 0.55)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(0, domeCenterY, domeRX * 1.05, domeRY * 1.05, 0, Math.PI, 0);
-    ctx.stroke();
+  /**
+   * Uszkodzenie w stałym miejscu (SHIP_DAMAGE_DX/DY, żeby nie "skakało"
+   * między odświeżeniami) - PRAWDZIWA, nieregularna plama sadzy (fx_soot,
+   * przyciemniona) osadzona na kadłubie, plus dwie małe kreskówkowe chmurki
+   * dymu (fx_smoke_puff, Kenney "Space Shooter Extension" - ten sam płaski
+   * styl co statek/maszyny, w przeciwieństwie do malarskiej plamy sadzy pod
+   * spodem) leniwie "oddychające" (skala/alpha) tuż nad nią - stały, czytelny
+   * sygnał "to jest wrak", niezależny od periodycznych kłębów dymu z
+   * update() (te lecą i znikają co SHIP_SMOKE_INTERVAL_MS, więc same w
+   * sobie nie dawały WIDOCZNEGO "cały czas dymi się" wrażenia). Znika, gdy
+   * statek jest naprawiony (this._won) - patrz draw().
+   */
+  _drawDamageScorch(ctx, hw, hh) {
+    const dx = hw * SHIP_DAMAGE_DX, dy = hh * SHIP_DAMAGE_DY;
+    const now = performance.now();
 
-    // Szkło kopuły.
-    ctx.fillStyle = this._won ? 'rgba(129, 212, 250, 0.9)' : 'rgba(129, 212, 250, 0.55)';
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(0, domeCenterY, domeRX, domeRY, 0, Math.PI, 0);
-    ctx.fill();
-    ctx.stroke();
-
-    // Pulsujący rdzeń - niezależny od poświaty zwycięstwa (this._won), więc
-    // kopuła "oddycha" nawet zanim statek jest naprawiony.
-    const corePulse = 0.5 + 0.5 * Math.sin(performance.now() / 450);
+    const soot = this._getSootStain();
     ctx.save();
-    ctx.globalAlpha = 0.4 + 0.35 * corePulse;
-    ctx.fillStyle = '#E0FFFA';
-    ctx.beginPath();
-    ctx.arc(0, domeCenterY - domeRY * 0.25, 4 + corePulse * 2, 0, Math.PI * 2);
-    ctx.fill();
+    if (soot) {
+      const sr = hw * 0.26;
+      ctx.globalAlpha = 0.8;
+      ctx.drawImage(soot, dx - sr, dy - sr, sr * 2, sr * 2);
+    } else {
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = '#0E0F11';
+      ctx.beginPath();
+      ctx.ellipse(dx, dy, hw * 0.22, hh * 0.09, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
+
+    const puff = window.spriteLoader && window.spriteLoader.get('fx_smoke_puff');
+    if (puff && puff.complete && puff.naturalWidth) {
+      const puffs = [
+        { ox: -hw * 0.03, oy: -hh * 0.14, size: hw * 0.16, phase: 0 },
+        { ox: hw * 0.09, oy: -hh * 0.22, size: hw * 0.12, phase: 2.4 }
+      ];
+      puffs.forEach((p) => {
+        const breathe = 0.5 + 0.5 * Math.sin(now * 0.0012 + p.phase);
+        ctx.save();
+        ctx.globalAlpha = 0.5 + breathe * 0.35;
+        const s = p.size * (0.9 + breathe * 0.25);
+        ctx.drawImage(puff, dx + p.ox - s / 2, dy + p.oy - breathe * hh * 0.05 - s / 2, s, s);
+        ctx.restore();
+      });
+    }
+  }
+
+  /** Świat = kadłub + rotacja -0.06 statku, do wysyłania cząsteczek dymu
+   * (Bus.publish, poza kontekstem transformowanym przez draw()). Nie
+   * kompensuje rotacji -0.06 (za mały kąt, żeby było to zauważalne) - patrz
+   * update(). */
+  _damageWorldPos() {
+    const hw = this.w / 2;
+    const hh = this.h / 2;
+    return { x: this.x + hw * SHIP_DAMAGE_DX, y: this.y + hh * SHIP_DAMAGE_DY };
   }
 
   /** Ten sam wzorzec co MachineManager._drawOutlinedText (machines.js) i

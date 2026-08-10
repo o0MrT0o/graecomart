@@ -30,7 +30,7 @@
  * _ensureJoystickElements). Działa jednocześnie na dotyk i mysz.
  */
 
-const JOYSTICK_KNOB_DIAMETER = 50; // px - wygląd wewnętrznego "drążka"
+const JOYSTICK_KNOB_DIAMETER = 56; // px - wygląd wewnętrznego "drążka" (musi się zgadzać z #joystick-knob w style.css)
 const JOYSTICK_Z_INDEX = 9999; // ponad warstwami gry
 
 // Bazowa prędkość PRZED jakimkolwiek upgrade'em (musi zgadzać się z
@@ -57,22 +57,55 @@ const SHIP_PERK_HAZARD_GRACE_MULT = 2;
 const HEADLAMP_HAZARD_SPEED_MULT = 0.7;
 const BOOTS_HAZARD_GRACE_MULT = 1.5;
 
-// Ścieżka do sprite'a postaci (CC0, Kenney Platformer Pack - wariant niebieski).
-// Umieść plik pod tą ścieżką względem index.html: assets/player.png
-// BUGFIX: był 'assets/player.png' - taki folder nie istnieje w projekcie,
-// plik leży płasko jako player.png (ten sam bug co w sprites.js). Postać
-// od początku renderowała się więc proceduralnie (_drawProcedural), nigdy
-// prawdziwym sprite'em.
-// Lista kandydatur zamiast jednej sztywnej ścieżki - nie wiemy na pewno,
-// czy pliki leżą płasko obok index.html, czy w assets/, więc próbujemy obu
-// (patrz _loadImageWithFallbacks niżej) zamiast zgadywać i psuć jedno na
-// rzecz drugiego, jak to już raz wyszło.
-const PLAYER_SPRITE_CANDIDATES = ['player.png', 'assets/player.png'];
-// Spritesheet animacji chodzenia (ta sama postać, 11 klatek w poziomym pasku,
-// każda klatka to jednolity "stage" 71x95 - wyrównany tak, żeby stopy nie
-// skakały przy zmianie klatek). Umieść plik pod tą ścieżką: assets/player_walk.png
-const PLAYER_WALK_SPRITE_CANDIDATES = ['player_walk.png', 'assets/player_walk.png'];
+// Ścieżka do sprite'a postaci (CC0, Kenney Platformer Pack - wariant niebieski):
+// assets/player.png. Spritesheet animacji chodzenia (ta sama postać, 11
+// klatek w poziomym pasku, każda klatka to jednolity "stage" 71x95 -
+// wyrównany tak, żeby stopy nie skakały przy zmianie klatek): assets/player_walk.png.
+//
+// BUGFIX (Tomek: "martwe 404 przy starcie gry" - lista poprawek): OBA miały
+// dwie kandydatury (goła nazwa w katalogu głównym najpierw, assets/... jako
+// fallback) z czasów, gdy dokładny układ plików na dysku był niepewny -
+// zmierzone wprost (`ls`): pliki leżą WYŁĄCZNIE w assets/, goła nazwa w
+// katalogu głównym nigdy nie istniała, więc generowała gwarantowane 404 przy
+// KAŻDYM starcie gry, zanim _loadImageWithFallbacks (niżej) trafił w drugą,
+// działającą ścieżkę. Skrócone do jednej.
+const PLAYER_SPRITE_CANDIDATES = ['assets/player.png'];
+const PLAYER_WALK_SPRITE_CANDIDATES = ['assets/player_walk.png'];
 const PLAYER_WALK_FRAME_COUNT = 11;
+
+// --- Ciała skinów (Kenney "Platformer Art Extended" - Alien sprites) -------
+// Trzy kolory PRAWDZIWIE innej sylwetki (nie tylko przebarwienie tego
+// samego sprite'a) - patrz PLAYER_SKINS w economy.js (pole `body`). Ten sam
+// rozmiar/rodzina co assets/player.png (66x92, "alien w hełmie") - Blue z tej
+// paczki to praktycznie już domyślny wygląd gracza, więc NIE dublujemy go
+// jako osobny skin, tylko wykorzystujemy pozostałe kolory. Statyczna klatka
+// (idle) i 2-klatkowy pasek chodu (walk1/walk2, bez precyzyjnej 11-klatkowej
+// animacji nóg jak przy domyślnym ciele - patrz PLAYER_ALIEN_WALK_FRAME_COUNT
+// i _drawBoots) - wystarczające "poruszanie się", bez konieczności ręcznego
+// mierzenia pozycji stóp w KAŻDEJ klatce dla dodatkowych sylwetek.
+//
+// BUGFIX (Tomek: "żółty jest za mały usuń go"): był tu też 'yellow' - jego
+// źródłowa klatka miała inną wysokość niż pink/green/beige, a łatka z
+// poprzedniej sesji (dopchanie pustego marginesu do wspólnego rozmiaru
+// płótna) naprawiła TYLKO pozycję stóp, nie samą skalę - drawImage()
+// skaluje całe płótno do jednego stałego rozmiaru niezależnie od tego, ile
+// z niego jest nieprzezroczyste, więc postać i tak wychodziła ~11% za mała
+// (mniej "prawdziwej" grafiki w tym samym płótnie = mniejsza narysowana
+// sylwetka po przeskalowaniu). Zamiast kolejnej łatki na tym samym, kruchym
+// assetcie - usunięty; 'gold' (jedyny skin, który go używał) wrócił do
+// domyślnego ciała z tintem (patrz PLAYER_SKINS w economy.js).
+const PLAYER_ALIEN_BODY_IDS = ['beige', 'green', 'pink'];
+const PLAYER_ALIEN_SPRITE_SRC = {
+  beige: 'assets/player/alien_beige.png',
+  green: 'assets/player/alien_green.png',
+  pink: 'assets/player/alien_pink.png'
+};
+const PLAYER_ALIEN_WALK_SPRITE_SRC = {
+  beige: 'assets/player/alien_beige_walk.png',
+  green: 'assets/player/alien_green_walk.png',
+  pink: 'assets/player/alien_pink_walk.png'
+};
+const PLAYER_ALIEN_WALK_FRAME_COUNT = 2;
 /**
  * Dokładna pozycja stóp (lewa/prawa noga, jako ułamek szerokości/wysokości
  * KLATKI 71x95) w KAŻDEJ z 11 klatek assets/player_walk.png - zmierzone
@@ -98,6 +131,29 @@ const PLAYER_WALK_LEG_FRAMES = [
   { leftFrac: 0.438, rightFrac: 0.554, footFrac: 0.989 },
   { leftFrac: 0.358, rightFrac: 0.620, footFrac: 0.989 }
 ];
+
+/**
+ * BUGFIX (Tomek: "na alien body skin to jest w ogóle wszystko nie tak z
+ * tych ulepszeń"): _drawBoots (gałąź bezruchu) i _drawHazmatTrim liczyły
+ * pozycję/szerokość z ułamkami zmierzonymi WYŁĄCZNIE na assets/player.png
+ * (domyślne ciało) i zakładały (błędnie), że alien body ma "niemal
+ * identyczny zarys w tym samym płótnie". Sprawdzone bezpośrednio pikselami:
+ * pink/green/beige są identyczne między sobą (yellow to ten sam kształt,
+ * tylko przesunięty przez wcześniejszy pad_top fix), ale RÓŻNIĄ SIĘ mocno
+ * od domyślnego ciała - ręce zwisają WZDŁUŻ tułowia (nie sterczą na boki na
+ * wysokości pasa jak u domyślnej postaci), więc i szerokość "samego tułowia"
+ * i pozycja nóg wypadają gdzie indziej. Zmierzone wprost na
+ * assets/player/alien_pink.png (reprezentatywne dla całej rodziny):
+ * - nogi (rzędy w pełni rozdzielone, y=84-91): środek lewej ~0.215,
+ *   prawej ~0.674, najniższy piksel ~0.989 wysokości.
+ * - tułów BEZ rąk (rzędy y=74-82, ręce już się skończyły, nogi jeszcze się
+ *   nie rozdzieliły): szerokość ~0.586 pełnej szerokości sprite'a.
+ */
+const PLAYER_ALIEN_BOOT_LEFT_FRAC = 0.215;
+const PLAYER_ALIEN_BOOT_RIGHT_FRAC = 0.674;
+const PLAYER_ALIEN_BOOT_FOOT_FRAC = 0.989;
+const PLAYER_ALIEN_TORSO_WIDTH_FRAC = 0.586;
+
 // Docelowa wysokość rysowanego sprite'a (px) - szerokość liczona proporcjonalnie
 // z naturalnych wymiarów obrazka, żeby nie zniekształcić postaci.
 const PLAYER_SPRITE_HEIGHT = 84;
@@ -119,9 +175,11 @@ const PLAYER_WALK_CYCLE_MIN_MULT = 0.45;
 const PLAYER_WALK_CYCLE_MAX_MULT = 2.2;
 
 // --- Świat (Faza 2b: mapa większa niż ekran) --------------------------------
-// Te same wartości co w game.js (kamera) / items.js / machines.js / market.js -
-// świat NIE zależy od rozmiaru okna, w przeciwieństwie do canvas.width/height.
-const PLAYER_WORLD_WIDTH = 1400;
+// Te same wartości co w game.js (kamera) / items.js / ambient.js - świat NIE
+// zależy od rozmiaru okna, w przeciwieństwie do canvas.width/height. 1750,
+// było 1400 - patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w game.js
+// (poszerzenie mapy pod NIEZALEŻNY pas Strefy D).
+const PLAYER_WORLD_WIDTH = 1750;
 const PLAYER_WORLD_HEIGHT = 2000;
 
 // --- Strefy mapy (Faza 2) ---------------------------------------------------
@@ -130,10 +188,12 @@ const PLAYER_WORLD_HEIGHT = 2000;
 // utili, tylko komunikacja przez Bus). Liczone teraz względem ŚWIATA.
 const PLAYER_ZONE_C_TOP_RATIO = 0.32; // Strefa C (Atomowa) - górny pas całej szerokości
 const PLAYER_ZONE_B_RIGHT_RATIO = 0.62; // Strefa B (Toksyczna) - prawy pas, poniżej pasa C
-// Strefa D (Kryształowa Grań) - SAMODZIELNY róg prawy-górny (patrz identyczne
-// stałe i obszerny komentarz przy GAME_ZONE_D_LEFT_RATIO w game.js).
-const PLAYER_ZONE_D_LEFT_RATIO = 0.78;
-const PLAYER_ZONE_D_BOTTOM_RATIO = 0.5;
+// Strefa D (Kryształowa Grań) - NIEZALEŻNY pas na pełnej wysokości, na prawo
+// od "rdzenia" (patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w
+// game.js). PLAYER_ZONE_CORE_WIDTH to STARA szerokość świata (1400, sprzed
+// poszerzenia pod Grań) - A/B/C nadal liczą się względem NIEJ, nie
+// PLAYER_WORLD_WIDTH, więc szerszy świat ich nie rusza.
+const PLAYER_ZONE_CORE_WIDTH = 1400;
 // Bez odpowiedniego sprzętu: połowa prędkości + okresowe potrząsanie ekranem
 // (symulacja duszenia się) - liczone jako MNOŻNIK stosowany przy każdym
 // ruchu, NIGDY jako trwała zmiana this.speed (to samo pole podbija
@@ -173,10 +233,13 @@ const PLAYER_BIOME_EDGE_AMPLITUDE = 20;
 class PlayerController {
   constructor(canvas) {
     this.canvas = canvas;
-    // Start na środku ŚWIATA (nie ekranu - świat jest teraz większy).
-    // Wypada w Strefie A (bezpiecznej), bo obie granice stref zajmują pasy
-    // od góry/prawej, a środek świata jest zawsze w pozostałej części.
-    this.x = PLAYER_WORLD_WIDTH / 2;
+    // Start na środku RDZENIA mapy (PLAYER_ZONE_CORE_WIDTH, NIE
+    // PLAYER_WORLD_WIDTH) - Wypada w Strefie A (bezpiecznej), bo obie
+    // granice stref zajmują pasy od góry/prawej, a środek rdzenia jest
+    // zawsze w pozostałej części. BUGFIX: środek PEŁNEGO (poszerzonego o
+    // pas D) świata leżałby tuż za granicą Strefy B (868px) - gracz
+    // startowałby w hazardzie.
+    this.x = PLAYER_ZONE_CORE_WIDTH / 2;
     this.y = PLAYER_WORLD_HEIGHT / 2;
     this.radius = 22;
     this.speed = PLAYER_BASE_SPEED; // px/sek, modyfikowalny przez ulepszenia
@@ -217,14 +280,18 @@ class PlayerController {
     this._inHazard = false;
 
     // --- Sprite postaci (z bezpiecznym fallbackiem na rysowanie proceduralne) --
-    // spritesReady - rozwiązuje się gdy OBA obrazki skończą próby wczytania
-    // (sukces LUB ostateczna porażka - i tak mamy fallback proceduralny),
-    // czytane przez main.js do ukrycia ekranu ładowania (patrz game.assetsReady).
+    // spritesReady - rozwiązuje się gdy WSZYSTKIE obrazki (domyślne ciało +
+    // 4 alternatywne ciała skinów, patrz PLAYER_ALIEN_BODY_IDS) skończą próby
+    // wczytania (sukces LUB ostateczna porażka - i tak mamy fallback
+    // proceduralny), czytane przez main.js do ukrycia ekranu ładowania
+    // (patrz game.assetsReady). Ciała skinów wchodzą w TĘ SAMĄ blokującą
+    // obietnicę co domyślny sprite (nie osobno w tle) - to małe pliki (kilka
+    // KB), a bez tego wybór skina z jeszcze niegotowym ciałem pokazałby na
+    // chwilę pusty/domyślny sprite zamiast wybranego.
+    const readyPromises = [];
     let resolveSpriteReady, resolveWalkReady;
-    this.spritesReady = Promise.all([
-      new Promise((resolve) => { resolveSpriteReady = resolve; }),
-      new Promise((resolve) => { resolveWalkReady = resolve; }),
-    ]);
+    readyPromises.push(new Promise((resolve) => { resolveSpriteReady = resolve; }));
+    readyPromises.push(new Promise((resolve) => { resolveWalkReady = resolve; }));
 
     this._spriteImg = new Image();
     this._spriteLoaded = false;
@@ -246,6 +313,42 @@ class PlayerController {
       console.warn('[PlayerController] Nie udało się wczytać żadnej z: ' + PLAYER_WALK_SPRITE_CANDIDATES.join(', ') + ' - przy ruchu zostaje statyczny sprite.');
       resolveWalkReady();
     });
+
+    // --- Alternatywne ciała skinów (patrz PLAYER_ALIEN_BODY_IDS wyżej) -------
+    this._alienBodies = {}; // { bodyId: { staticImg, walkImg, staticLoaded, walkLoaded } }
+    PLAYER_ALIEN_BODY_IDS.forEach((bodyId) => {
+      const entry = { staticImg: new Image(), walkImg: new Image(), staticLoaded: false, walkLoaded: false };
+      this._alienBodies[bodyId] = entry;
+
+      let resolveBodyStatic, resolveBodyWalk;
+      readyPromises.push(new Promise((resolve) => { resolveBodyStatic = resolve; }));
+      readyPromises.push(new Promise((resolve) => { resolveBodyWalk = resolve; }));
+
+      this._loadImageWithFallbacks(entry.staticImg, [PLAYER_ALIEN_SPRITE_SRC[bodyId]], () => {
+        entry.staticLoaded = true;
+        resolveBodyStatic();
+      }, () => {
+        console.warn('[PlayerController] Nie udało się wczytać ciała skina: ' + PLAYER_ALIEN_SPRITE_SRC[bodyId]);
+        resolveBodyStatic();
+      });
+      this._loadImageWithFallbacks(entry.walkImg, [PLAYER_ALIEN_WALK_SPRITE_SRC[bodyId]], () => {
+        entry.walkLoaded = true;
+        resolveBodyWalk();
+      }, () => {
+        console.warn('[PlayerController] Nie udało się wczytać chodu ciała skina: ' + PLAYER_ALIEN_WALK_SPRITE_SRC[bodyId]);
+        resolveBodyWalk();
+      });
+    });
+
+    this.spritesReady = Promise.all(readyPromises);
+
+    // --- Skiny postaci (economy.js: PLAYER_SKINS/selectedSkin) - obrazek
+    // (surowe ciało, opcjonalnie przebarwione) upieczony RAZ na skin, dopiero
+    // gdy oryginalne obrazki skończą się wczytywać (patrz _bakeSkinTints) -
+    // ten sam duch "upiecz raz, blituj wiele razy" co
+    // _bakeWorldBackground/_bakeCloudTexture w game.js.
+    this._tintedSprites = {}; // { skinId: { static, walk, frameCount } }
+    this.spritesReady.then(() => this._bakeSkinTints());
 
     // --- WSAD / strzalki - fallback do testu w przegladarce desktopowej -----
     this._keys = { up: false, down: false, left: false, right: false };
@@ -324,16 +427,21 @@ class PlayerController {
       pointerEvents: 'none'
     });
 
+    // BUGFIX/UPGRADE: dawniej ustawiał TU wprost background/border (płaskie
+    // białe kółka) - inline style zawsze wygrywa ze stylesheetem, więc
+    // nadpisywał wygląd z assets/ui/joystick_base.png/joystick_knob.png
+    // (Kenney UI Pack, patrz #joystick-base/#joystick-knob w style.css) tym
+    // samym płaskim CSS, mimo wymiany tekstur. Tylko GEOMETRIA (rozmiar/
+    // wyśrodkowanie) zostaje ustawiana z JS (zależy od joystickRadius,
+    // konfigurowalnego pola instancji) - kolor/tekstura to wyłącznie
+    // stylesheet.
     if (createdBase) {
       const baseDiameter = this.joystickRadius * 2;
       Object.assign(base.style, {
         width: `${baseDiameter}px`,
         height: `${baseDiameter}px`,
         marginLeft: `${-baseDiameter / 2}px`,
-        marginTop: `${-baseDiameter / 2}px`,
-        borderRadius: '50%',
-        background: 'rgba(255, 255, 255, 0.15)',
-        border: '2px solid rgba(255, 255, 255, 0.4)'
+        marginTop: `${-baseDiameter / 2}px`
       });
     }
     if (createdKnob) {
@@ -341,9 +449,7 @@ class PlayerController {
         width: `${JOYSTICK_KNOB_DIAMETER}px`,
         height: `${JOYSTICK_KNOB_DIAMETER}px`,
         marginLeft: `${-JOYSTICK_KNOB_DIAMETER / 2}px`,
-        marginTop: `${-JOYSTICK_KNOB_DIAMETER / 2}px`,
-        borderRadius: '50%',
-        background: 'rgba(255, 255, 255, 0.5)'
+        marginTop: `${-JOYSTICK_KNOB_DIAMETER / 2}px`
       });
     }
 
@@ -494,6 +600,7 @@ class PlayerController {
 
     // Strefa gracza PRZED ruchem w tej klatce - decyduje o mnożniku kary.
     this.currentZone = this._getZoneAt(this.x, this.y);
+
     const hasGear = this._hasGearForZone(this.currentZone);
     const inHazard = this.currentZone !== 'A' && !hasGear;
 
@@ -502,10 +609,17 @@ class PlayerController {
     if (inHazard) {
       if (this._hazardWarnedZone !== this.currentZone) {
         this._hazardWarnedZone = this.currentZone;
+        // BUGFIX (Tomek: "strefy niech mają swoje własne nazwy"): Strefa B
+        // miała TRZY różne nazwy w grze naraz - "Strefa Bagienna" w
+        // toaście odblokowania (economy.js PROGRESSION_UNLOCKS), ale
+        // "Strefa Skażenia" tutaj I w opisie Filtra Toksyn (economy.js
+        // SHOP_UPGRADES) - gracz widział jedną nazwę przy odblokowaniu, a
+        // zupełnie inną przy wejściu bez sprzętu. Ujednolicone na "Strefa
+        // Bagienna" wszędzie (to ona pojawia się PIERWSZA, przy odblokowaniu).
         const zoneWarnings = {
-          B: '⚠️ Strefa Skażenia - bez Filtra Toksyn stracisz przedmiot!',
-          C: '⚠️ Strefa Atomowa - bez Kombinezonu Radiacyjnego stracisz przedmiot!',
-          D: '⚠️ Kryształowa Grań - potrzebujesz Filtra I Kombinezonu naraz!'
+          B: I18n.t('player.zoneWarning.B'),
+          C: I18n.t('player.zoneWarning.C'),
+          D: I18n.t('player.zoneWarning.D')
         };
         // BUGFIX: brak jawnego x/y powodował, że popup renderował się w
         // stałym punkcie ŚWIATA (fallback w gamefeel.js), a nie nad graczem
@@ -515,7 +629,10 @@ class PlayerController {
         // wyświetla się nad ash" - tekst i tak nie miał związku z pozycją
         // gracza. y - 70, żeby popup wystartował nad głową, nie na twarzy.
         Bus.publish(Events.FX_POPUP, {
-          text: zoneWarnings[this.currentZone] || '⚠️ Strefa niebezpieczna',
+          text: zoneWarnings[this.currentZone] || I18n.t('player.zoneWarning.default'),
+          // Trójkąt ostrzegawczy rysowany PROCEDURALNIE nad popupem (patrz
+          // _drawPopupIcon w gamefeel.js) zamiast dawnego ⚠️ wtopionego w text.
+          icon: 'warning',
           x: this.x,
           y: this.y - 70,
           duration: 2200,
@@ -675,7 +792,7 @@ class PlayerController {
     // <script> w index.html - więc jego statyczne metody są tu bezpieczne
     // do użycia (ten sam wzorzec co StackController.draw() w stacking.js).
     const meta = (typeof ItemRenderer !== 'undefined') ? ItemRenderer.getTypeMeta(item.typeId) : null;
-    const niceName = (meta && meta.name) || 'przedmiot';
+    const niceName = (meta && meta.name) || I18n.t('player.genericItem');
 
     Bus.publish(Events.FX_SHAKE, {
       intensity: ZONE_HAZARD_LOSS_SHAKE_INTENSITY,
@@ -687,8 +804,14 @@ class PlayerController {
       color: item.color || '#EF5350',
       count: 10
     });
+    if (Events.ITEM_LOST) Bus.publish(Events.ITEM_LOST, { typeId: item.typeId });
     Bus.publish(Events.FX_POPUP, {
-      text: `💢 Zgubiono: ${item.label || ''} ${niceName}`.trim(),
+      text: I18n.t('player.itemLostToast', { name: niceName }),
+      // X rysowany PROCEDURALNIE nad popupem (patrz _drawPopupIcon w
+      // gamefeel.js) zamiast dawnego 💢 wtopionego w text. item.label (emoji
+      // per typ z ITEM_TYPES) też usunięty z treści - nazwa (niceName) już
+      // mówi co to za surowiec, bez potrzeby glifu w środku zdania.
+      icon: 'lost',
       x: this.x,
       y: this.y - 50,
       duration: 1800,
@@ -731,6 +854,16 @@ class PlayerController {
     ctx2.save();
     ctx2.rotate(lean);
     ctx2.scale(this.facing, 1);
+
+    // Plecak PRZED sylwetką (Tomek: "damy go bardziej na plecy") - postać
+    // rysowana zaraz potem zasłania środek plecaka, więc widać tylko
+    // wystający fragment zza ramienia, jak coś NOSZONEGO na plecach, a nie
+    // doczepiony z boku pakunek (patrz komentarz przy _drawBackpack o
+    // wcześniejszym x-offsecie).
+    const eco = window.economyManager;
+    if (eco && eco.upgradeLevels && eco.upgradeLevels.capacity > 0) {
+      this._drawBackpack(ctx2, this._getBodyPointY(0.62), eco.upgradeLevels.capacity);
+    }
 
     if (this._spriteLoaded) {
       this._drawSprite(ctx2);
@@ -838,16 +971,31 @@ class PlayerController {
    * (patrz _drawGearOverlays), nie zaszyte niejawnie w jednej stałej.
    */
   /**
-   * Który z 11 kadrów assets/player_walk.png jest teraz pokazywany - ta sama
-   * faza co bujanie (Math.sin(this.walkCycle) w update()), znormalizowana do
-   * 0..1 na pełnym okresie 2*PI i zmapowana na klatki. Wspólne dla
-   * _drawSprite (który kadr narysować) i _drawBoots (gdzie dokładnie leżą
-   * stopy W TYM kadrze, patrz PLAYER_WALK_LEG_FRAMES) - muszą zawsze
-   * wskazywać na TEN SAM kadr, inaczej buty znowu rozjadą się z nogami.
+   * Który kadr chodu jest teraz pokazywany - ta sama faza co bujanie
+   * (Math.sin(this.walkCycle) w update()), znormalizowana do 0..1 na pełnym
+   * okresie 2*PI i zmapowana na klatki. Wspólne dla _drawSprite (który kadr
+   * narysować) i _drawBoots (gdzie dokładnie leżą stopy W TYM kadrze, patrz
+   * PLAYER_WALK_LEG_FRAMES) - muszą zawsze wskazywać na TEN SAM kadr, inaczej
+   * buty znowu rozjadą się z nogami. frameCount jest parametrem (nie zawsze
+   * PLAYER_WALK_FRAME_COUNT=11) - skiny na alternatywnym ciele (patrz
+   * PLAYER_ALIEN_BODY_IDS) mają tylko 2 klatki chodu (_activeWalkFrameCount()).
    */
-  _currentWalkFrameIndex() {
+  _currentWalkFrameIndex(frameCount = PLAYER_WALK_FRAME_COUNT) {
     const phase = (this.walkCycle % (Math.PI * 2)) / (Math.PI * 2);
-    return Math.floor(phase * PLAYER_WALK_FRAME_COUNT) % PLAYER_WALK_FRAME_COUNT;
+    return Math.floor(phase * frameCount) % frameCount;
+  }
+
+  /** Liczba klatek spritesheeta chodu AKTYWNEGO skina - 11 (precyzyjna,
+   * ręcznie zmierzona animacja) dla domyślnego ciała, 2 (walk1/walk2 z
+   * paczki Kenney) dla alternatywnych ciał skinów (patrz PLAYER_SKINS.body
+   * w economy.js). Czytane przez _getSpriteDrawSize/_drawSprite/_drawBoots -
+   * wszystkie trzy muszą się zgadzać, inaczej kadrowanie rozjedzie się z
+   * rzeczywistym obrazkiem. */
+  _activeWalkFrameCount() {
+    const eco = window.economyManager;
+    const skinId = (eco && eco.selectedSkin) || 'default';
+    const baked = this._tintedSprites[skinId];
+    return (baked && baked.frameCount) || PLAYER_WALK_FRAME_COUNT;
   }
 
   /**
@@ -858,14 +1006,27 @@ class PlayerController {
    * za mały ("filtr za mały" mimo kolejnych podbić mnożnika) - maska/buty
    * teraz skalują się względem TEGO SAMEGO rozmiaru co realnie widoczna
    * sylwetka, więc rosną/maleją razem z nią zamiast osobno zgadywać.
+   *
+   * BUGFIX (skiny na innym ciele): liczyło proporcje ZAWSZE z domyślnego
+   * this._spriteImg/this._walkImg, niezależnie od wybranego skina - dla
+   * skinów na alternatywnym ciele (inny rozmiar/kadr niż domyślny) dawało to
+   * złe proporcje (gear i sylwetka rozjeżdżały się). Liczy teraz z
+   * FAKTYCZNIE rysowanego obrazka (_getSkinImage), z fallbackiem na domyślny.
    */
   _getSpriteDrawSize() {
     let naturalRatio = 66 / 92; // domyslne proporcje sprite'a, zanim jakikolwiek obrazek zdazy sie wczytac
     if (this._spriteLoaded) {
       const useWalk = this.isMoving && this._walkLoaded;
-      naturalRatio = useWalk
-        ? (this._walkImg.naturalWidth / PLAYER_WALK_FRAME_COUNT) / this._walkImg.naturalHeight
-        : this._spriteImg.naturalWidth / this._spriteImg.naturalHeight;
+      const skinImg = this._getSkinImage(useWalk);
+      if (skinImg) {
+        const iw = skinImg.naturalWidth || skinImg.width;
+        const ih = skinImg.naturalHeight || skinImg.height;
+        naturalRatio = useWalk ? (iw / this._activeWalkFrameCount()) / ih : iw / ih;
+      } else {
+        naturalRatio = useWalk
+          ? (this._walkImg.naturalWidth / PLAYER_WALK_FRAME_COUNT) / this._walkImg.naturalHeight
+          : this._spriteImg.naturalWidth / this._spriteImg.naturalHeight;
+      }
     }
     const h = PLAYER_SPRITE_HEIGHT * this.bodySquash;
     const w = (PLAYER_SPRITE_HEIGHT * naturalRatio) / this.bodySquash;
@@ -889,6 +1050,11 @@ class PlayerController {
 
   _drawGearOverlays(ctx2) {
     const eco = window.economyManager;
+    // Zerowane na starcie KAŻDEJ klatki (nie tylko gdy brak upgrade'u) - jeśli
+    // gracz akurat nie ma latarki, _drawHeadlampNightGlow (game.js) ma o tym
+    // wiedzieć i nic nie rysować, zamiast świecić stara, martwą pozycją z
+    // ostatniej klatki, w której latarka jeszcze była rysowana.
+    this._headlampScreenPos = null;
     if (!eco || typeof eco.hasUpgrade !== 'function') return;
 
     // Pasy kombinezonu NAJPIERW (na torsie, pod maską) - gdyby gracz miał
@@ -908,14 +1074,14 @@ class PlayerController {
     if (eco.hasUpgrade('toxic_filter')) {
       this._drawGasMask(ctx2, this._getBodyPointY(0.32));
     }
-    // Kask NAD maską (patrz _drawHelmet - podniesiony ponad nią), plecak Z
-    // BOKU torsu, buty PRZY stopach - żaden z pięciu możliwych gearów
-    // (plecak/kask/maska/pasy/buty) nie nakłada się na inny.
+    // Latarka NA WYSOKOŚCI SKRONI, wyżej niż maska (patrz _drawHelmet -
+    // bez kopuły hełmu, sama latarka przypięta z boku głowy), buty PRZY
+    // stopach - żaden z gearów rysowanych TU (latarka/maska/pasy/buty) nie
+    // nakłada się na inny. Plecak NIE jest już tutaj - rysuje się PRZED
+    // sylwetką w draw(), żeby postać go częściowo zasłaniała (patrz
+    // komentarz tam i przy _drawBackpack).
     if (eco.hasUpgrade('headlamp')) {
-      this._drawHelmet(ctx2, this._getBodyPointY(0));
-    }
-    if (eco.upgradeLevels && eco.upgradeLevels.capacity > 0) {
-      this._drawBackpack(ctx2, this._getBodyPointY(0.47), eco.upgradeLevels.capacity);
+      this._drawHelmet(ctx2, this._getBodyPointY(0.16));
     }
     if (eco.hasUpgrade('boots')) {
       this._drawBoots(ctx2);
@@ -930,81 +1096,288 @@ class PlayerController {
    * BUGFIX: pierwsza wersja rysowała go WYŚRODKOWANY i PRZED sylwetką (żeby
    * "wystawał zza pleców") - ale przy realnych wymiarach sprite'a
    * (66x92, ~60px szerokości narysowanej) mały, wyśrodkowany prostokąt
-   * mieścił się CAŁKOWICIE w cieniu korpusu i nigdy nie było go widać.
-   * Teraz rysowany PO sylwetce (jak reszta gearu), przesunięty WYRAŹNIE w
-   * bok od środka - zawsze w pełni widoczny, niezależnie od dokładnej
-   * szerokości aktywnej ścieżki rysowania (sprite/procedural), z cienkim
-   * "paskiem" łączącym go wizualnie z plecami zamiast wyglądać jak osobny,
-   * oderwany obiekt.
+   * mieścił się CAŁKOWICIE w cieniu korpusu i nigdy nie było go widać, więc
+   * przesunięto go WYRAŹNIE w bok i za sylwetkę (rysowany PO niej) - zawsze
+   * w pełni widoczny, ale czytał się jako doczepiony z boku pakunek, nie
+   * plecak NA plecach.
+   *
+   * BUGFIX #2 (Tomek: "co robimy z plecakiem, może go bardziej na plecy
+   * damy"): wrócono do PRZED-sylwetkowego rysowania (patrz wywołanie w
+   * draw()), ale tym razem z x na tyle bliskim środka, żeby postać
+   * ZASŁANIAŁA środek plecaka, a widoczny zostawał tylko fragment
+   * wystający zza ramienia - kompromis między pierwszą wersją (całkiem
+   * znikał) a drugą (cały czas widoczny obok, jak osobny pakunek). Trochę
+   * większa bazowa szerokość niż poprzednio, żeby wystający fragment nadal
+   * wyraźnie czytał się jako plecak po częściowym zasłonięciu.
    */
   _drawBackpack(ctx2, bodyTopY, level) {
     const growth = 1 + (level - 1) * 0.12; // 5 poziomów: 1.0 .. ~1.48
-    const w = this.radius * 0.5 * growth;
+    const w = this.radius * 0.75 * growth;
     const h = this.radius * 0.8 * growth;
-    const x = this.radius * 1.05;
+    const x = this.radius * 0.68;
     const y = bodyTopY + h * 0.3;
 
     ctx2.save();
 
+    // BUGFIX (Tomek: "brązowa butle z rurką"): szelki wcześniej biegły AŻ do
+    // punktu blisko głowy - z daleka czytały się jako osobna "rurka"
+    // wychodząca z plecaka w stronę hełmu, nie jak pasek noszony na
+    // ramieniu. Teraz to KRÓTKIE kreski TYLKO przy górnej krawędzi plecaka
+    // (sugerują "tu zaczyna się szelka i znika za ramieniem"), bez ciągnięcia
+    // linii przez pół sylwetki do głowy.
     ctx2.strokeStyle = 'rgba(0, 0, 0, 0.35)';
-    ctx2.lineWidth = 2;
-    ctx2.beginPath();
-    ctx2.moveTo(x - w / 2, y);
-    ctx2.lineTo(0, bodyTopY + h * 0.15);
-    ctx2.stroke();
+    ctx2.lineWidth = 2.2;
+    ctx2.lineCap = 'round';
+    [-0.28, 0.2].forEach((frac) => {
+      const sx = x + w * frac;
+      const sy = y - h / 2 + h * 0.06;
+      ctx2.beginPath();
+      ctx2.moveTo(sx, sy);
+      ctx2.lineTo(sx - w * 0.22, sy - h * 0.16);
+      ctx2.stroke();
+    });
 
-    ctx2.fillStyle = '#5D4037';
-    ctx2.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+    // Korpus - gradient góra-dół zamiast płaskiego wypełnienia, żeby miał
+    // wyczuwalną objętość (jaśniejsza górna krawędź, cień u dołu).
+    const bodyGrad = ctx2.createLinearGradient(0, y - h / 2, 0, y + h / 2);
+    bodyGrad.addColorStop(0, '#7A5548');
+    bodyGrad.addColorStop(0.5, '#5D4037');
+    bodyGrad.addColorStop(1, '#3E2723');
+    ctx2.fillStyle = bodyGrad;
+    ctx2.strokeStyle = 'rgba(0, 0, 0, 0.45)';
     ctx2.lineWidth = 1.3;
     this._roundRect(ctx2, x - w / 2, y - h / 2, w, h, w * 0.3);
     ctx2.fill();
     ctx2.stroke();
 
-    // Klapa u góry - drobny detal, żeby czytało się jako plecak, nie po
-    // prostu ciemny prostokąt przy boku.
-    ctx2.fillStyle = '#4E342E';
+    // Boczna kieszeń - mały prostokąt z własnym cieniowaniem, żeby korpus
+    // nie był jednolitą płaszczyzną.
+    const pocketGrad = ctx2.createLinearGradient(0, y, 0, y + h * 0.32);
+    pocketGrad.addColorStop(0, '#6D4C41');
+    pocketGrad.addColorStop(1, '#4E342E');
+    ctx2.fillStyle = pocketGrad;
+    this._roundRect(ctx2, x - w * 0.32, y + h * 0.08, w * 0.64, h * 0.3, w * 0.14);
+    ctx2.fill();
+
+    // Klapa u góry - z gradientem i cienką jasną krawędzią (szew).
+    const flapGrad = ctx2.createLinearGradient(0, y - h / 2 - h * 0.14, 0, y - h / 2 + h * 0.16);
+    flapGrad.addColorStop(0, '#5D4037');
+    flapGrad.addColorStop(1, '#3E2723');
+    ctx2.fillStyle = flapGrad;
     this._roundRect(ctx2, x - w * 0.36, y - h / 2 - h * 0.14, w * 0.72, h * 0.3, w * 0.16);
     ctx2.fill();
+    ctx2.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx2.lineWidth = 1;
+    this._roundRect(ctx2, x - w * 0.36, y - h / 2 - h * 0.14, w * 0.72, h * 0.3, w * 0.16);
+    ctx2.stroke();
+
+    // Klamra na klapie - mały jasny prostokąt, sprzedaje "prawdziwy sprzęt"
+    // zamiast gładkiej bryły.
+    ctx2.fillStyle = '#FFCA28';
+    this._roundRect(ctx2, x - w * 0.09, y - h / 2 - h * 0.01, w * 0.18, h * 0.13, w * 0.04);
+    ctx2.fill();
+
+    // Tomek: "progres capacity niech będzie widać na oko, nie tylko
+    // rozmiarem" - od poziomu 3 dochodzi DRUGA kieszeń po przeciwnej
+    // stronie plecaka (widoczna zza ramienia razem z główną), a na
+    // maksymalnym poziomie 5 dodatkowo zwinięta mata/derka przypięta pod
+    // spodem na krzyżujących się paskach - typowy język "w pełni
+    // wyposażonego" plecaka, łatwo czytelny nawet w małej skali sprite'a.
+    if (level >= 3) {
+      const px = x + w * 0.4;
+      const py = y + h * 0.02;
+      const pw = w * 0.24;
+      const ph = h * 0.24;
+      ctx2.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx2.lineWidth = 1.6;
+      ctx2.beginPath();
+      ctx2.moveTo(px, py - ph * 0.5);
+      ctx2.lineTo(px, y - h * 0.42);
+      ctx2.stroke();
+      const pocket2Grad = ctx2.createLinearGradient(0, py - ph / 2, 0, py + ph / 2);
+      pocket2Grad.addColorStop(0, '#6D4C41');
+      pocket2Grad.addColorStop(1, '#4E342E');
+      ctx2.fillStyle = pocket2Grad;
+      ctx2.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx2.lineWidth = 1;
+      this._roundRect(ctx2, px - pw / 2, py - ph / 2, pw, ph, w * 0.08);
+      ctx2.fill();
+      ctx2.stroke();
+    }
+
+    if (level >= 5) {
+      const rollY = y + h / 2 + h * 0.1;
+      const rollW = w * 0.9;
+      const rollH = h * 0.2;
+      const rollGrad = ctx2.createLinearGradient(0, rollY - rollH / 2, 0, rollY + rollH / 2);
+      rollGrad.addColorStop(0, '#8D9C4A');
+      rollGrad.addColorStop(0.5, '#6B7A38');
+      rollGrad.addColorStop(1, '#4A5626');
+      ctx2.fillStyle = rollGrad;
+      ctx2.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx2.lineWidth = 1.2;
+      this._roundRect(ctx2, x - rollW / 2, rollY - rollH / 2, rollW, rollH, rollH * 0.5);
+      ctx2.fill();
+      ctx2.stroke();
+
+      ctx2.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx2.lineWidth = 2;
+      [-0.28, 0.28].forEach((frac) => {
+        ctx2.beginPath();
+        ctx2.moveTo(x + w * frac, y + h * 0.4);
+        ctx2.lineTo(x + w * frac * 0.5, rollY);
+        ctx2.stroke();
+      });
+    }
 
     ctx2.restore();
   }
 
   /**
-   * "Kask z Latarką" (sklep) - kopuła nad głową + pulsująca lampka na czole.
-   * Zakotwiczony DOKŁADNIE na czubku głowy (fraction=0, patrz
-   * _getBodyPointY) - kopuła i tak rysuje się w górę od tego punktu
-   * (arc od PI do 0 = górna połówka), więc wizualnie "siedzi" na czubku,
-   * wyraźnie nad maską na twarzy (fraction=0.28) - zero kolizji.
+   * "Kask z Latarką" (sklep) - WYŁĄCZNIE latarka przypięta z boku głowy,
+   * bez kopuły hełmu (patrz BUGFIX niżej). Zakotwiczona na wysokości
+   * skroni (fraction=0.16, patrz _getBodyPointY) - wyraźnie wyżej niż
+   * maska na twarzy (fraction=0.32, środek całej twarzy), więc czyta się
+   * jako coś przypiętego DO głowy z boku, nie unoszące się nad nią.
+   *
+   * BUGFIX (Tomek: "kask usuń, a latarkę daj z boku głowy"): wcześniejsza
+   * wersja miała żółtą kopułę hełmu POD latarką (patrz historia tej
+   * funkcji - najpierw lampka na czole kopuły, potem tuba z boku kopuły).
+   * Teraz zostaje WYŁĄCZNIE sama latarka (uchwyt + tuba + soczewka),
+   * przypięta wprost do sylwetki głowy - bez kopuły w ogóle.
+   *
+   * Tomek: "żeby była jakoś przypięta do hełmu [głowy]" - sam uchwyt
+   * (mały prostokąt pod tubą) był za mało czytelny jako "coś zapiętego
+   * NA głowie", więc doszedł jeszcze cienki PASEK opasujący górę głowy
+   * (jak prawdziwa opaska latarki czołowej) + nit/klamra w miejscu
+   * mocowania - dwa niezależne sygnały "to jest przypięte", nie
+   * doklejone. Kąt nachylenia tuby (-0.25, czyli lekko w górę-przód)
+   * ZOSTAJE, a nie "prosto w kamerę" - w tym rzucie z góry/boku płaska
+   * soczewka patrząca wprost w ekran czytałaby się jako plaska kropka
+   * bez kształtu, podczas gdy nachylona tuba jednoznacznie czyta się
+   * jako źródło światła świecące w kierunku, w którym postać patrzy.
+   *
+   * BUGFIX (Tomek: "mocowanie niech dobrze i w dobrym miejscu leży na
+   * hełmie i będzie łączone z latarką"): pasek zaczynał się w INNYM
+   * miejscu (r*0.75) niż uchwyt tuby (r*0.92) - widoczna przerwa, nie
+   * jedno spójne mocowanie. Do tego samo r*0.92 było zgadywanką z
+   * this.radius (parametr KOLIZJI, nie rozmiar sylwetki - ten sam błąd,
+   * który wcześniej psuł buty/pasek, patrz komentarz przy
+   * PLAYER_ALIEN_BOOT_LEFT_FRAC) - wypadało WEWNĄTRZ sylwetki głowy
+   * zamiast na jej krawędzi. Zmierzone wprost na pikselach
+   * assets/player.png (wiersz 15, wysokość ~fraction 0.16): prawa
+   * krawędź głowy leży na 0.409 * spriteW od środka. Ta sama wartość
+   * działa dla WSZYSTKICH ciał (w przeciwieństwie do tułowia głowa ma
+   * identyczny zarys na default i na wszystkich PLAYER_ALIEN_BODY_IDS -
+   * zmierzone osobno, więc bez potrzeby _isAlienBodyActive tutaj).
+   * Pasek i uchwyt teraz startują z TEGO SAMEGO punktu (mountX, sideY).
+   *
+   * BUGFIX (Tomek: "mocowanie nie idzie po krzywiźnie hełmu tylko jakoś
+   * tak schodzi"): quadraticCurveTo z RĘCZNIE zgadniętym punktem
+   * kontrolnym cięła po skosie przez środek twarzy zamiast trzymać się
+   * krawędzi głowy. Zastąpione łamaną PRZEZ realnie zmierzone punkty
+   * prawej krawędzi assets/player.png (wiersze 3/6/9/12/15, ta sama
+   * tabela co wyżej) - pasek fizycznie leży NA sylwetce, więc opływa jej
+   * krzywiznę niezależnie od kształtu, zamiast rysować własną, niezależną
+   * krzywą, która akurat CZASEM się z nią pokrywa.
    */
-  _drawHelmet(ctx2, topY) {
-    const r = this.radius * 0.62;
+  _drawHelmet(ctx2, sideY) {
+    const r = this.radius * 0.62; // skala samych elementów (tuba/uchwyt/pasek), NIE ich pozycji
+    const { w: spriteW } = this._getSpriteDrawSize();
+    const mountX = spriteW * 0.409;
 
+    // Pasek opasujący głowę - łamana PO zmierzonej krawędzi (patrz BUGFIX
+    // wyżej), od miejsca mocowania w górę do okolic czubka głowy, bez
+    // rysowania pełnej opaski dookoła (i tak w większości zasłoniłaby ją
+    // sylwetka).
+    const STRAP_EDGE_FRACS = [0.163, 0.13, 0.098, 0.065, 0.033]; // wysokość (_getBodyPointY)
+    const STRAP_EDGE_X = [0.909, 0.879, 0.833, 0.788, 0.727]; // prawa krawędź głowy na tej wysokości
     ctx2.save();
-    ctx2.translate(0, topY);
-
-    ctx2.fillStyle = '#FFB300';
-    ctx2.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx2.lineWidth = 1.3;
+    ctx2.strokeStyle = 'rgba(40, 40, 40, 0.75)';
+    ctx2.lineWidth = r * 0.12;
+    ctx2.lineCap = 'round';
+    ctx2.lineJoin = 'round';
     ctx2.beginPath();
-    ctx2.arc(0, 0, r, Math.PI, 0);
-    ctx2.lineTo(r, r * 0.22);
-    ctx2.lineTo(-r, r * 0.22);
-    ctx2.closePath();
+    ctx2.moveTo(mountX, sideY);
+    STRAP_EDGE_FRACS.slice(1).forEach((frac, i) => {
+      const px = (STRAP_EDGE_X[i + 1] - 0.5) * spriteW;
+      const py = this._getBodyPointY(frac);
+      ctx2.lineTo(px, py);
+    });
+    ctx2.stroke();
+    ctx2.restore();
+
+    // Latarka z boku głowy - własny lokalny układ (przesunięcie + obrót),
+    // żeby tuba i jej soczewka nie musiały ręcznie przeliczać sinusów/
+    // cosinusów kąta nachylenia. Zakotwiczona w TYM SAMYM punkcie
+    // (mountX, sideY) co start paska powyżej - jedno spójne mocowanie.
+    ctx2.save();
+    ctx2.translate(mountX, sideY);
+    ctx2.rotate(-0.25);
+
+    // Uchwyt łączący tubę z głową (z małym nitem/klamrą - miejsce, gdzie
+    // faktycznie "zapina się" na pasku powyżej).
+    ctx2.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx2.fillRect(-r * 0.22, -r * 0.08, r * 0.3, r * 0.16);
+    ctx2.fillStyle = '#BDBDBD';
+    ctx2.beginPath();
+    ctx2.arc(-r * 0.07, 0, r * 0.06, 0, Math.PI * 2);
+    ctx2.fill();
+
+    // Tuba - gradient poprzeczny (jasna góra, ciemny dół), jak realny
+    // metalowy walec, ten sam zabieg "obiekt ma objętość" co reszta gearu.
+    const tubeLen = r * 0.85;
+    const tubeW = r * 0.32;
+    const tubeGrad = ctx2.createLinearGradient(0, -tubeW / 2, 0, tubeW / 2);
+    tubeGrad.addColorStop(0, '#9E9E9E');
+    tubeGrad.addColorStop(0.5, '#616161');
+    tubeGrad.addColorStop(1, '#333333');
+    ctx2.fillStyle = tubeGrad;
+    ctx2.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx2.lineWidth = 1;
+    this._roundRect(ctx2, 0, -tubeW / 2, tubeLen, tubeW, tubeW * 0.35);
     ctx2.fill();
     ctx2.stroke();
 
-    ctx2.fillStyle = 'rgba(93, 64, 55, 0.5)';
-    ctx2.fillRect(-r, r * 0.05, r * 2, r * 0.17);
-
-    // Lampka - pulsuje, żeby czytała się jako WŁĄCZONA, nie naklejka.
+    // Soczewka na czubku tuby - ten sam efekt "źródła światła" (poświata +
+    // jasny rdzeń, pulsujące) co poprzednia wersja, teraz osadzony na
+    // czubku rozpoznawalnej latarki zamiast samotnie na czole kopuły.
     const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 260);
     ctx2.save();
     ctx2.globalAlpha = pulse;
+    const glowGrad = ctx2.createRadialGradient(tubeLen, 0, 0, tubeLen, 0, tubeW * 0.9);
+    glowGrad.addColorStop(0, 'rgba(255, 249, 196, 0.9)');
+    glowGrad.addColorStop(1, 'rgba(255, 249, 196, 0)');
+    ctx2.fillStyle = glowGrad;
+    ctx2.beginPath();
+    ctx2.arc(tubeLen, 0, tubeW * 0.9, 0, Math.PI * 2);
+    ctx2.fill();
     ctx2.fillStyle = '#FFF9C4';
     ctx2.beginPath();
-    ctx2.arc(0, -r * 0.15, r * 0.22, 0, Math.PI * 2);
+    ctx2.arc(tubeLen, 0, tubeW * 0.42, 0, Math.PI * 2);
     ctx2.fill();
     ctx2.restore();
+
+    // Zapamiętaj pozycję soczewki w PRAWDZIWYCH pikselach ekranu (Tomek:
+    // "kask latarka niech świeci") - ten sam problem co dawniej rdzenie
+    // maszyn (patrz game.js, _drawMachineNightGlow): ten blask powyżej jest
+    // rysowany w warstwie świata, PRZED nocną nakładką, więc ciemny
+    // prostokąt nocy przygaszał latarkę tak samo jak całe otoczenie.
+    // getTransform() w TYM miejscu (wciąż wewnątrz translate(mountX,sideY)+
+    // rotate(-0.25) z góry funkcji, PRZED zamykającym ctx2.restore() poniżej)
+    // daje PEŁNĄ macierz - kamera + pozycja gracza + lean/flip + lokalny
+    // obrót latarki razem - więc transformPoint(tubeLen, 0) to dokładnie ten
+    // sam piksel, w którym realnie wylądowała soczewka w TEJ klatce. Dzielone
+    // przez this.game.dpr, bo setTransform(dpr,...) z resize() jest BAZĄ pod
+    // całym stosem transformacji (nigdy nie zdejmowaną przez żaden
+    // save/restore w pętli renderowania) - bez dzielenia współrzędne
+    // wyszłyby dpr-krotnie za duże względem window.innerWidth, na którym
+    // opiera się reszta warstwy UI (patrz _drawMachineNightGlow/_drawStars).
+    if (ctx2.getTransform) {
+      const dpr = (window.game && window.game.dpr) || 1;
+      const pt = ctx2.getTransform().transformPoint({ x: tubeLen, y: 0 });
+      this._headlampScreenPos = { x: pt.x / dpr, y: pt.y / dpr };
+    }
 
     ctx2.restore();
   }
@@ -1027,52 +1400,136 @@ class PlayerController {
    * pozycję nóg z PLAYER_WALK_LEG_FRAMES dla TEGO SAMEGO kadru co
    * _drawSprite (_currentWalkFrameIndex()) - identyczna transformacja
    * ułamek->px jak przy rysowaniu sprite'a, więc but zawsze trafia w stopę.
-   * W bezruchu (statyczny assets/player.png - okrągła sylwetka BEZ osobno
-   * narysowanych nóg) nie ma do czego się dopasować, więc buty stoją w
-   * stałym, domyślnym rozstawie przy podstawie sylwetki.
+   * BUGFIX (Tomek: "buty odstają trochę od stóp"): powyższy komentarz o
+   * "sylwetce BEZ osobno narysowanych nóg" był nieaktualny/błędny -
+   * zmierzone wprost na pikselach assets/player.png (y=82-91): statyczny
+   * sprite MA dwie osobne, wyraźnie rozdzielone nogi (przerwa ~x=27-41 z
+   * 66px szerokości), tylko nikt wcześniej ich nie zmierzył. Poprzedni
+   * "stały, domyślny rozstaw" (this.radius*0.42, this.radius to parametr
+   * KOLIZJI, nie rozmiar sylwetki) był więc zgadywanką, nie pomiarem - stąd
+   * widoczne przesunięcie. Teraz buty w bezruchu czytają te same, realnie
+   * zmierzone ułamki (lewa noga środek ~0.318, prawa ~0.697, stopa ~0.989
+   * wysokości) przez _getSpriteDrawSize() - identyczna metoda co gałąź
+   * chodu wyżej, tylko z inną, osobno zmierzoną tabelą (ten sprite to inny
+   * plik niż assets/player_walk.png).
+   */
+  /**
+   * BUGFIX (skiny na alternatywnym ciele): PLAYER_WALK_LEG_FRAMES to 11
+   * ręcznie zmierzonych pozycji stóp - WYŁĄCZNIE dla domyślnego, 11-klatkowego
+   * assets/player_walk.png. Skiny na innym ciele (patrz PLAYER_ALIEN_BODY_IDS)
+   * mają tylko 2 klatki chodu (walk1/walk2) - indeksowanie ich do tej samej
+   * 11-elementowej tabeli dawałoby zupełnie przypadkowe (złe) pozycje.
+   * Precyzyjna IK jest więc używana TYLKO gdy aktywny jest domyślny,
+   * 11-klatkowy chód - dla pozostałych skinów buty wracają do prostego,
+   * stałego rozstawu (jak w bezruchu) - wciąż poprawnie przy stopach, tylko
+   * bez animacji rozstawiania nóg krok po kroku.
    */
   _drawBoots(ctx2) {
     const footY = this.radius * 0.8;
     const bootW = this.radius * 0.4;
     const bootH = this.radius * 0.32;
 
-    const useWalk = this.isMoving && this._walkLoaded && this._spriteLoaded;
+    const frameCount = this._activeWalkFrameCount();
+    const useWalk = this.isMoving && this._walkLoaded && this._spriteLoaded && frameCount === PLAYER_WALK_FRAME_COUNT;
     let leftX, rightX, groundY;
 
     if (useWalk) {
-      const frame = PLAYER_WALK_LEG_FRAMES[this._currentWalkFrameIndex()];
+      const frame = PLAYER_WALK_LEG_FRAMES[this._currentWalkFrameIndex(frameCount)];
       const { w, h } = this._getSpriteDrawSize();
       leftX = (frame.leftFrac - 0.5) * w;
       rightX = (frame.rightFrac - 0.5) * w;
       groundY = footY - h * (1 - frame.footFrac);
     } else {
-      const spread = this.radius * 0.42;
-      leftX = -spread;
-      rightX = spread;
-      groundY = footY;
+      const { w, h } = this._getSpriteDrawSize();
+      const alien = this._isAlienBodyActive();
+      const leftFrac = alien ? PLAYER_ALIEN_BOOT_LEFT_FRAC : 0.318;
+      const rightFrac = alien ? PLAYER_ALIEN_BOOT_RIGHT_FRAC : 0.697;
+      const footFrac = alien ? PLAYER_ALIEN_BOOT_FOOT_FRAC : 0.989;
+      leftX = (leftFrac - 0.5) * w;
+      rightX = (rightFrac - 0.5) * w;
+      groundY = footY - h * (1 - footFrac);
     }
 
     ctx2.save();
-    ctx2.fillStyle = '#F9A825';
     ctx2.strokeStyle = 'rgba(0, 0, 0, 0.4)';
     ctx2.lineWidth = 1.2;
     [leftX, rightX].forEach((dx) => {
-      this._roundRect(ctx2, dx - bootW / 2, groundY - bootH * 0.7, bootW, bootH, bootW * 0.3);
+      const bootTop = groundY - bootH * 0.7;
+      // Cholewka - gradient góra-dół (jaśniejsza cholewka, ciemniejsza
+      // podeszwa), zamiast jednego płaskiego koloru.
+      const grad = ctx2.createLinearGradient(0, bootTop, 0, groundY);
+      grad.addColorStop(0, '#FFC947');
+      grad.addColorStop(0.65, '#F9A825');
+      grad.addColorStop(1, '#B36A00');
+      ctx2.fillStyle = grad;
+      this._roundRect(ctx2, dx - bootW / 2, bootTop, bootW, bootH, bootW * 0.3);
       ctx2.fill();
       ctx2.stroke();
+
+      // Podeszwa - ciemny pasek u samego dołu, sprzedaje "but", nie tylko
+      // kolorowy prostokąt.
+      ctx2.fillStyle = 'rgba(62, 39, 35, 0.85)';
+      this._roundRect(ctx2, dx - bootW / 2, groundY - bootH * 0.22, bootW, bootH * 0.22, bootW * 0.14);
+      ctx2.fill();
+
+      // Pasek z klamerką w połowie cholewki.
+      ctx2.fillStyle = 'rgba(62, 39, 35, 0.55)';
+      ctx2.fillRect(dx - bootW / 2, bootTop + bootH * 0.32, bootW, bootH * 0.13);
+      ctx2.fillStyle = '#FFECB3';
+      ctx2.fillRect(dx - bootW * 0.1, bootTop + bootH * 0.3, bootW * 0.2, bootH * 0.17);
     });
     ctx2.restore();
   }
 
-  /** Pasy bezpieczeństwa w poprzek torsu - prosty, czytelny sygnał
-   * "wyposażenie ochronne" bez przerabiania całej sylwetki gracza. */
+  /** Pas bezpieczeństwa w poprzek torsu + centralna klamra - czytelny sygnał
+   * "wyposażenie ochronne" bez przerabiania całej sylwetki gracza. Gradient +
+   * klamra (zamiast jednej płaskiej kreski) - ten sam poziom detalu co
+   * reszta gearu po przeglądzie paczek (patrz komentarz przy _drawBackpack).
+   *
+   * BUGFIX (Tomek: "pasek [...] niech przylega do końców postaci po bokach
+   * tułowia"): szerokość liczona z this.radius (parametr KOLIZJI/gry, nie
+   * rozmiar narysowanej sylwetki) była kompletnie niezależna od faktycznej
+   * szerokości sprite'a w tym miejscu - pas nigdy nie sięgał realnych
+   * krawędzi ciała. Zmierzone wprost na pikselach assets/player.png (66x92)
+   * na wysokości fraction=0.78 (tam, gdzie pas jest zakotwiczony, patrz
+   * wywołanie w _drawGearOverlays): sylwetka zajmuje tam ~85% pełnej
+   * szerokości narysowanego sprite'a (_getSpriteDrawSize().w) - reszta gearu
+   * (maska) już liczy się z tego samego źródła, więc pas jest teraz spójny
+   * z resztą, zamiast osobnego, niezależnie wymyślonego wymiaru.
+   *
+   * BUGFIX #2 (Tomek: "paski nachodzą na ręce, mają tylko tułów obejmować"):
+   * 85% wyżej to szerokość TUŁOWIA + RĄK RAZEM na tej wysokości (ręce tej
+   * postaci to boczne wybrzuszenia sylwetki dokładnie w tym miejscu, nie
+   * osobne, wąskie kończyny) - pas więc realnie sięgał rąk. Zmierzone osobno
+   * wąskie "jądro" tułowia (bez wybrzuszenia rąk) - dokładnie ta sama
+   * szerokość co nogi (32 z 66px = ~0.485), bo tułów jest jednolitym
+   * "baryłkowym" kształtem od karku po nogi, a ręce to DODATKOWE wybrzuszenie
+   * NA TYM kształcie tylko w okolicy ramion. 0.485 zostaje więc w samym
+   * tułowiu na każdej wysokości, niezależnie od tego, że akurat tu ręce się
+   * poszerzają.
+   */
   _drawHazmatTrim(ctx2, bodyY) {
-    const w = this.radius * 1.3;
+    const { w: spriteW } = this._getSpriteDrawSize();
+    const w = spriteW * (this._isAlienBodyActive() ? PLAYER_ALIEN_TORSO_WIDTH_FRAC : 0.485);
     ctx2.save();
-    ctx2.fillStyle = '#FFB300';
+
+    const beltGrad = ctx2.createLinearGradient(0, bodyY, 0, bodyY + 5);
+    beltGrad.addColorStop(0, '#FFC947');
+    beltGrad.addColorStop(1, '#E68900');
+    ctx2.fillStyle = beltGrad;
     ctx2.fillRect(-w / 2, bodyY, w, 5);
     ctx2.fillStyle = 'rgba(33, 33, 33, 0.6)';
     ctx2.fillRect(-w / 2, bodyY + 5, w, 2);
+
+    // Klamra na środku pasa - mały metaliczny prostokąt z ciemną obwódką,
+    // sprzedaje "prawdziwy pas ochronny", nie tylko kolorową kreskę.
+    const buckleW = w * 0.14;
+    ctx2.fillStyle = '#CFD8DC';
+    ctx2.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx2.lineWidth = 1;
+    ctx2.fillRect(-buckleW / 2, bodyY - 1.5, buckleW, 8);
+    ctx2.strokeRect(-buckleW / 2, bodyY - 1.5, buckleW, 8);
+
     ctx2.restore();
   }
 
@@ -1102,11 +1559,24 @@ class PlayerController {
    * owalu, a filtr przeniesiony z "brody" na bok głowy (jak w prawdziwym
    * respiratorze), żeby nie wyglądał jak druga, dziwna buzia.
    */
+  /**
+   * BUGFIX (Tomek: "czarna obramówka [maski] niech zasłania tę białą
+   * dokładnie"): rx=w*0.46 był zmierzony za wąsko - realna sylwetka głowy
+   * (zarówno domyślnego sprite'a, jak i ciał alienów, patrz
+   * PLAYER_ALIEN_BODY_IDS - obie rodziny mają niemal IDENTYCZNY zarys w tym
+   * samym 66x92 płótnie) sięga w najszerszym miejscu PRAWIE do samej
+   * krawędzi obrazka (zmierzone wprost na pikselach: pełne 66px szerokości
+   * przy y=29-35 z 92, czyli promień 0.5*w, nie 0.46*w). Przy 0.46 zostawał
+   * ~2-3px rąbek prawdziwej głowy (u alienów: ich własny biały pierścień
+   * hełmu) WIDOCZNY na zewnątrz ciemnej obwódki maski. 0.49 (+ połowa
+   * grubości ciemnej kreski, darkLW/2=1.5) sięga niecały piksel poza
+   * zmierzoną krawędź - z zapasem, żeby obwódka zawsze w pełni ją zakrywała.
+   */
   _drawGasMask(ctx2, headCenterY) {
     const { w, h } = this._getSpriteDrawSize();
-    const rx = w * 0.46;
-    const ry = h * 0.32;
-    const cy = ry * 0.1;
+    const rx = w * 0.54;
+    const ry = h * 0.36;
+    const cy = 0;
 
     ctx2.save();
     ctx2.translate(0, headCenterY);
@@ -1224,17 +1694,26 @@ class PlayerController {
    */
   _drawSprite(ctx2) {
     const useWalk = this.isMoving && this._walkLoaded;
-    const img = useWalk ? this._walkImg : this._spriteImg;
+    // Skin wybrany w economy.js (jeśli inny niż domyślny I jego kopia
+    // zdążyła się już upiec - patrz _bakeSkinTints) podmienia obrazek
+    // źródłowy - może to być inne CIAŁO (inny plik, inne wymiary/liczba
+    // klatek, patrz PLAYER_SKINS.body) niż domyślny sprite, więc sx/sy/sw/sh
+    // liczone są teraz Z FAKTYCZNIE rysowanego obrazka (img), nie zawsze z
+    // domyślnego rawImg jak poprzednio (BUGFIX - patrz _getSpriteDrawSize).
+    const rawImg = useWalk ? this._walkImg : this._spriteImg;
+    const skinImg = this._getSkinImage(useWalk);
+    const img = skinImg || rawImg;
+    const frameCount = this._activeWalkFrameCount();
 
     let sx = 0;
     let sy = 0;
-    let sw = img.naturalWidth || 66;
-    let sh = img.naturalHeight || 92;
+    let sw = (img.naturalWidth || img.width) || 66;
+    let sh = (img.naturalHeight || img.height) || 92;
 
     if (useWalk) {
-      sw = img.naturalWidth / PLAYER_WALK_FRAME_COUNT;
-      sh = img.naturalHeight;
-      sx = this._currentWalkFrameIndex() * sw;
+      sw = (img.naturalWidth || img.width) / frameCount;
+      sh = img.naturalHeight || img.height;
+      sx = this._currentWalkFrameIndex(frameCount) * sw;
     }
 
     const naturalRatio = sw / sh;
@@ -1248,6 +1727,91 @@ class PlayerController {
     ctx2.drawImage(img, sx, sy, sw, sh, -w / 2, footY - h, w, h);
   }
 
+  /** Obrazek (canvas/img albo null) do użycia w _drawSprite() dla BIEŻĄCEGO
+   * wybranego skina - null = brak/domyślny, wywołujący sam wraca wtedy do
+   * surowego sprite'a domyślnego ciała. */
+  _getSkinImage(useWalk) {
+    const eco = window.economyManager;
+    const skinId = (eco && eco.selectedSkin) || 'default';
+    if (skinId === 'default') return null;
+    const baked = this._tintedSprites[skinId];
+    if (!baked) return null;
+    return useWalk ? baked.walk : baked.static;
+  }
+
+  /** true, gdy aktywny skin siedzi na jednym z PLAYER_ALIEN_BODY_IDS (nie na
+   * domyślnym ciele) - patrz komentarz przy PLAYER_ALIEN_BOOT_LEFT_FRAC dla
+   * powodu, dlaczego gear potrzebuje osobnych ułamków dla tej rodziny. */
+  _isAlienBodyActive() {
+    const eco = window.economyManager;
+    if (!eco || !window.PLAYER_SKINS) return false;
+    const skin = window.PLAYER_SKINS.find((s) => s.id === eco.selectedSkin);
+    return !!(skin && skin.body);
+  }
+
+  /**
+   * Piecze RAZ (po wczytaniu sprite'ów) obrazek statyczny I spritesheet
+   * chodu dla KAŻDEGO skina z PLAYER_SKINS oprócz 'default' (nic do
+   * zrobienia - oryginał już jest tym skinem). Dwa niezależne wymiary na
+   * skin: `body` (economy.js) wybiera ŹRÓDŁOWE ciało - domyślne
+   * (this._spriteImg/_walkImg) albo jedno z PLAYER_ALIEN_BODY_IDS - a `tint`
+   * opcjonalnie przebarwia TO ciało (patrz _bakeTintedCanvas). Bez tint
+   * używamy surowego obrazka wprost (bez zbędnego kopiowania na canvas) -
+   * ctx.drawImage() akceptuje zarówno <img> jak i <canvas> identycznie.
+   * Bez tego przebarwianie musiałoby się liczyć co klatkę - dla postaci
+   * widocznej bez przerwy 60x/s to byłby zauważalny koszt za darmo.
+   */
+  _bakeSkinTints() {
+    const skins = window.PLAYER_SKINS || [];
+    skins.forEach((skin) => {
+      if (skin.id === 'default') return;
+      const bodyId = skin.body || null;
+      const body = bodyId ? this._alienBodies[bodyId] : null;
+      const baseStatic = body ? body.staticImg : this._spriteImg;
+      const baseWalk = body ? body.walkImg : this._walkImg;
+      const staticReady = body ? body.staticLoaded : this._spriteLoaded;
+      const walkReady = body ? body.walkLoaded : this._walkLoaded;
+
+      this._tintedSprites[skin.id] = {
+        static: staticReady ? (skin.tint ? this._bakeTintedCanvas(baseStatic, skin.tint) : baseStatic) : null,
+        walk: walkReady ? (skin.tint ? this._bakeTintedCanvas(baseWalk, skin.tint) : baseWalk) : null,
+        frameCount: bodyId ? PLAYER_ALIEN_WALK_FRAME_COUNT : PLAYER_WALK_FRAME_COUNT
+      };
+    });
+  }
+
+  /**
+   * Przebarwia CAŁY obrazek jednolitym kolorem (żeby zadziałało identycznie
+   * na spritesheecie chodu jak i na pojedynczym statycznym sprite) metodą
+   * "source-atop": najpierw kopiujemy oryginał 1:1 (zachowuje przezroczystość
+   * PIKSEL PO PIKSELU - klatki spritesheeta zostają rozdzielone), potem
+   * dokładamy półprzezroczystą warstwę koloru, którą 'source-atop' ogranicza
+   * WYŁĄCZNIE do już narysowanych (nieprzezroczystych) pikseli. Alpha 0.5 -
+   * na tyle mocno, żeby kolor był rozpoznawalny, na tyle słabo, żeby oryginalne
+   * cieniowanie/highlights sprite'a nadal przebijały (płaski, w pełni kryjący
+   * kolor wyglądałby jak naklejka, nie jak przefarbowana tkanina).
+   */
+  _bakeTintedCanvas(sourceImg, tintColor) {
+    const w = sourceImg.naturalWidth;
+    const h = sourceImg.naturalHeight;
+    if (!w || !h) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const tctx = canvas.getContext('2d');
+
+    tctx.drawImage(sourceImg, 0, 0, w, h);
+    tctx.globalCompositeOperation = 'source-atop';
+    tctx.globalAlpha = 0.5;
+    tctx.fillStyle = tintColor;
+    tctx.fillRect(0, 0, w, h);
+    tctx.globalCompositeOperation = 'source-over';
+    tctx.globalAlpha = 1;
+
+    return canvas;
+  }
+
   /**
    * Oryginalne rysowanie proceduralne (zaokraglony prostokat + glowa + oczy).
    * Uzywane dopoki assets/player.png sie nie wczyta albo gdyby wczytanie
@@ -1257,7 +1821,11 @@ class PlayerController {
     // Cialo (zaokraglony prostokat) - Squash & Stretch.
     const w = (this.radius * 1.4) / this.bodySquash;
     const h = this.radius * 2 * this.bodySquash;
-    ctx2.fillStyle = '#5C85D6'; // niebieski kombinezon
+    // Skin (economy.js) dziala TEZ tutaj, nie tylko na sprite (_bakeSkinTints) -
+    // gdyby oba obrazki nigdy sie nie wczytaly, gracz i tak widzi wybrany kolor.
+    const eco = window.economyManager;
+    const skin = eco && window.PLAYER_SKINS && window.PLAYER_SKINS.find((s) => s.id === eco.selectedSkin);
+    ctx2.fillStyle = (skin && (skin.tint || skin.previewColor)) || '#5C85D6'; // niebieski kombinezon domyslnie
     this._roundRect(ctx2, -w / 2, -h / 2, w, h, 8);
     ctx2.fill();
 
@@ -1301,17 +1869,16 @@ class PlayerController {
    * a nie na starej prostej linii.
    */
   _getZoneAt(x, y) {
-    // Strefa D (Kryształowa Grań) to SAMODZIELNY róg prawy-górny z DWIEMA
-    // własnymi pofalowanymi krawędziami - nie wycinek pasa C jak wcześniej
-    // (patrz obszerny komentarz przy GAME_ZONE_D_LEFT_RATIO w game.js).
-    // Sprawdzana JAKO PIERWSZA, bo nachodzi i na popiół (C), i na bagno (B).
-    const dLeftX = PLAYER_WORLD_WIDTH * PLAYER_ZONE_D_LEFT_RATIO;
-    const dBottomY = PLAYER_WORLD_HEIGHT * PLAYER_ZONE_D_BOTTOM_RATIO;
-    if (x > dLeftX + this._edgeWaveD(y) && y < dBottomY + this._edgeWaveD(x + 900)) return 'D';
+    // Strefa D (Kryształowa Grań) to teraz NIEZALEŻNY pas na pełnej
+    // wysokości, z JEDNĄ pofalowaną krawędzią (lewą) - nie róg z dwiema jak
+    // wcześniej (patrz obszerny komentarz przy GAME_ZONE_CORE_WIDTH w
+    // game.js). Sprawdzana JAKO PIERWSZA, bo leży na prawo od C i B obu.
+    const dLeftX = PLAYER_ZONE_CORE_WIDTH;
+    if (x > dLeftX + this._edgeWaveD(y)) return 'D';
 
     const topH = PLAYER_WORLD_HEIGHT * PLAYER_ZONE_C_TOP_RATIO;
     if (y < topH + this._edgeWaveC(x)) return 'C';
-    const rightX = PLAYER_WORLD_WIDTH * PLAYER_ZONE_B_RIGHT_RATIO;
+    const rightX = PLAYER_ZONE_CORE_WIDTH * PLAYER_ZONE_B_RIGHT_RATIO;
     if (x > rightX + this._edgeWaveB(y)) return 'B';
     return 'A';
   }
@@ -1337,9 +1904,10 @@ class PlayerController {
     );
   }
 
-  /** Fala OBU krawędzi Strefy D - MUSI być identyczna z Game._edgeWaveD
-   * (game.js), inaczej hazard Grani włączałby się w innym miejscu niż widać
-   * kryształowe podłoże (ten sam wymóg co przy _edgeWaveC/_edgeWaveB). */
+  /** Fala LEWEJ (jedynej) krawędzi Strefy D - MUSI być identyczna z
+   * Game._edgeWaveD (game.js), inaczej hazard Grani włączałby się w innym
+   * miejscu niż widać kryształowe podłoże (ten sam wymóg co przy
+   * _edgeWaveC/_edgeWaveB). */
   _edgeWaveD(v) {
     return (
       (Math.sin(v * 0.0135 + 1.7) * 0.6 + Math.sin(v * 0.031 + 4.2) * 0.4) *
