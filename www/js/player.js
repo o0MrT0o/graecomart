@@ -1050,6 +1050,11 @@ class PlayerController {
 
   _drawGearOverlays(ctx2) {
     const eco = window.economyManager;
+    // Zerowane na starcie KAŻDEJ klatki (nie tylko gdy brak upgrade'u) - jeśli
+    // gracz akurat nie ma latarki, _drawHeadlampNightGlow (game.js) ma o tym
+    // wiedzieć i nic nie rysować, zamiast świecić stara, martwą pozycją z
+    // ostatniej klatki, w której latarka jeszcze była rysowana.
+    this._headlampScreenPos = null;
     if (!eco || typeof eco.hasUpgrade !== 'function') return;
 
     // Pasy kombinezonu NAJPIERW (na torsie, pod maską) - gdyby gracz miał
@@ -1352,6 +1357,27 @@ class PlayerController {
     ctx2.arc(tubeLen, 0, tubeW * 0.42, 0, Math.PI * 2);
     ctx2.fill();
     ctx2.restore();
+
+    // Zapamiętaj pozycję soczewki w PRAWDZIWYCH pikselach ekranu (Tomek:
+    // "kask latarka niech świeci") - ten sam problem co dawniej rdzenie
+    // maszyn (patrz game.js, _drawMachineNightGlow): ten blask powyżej jest
+    // rysowany w warstwie świata, PRZED nocną nakładką, więc ciemny
+    // prostokąt nocy przygaszał latarkę tak samo jak całe otoczenie.
+    // getTransform() w TYM miejscu (wciąż wewnątrz translate(mountX,sideY)+
+    // rotate(-0.25) z góry funkcji, PRZED zamykającym ctx2.restore() poniżej)
+    // daje PEŁNĄ macierz - kamera + pozycja gracza + lean/flip + lokalny
+    // obrót latarki razem - więc transformPoint(tubeLen, 0) to dokładnie ten
+    // sam piksel, w którym realnie wylądowała soczewka w TEJ klatce. Dzielone
+    // przez this.game.dpr, bo setTransform(dpr,...) z resize() jest BAZĄ pod
+    // całym stosem transformacji (nigdy nie zdejmowaną przez żaden
+    // save/restore w pętli renderowania) - bez dzielenia współrzędne
+    // wyszłyby dpr-krotnie za duże względem window.innerWidth, na którym
+    // opiera się reszta warstwy UI (patrz _drawMachineNightGlow/_drawStars).
+    if (ctx2.getTransform) {
+      const dpr = (window.game && window.game.dpr) || 1;
+      const pt = ctx2.getTransform().transformPoint({ x: tubeLen, y: 0 });
+      this._headlampScreenPos = { x: pt.x / dpr, y: pt.y / dpr };
+    }
 
     ctx2.restore();
   }

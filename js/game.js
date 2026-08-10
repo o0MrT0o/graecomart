@@ -1118,6 +1118,43 @@ class Game {
     // Poświata maszyn "przebijająca" tę nakładkę (Tomek: "niech w nocy
     // wyraźnie świecą") - patrz _drawMachineNightGlow.
     this._drawMachineNightGlow(alpha);
+    // To samo dla latarki na kasku gracza (Tomek: "kask latarka niech
+    // świeci") - patrz _drawHeadlampNightGlow.
+    this._drawHeadlampNightGlow(alpha);
+  }
+
+  /**
+   * Blask latarki "Kasku z Latarką" (upgrade sklepowy, patrz player.js
+   * _drawHelmet) NAD nocną nakładką - ten sam trik i ten sam powód co
+   * _drawMachineNightGlow (patrz komentarz tam): własny blask latarki jest
+   * rysowany w warstwie świata, PRZED nocną nakładką, więc ciemny
+   * prostokąt nocy przygaszał go razem z całą resztą, mimo że latarka
+   * logicznie POWINNA przebijać ciemność, skoro to jej jedyne zadanie.
+   * Pozycję soczewki w PRAWDZIWYCH pikselach ekranu (już po kamerze,
+   * pozycji gracza, przechyle/odbiciu i obrocie latarki) liczy
+   * player.js/_drawHelmet przez ctx2.getTransform() w momencie rysowania -
+   * tutaj tylko odczyt gotowej wartości, zero duplikowania tamtej
+   * matematyki. null, gdy gracz nie ma tego upgrade'u (patrz reset na
+   * początku _drawGearOverlays) - wtedy nic się nie rysuje.
+   */
+  _drawHeadlampNightGlow(nightAlpha) {
+    const player = window.playerController;
+    if (!player || !player._headlampScreenPos) return;
+
+    const { x, y } = player._headlampScreenPos;
+    const r = (player.radius || 22) * 1.9;
+
+    this.ctxUI.save();
+    this.ctxUI.globalCompositeOperation = 'lighter';
+    const glow = this.ctxUI.createRadialGradient(x, y, 0, x, y, r);
+    glow.addColorStop(0, 'rgba(255, 249, 196, 1)');
+    glow.addColorStop(1, 'rgba(255, 249, 196, 0)');
+    this.ctxUI.globalAlpha = nightAlpha * 0.85;
+    this.ctxUI.fillStyle = glow;
+    this.ctxUI.beginPath();
+    this.ctxUI.arc(x, y, r, 0, Math.PI * 2);
+    this.ctxUI.fill();
+    this.ctxUI.restore();
   }
 
   /**
